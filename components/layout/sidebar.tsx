@@ -11,7 +11,8 @@ import {
   Settings, 
   ShieldCheck, 
   HelpCircle,
-  ChevronRight
+  ChevronRight,
+  CalendarCheck
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -21,6 +22,7 @@ const navItems = [
   { label: "Lịch trực", href: "/schedule", icon: Calendar },
   { label: "Bệnh nhân", href: "/patients", icon: Activity },
   { label: "Báo cáo", href: "/reports", icon: FileText },
+  { label: "Đặt lịch (Khách)", href: "/booking", icon: CalendarCheck },
 ]
 
 export function Sidebar() {

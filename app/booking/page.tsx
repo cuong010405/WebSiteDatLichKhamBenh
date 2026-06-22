@@ -1,0 +1,1758 @@
+"use client";
+
+import * as React from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Search,
+  Filter,
+  Star,
+  ShieldCheck,
+  User,
+  LogIn,
+  LogOut,
+  MapPin,
+  Phone,
+  Mail,
+  Calendar,
+  Clock,
+  CreditCard,
+  CheckCircle2,
+  AlertCircle,
+  Sparkles,
+  Download,
+  CalendarPlus,
+  Users,
+  Activity,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  Lock,
+  X,
+  Trash2,
+  Heart,
+  Stethoscope,
+  Clock3,
+  Send,
+  FileText
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { staff as mockStaff, patients as mockPatients } from "@/lib/mock-data";
+import { cn } from "@/lib/utils";
+
+// Service pricing mapping
+const SERVICES = [
+  { id: "s1", name: "Kiểm tra sức khỏe & Đo sinh hiệu", price: 200000, duration: "1h", type: "Clinical" },
+  { id: "s2", name: "Vật lý trị liệu & Phục hồi chức năng", price: 500000, duration: "1.5h", type: "Rehab" },
+  { id: "s3", name: "Truyền dịch y tế tại gia", price: 400000, duration: "1h", type: "Clinical" },
+  { id: "s4", name: "Tư vấn dinh dưỡng chuyên sâu", price: 300000, duration: "1h", type: "Nutrition" }
+];
+
+// Specialist Reviews Data
+const SPECIALIST_REVIEWS: Record<string, { rating: number; text: string; author: string; date: string }[]> = {
+  "1": [
+    { rating: 5, text: "Sandra chăm sóc vết thương sau phẫu thuật rất nhẹ nhàng và chu đáo.", author: "Nguyễn Thị Hoa", date: "10/06/2026" },
+    { rating: 5, text: "Y tá có chuyên môn cao, hướng dẫn tận tình cách vệ sinh vết thương.", author: "Lê Văn Tám", date: "08/06/2026" }
+  ],
+  "2": [
+    { rating: 5, text: "Bài tập phục hồi khớp gối rất hiệu quả, tôi đã có thể tự đi lại được sau 3 tuần.", author: "Trần Hữu Nghị", date: "11/06/2026" },
+    { rating: 4, text: "Bác sĩ Marcus làm việc chuyên nghiệp, đúng giờ và nhiệt tình.", author: "Phạm Minh Trí", date: "05/06/2026" }
+  ],
+  "3": [
+    { rating: 5, text: "Tiêm truyền rất êm, nhẹ tay, không đau. Rất an tâm khi chọn y tá Lara.", author: "Nguyễn Thu Thủy", date: "12/06/2026" },
+    { rating: 5, text: "Rất sạch sẽ, tuân thủ đúng quy trình vô khuẩn. Đánh giá 5 sao.", author: "Vũ Hoàng Nam", date: "09/06/2026" }
+  ],
+  "4": [
+    { rating: 5, text: "Chế độ dinh dưỡng của Peter giúp chỉ số đường huyết của tôi ổn định hẳn.", author: "Bùi Thị Mai", date: "11/06/2026" },
+    { rating: 4, text: "Tư vấn chi tiết, dễ thực hiện cho người cao tuổi.", author: "Đặng Quốc Anh", date: "07/06/2026" }
+  ]
+};
+
+interface Toast {
+  id: string;
+  message: string;
+  type: "success" | "error" | "info";
+}
+
+interface StoredVisit {
+  id: string;
+  staffId: string;
+  staffName: string;
+  type: string;
+  date: string;
+  time: string;
+  status: string;
+  price: string;
+  paymentMethod: string;
+}
+
+export default function BookingPage() {
+  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [selectedDept, setSelectedDept] = React.useState("all");
+  
+  // Authentication Modal States
+  const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
+  const [authView, setAuthView] = React.useState<"login" | "register">("login");
+  const [showPassword, setShowPassword] = React.useState(false);
+  
+  // Login Form States
+  const [loginEmail, setLoginEmail] = React.useState("");
+  const [loginPassword, setLoginPassword] = React.useState("");
+  
+  // Register Form States
+  const [regName, setRegName] = React.useState("");
+  const [regPhone, setRegPhone] = React.useState("");
+  const [regEmail, setRegEmail] = React.useState("");
+  const [regPassword, setRegPassword] = React.useState("");
+  const [regConfirmPassword, setRegConfirmPassword] = React.useState("");
+  
+  // Specialist selection for reviews modal
+  const [reviewStaff, setReviewStaff] = React.useState<typeof mockStaff[0] | null>(null);
+
+  // Health Profile State (Defaulting to simulated patient Evelyn Green)
+  const [profile, setProfile] = React.useState({
+    name: "Evelyn Green",
+    phone: "090 987 6543",
+    email: "evelyn.green@gmail.com",
+    address: "Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM",
+    summary: "Bệnh nhân có tiền sử cao huyết áp và tiểu đường type 2. Đang trong lộ trình phục hồi sau phẫu thuật thay khớp gối trái."
+  });
+
+  // Booking Form States
+  const [bookingStaffId, setBookingStaffId] = React.useState("");
+  const [bookingServiceId, setBookingServiceId] = React.useState("");
+  const [bookingDate, setBookingDate] = React.useState("");
+  const [bookingSlot, setBookingSlot] = React.useState("");
+  const [bookingPayment, setBookingPayment] = React.useState("Tiền mặt");
+  const [bookingNotes, setBookingNotes] = React.useState("");
+
+  // Customer Bookings List State (Stored/Shared via LocalStorage)
+  const [myBookings, setMyBookings] = React.useState<StoredVisit[]>([]);
+
+  // Alert system state
+  const [toasts, setToasts] = React.useState<Toast[]>([]);
+
+  // Support Message state
+  const [contactName, setContactName] = React.useState("");
+  const [contactEmail, setContactEmail] = React.useState("");
+  const [contactMsg, setContactMsg] = React.useState("");
+
+  // Load and synchronize visits state with localStorage
+  React.useEffect(() => {
+    const stored = localStorage.getItem("mintcare_visits");
+    if (stored) {
+      const parsed = JSON.parse(stored) as StoredVisit[];
+      // Filter visits belonging to Evelyn Green (staffId is mapped, patientName or patientId can be mapped)
+      // Since it's a simulated customer portal, we load all visits to display, but let user manage theirs.
+      setMyBookings(parsed);
+    } else {
+      // Import fallback visits
+      import("@/lib/mock-data").then((m) => {
+        const formatted = m.visits.map(v => ({
+          id: v.id,
+          staffId: v.staffId,
+          staffName: m.staff.find(s => s.id === v.staffId)?.name || "Chuyên gia y tế",
+          type: v.type,
+          date: "2026-06-22",
+          time: v.time,
+          status: v.status,
+          price: v.type.includes("Vật lý") ? "500.000 VNĐ" : v.type.includes("Truyền") ? "400.000 VNĐ" : "200.000 VNĐ",
+          paymentMethod: "Tiền mặt"
+        }));
+        localStorage.setItem("mintcare_visits", JSON.stringify(formatted));
+        setMyBookings(formatted);
+      });
+    }
+  }, []);
+
+  const saveBookingsToStorage = (updated: StoredVisit[]) => {
+    setMyBookings(updated);
+    localStorage.setItem("mintcare_visits", JSON.stringify(updated));
+  };
+
+  const addToast = (message: string, type: "success" | "error" | "info" = "success") => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
+
+  // Seed default user account if not exists
+  React.useEffect(() => {
+    const existingUsers = localStorage.getItem("mintcare_users");
+    if (!existingUsers) {
+      const defaultUsers = [
+        {
+          name: "Evelyn Green",
+          phone: "090 987 6543",
+          email: "evelyn.green@gmail.com",
+          password: "123456",
+          address: "Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM",
+          summary: "Bệnh nhân có tiền sử cao huyết áp và tiểu đường type 2. Đang trong lộ trình phục hồi sau phẫu thuật thay khớp gối trái."
+        }
+      ];
+      localStorage.setItem("mintcare_users", JSON.stringify(defaultUsers));
+    }
+  }, []);
+
+  // Handle local registration
+  const handleLocalRegister = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regName.trim() || !regPhone.trim() || !regEmail.trim() || !regPassword || !regConfirmPassword) {
+      addToast("Vui lòng điền đầy đủ thông tin đăng ký.", "error");
+      return;
+    }
+    if (regPassword !== regConfirmPassword) {
+      addToast("Mật khẩu xác nhận không khớp.", "error");
+      return;
+    }
+
+    const stored = localStorage.getItem("mintcare_users");
+    const users = stored ? JSON.parse(stored) : [];
+
+    const emailExists = users.some((u: any) => u.email.toLowerCase() === regEmail.trim().toLowerCase());
+    if (emailExists) {
+      addToast("Email này đã được sử dụng bởi tài khoản khác.", "error");
+      return;
+    }
+
+    const newUser = {
+      name: regName.trim(),
+      phone: regPhone.trim(),
+      email: regEmail.trim().toLowerCase(),
+      password: regPassword,
+      address: "",
+      summary: ""
+    };
+
+    const updatedUsers = [...users, newUser];
+    localStorage.setItem("mintcare_users", JSON.stringify(updatedUsers));
+
+    // Update logged in state & profile
+    setIsLoggedIn(true);
+    setProfile({
+      name: newUser.name,
+      phone: newUser.phone,
+      email: newUser.email,
+      address: "Chưa cập nhật",
+      summary: "Chưa cập nhật"
+    });
+
+    addToast(`Đăng ký thành công! Chào mừng ${newUser.name}.`, "success");
+    setIsAuthModalOpen(false);
+
+    // Reset fields
+    setRegName("");
+    setRegPhone("");
+    setRegEmail("");
+    setRegPassword("");
+    setRegConfirmPassword("");
+
+    // Scroll to dashboard
+    setTimeout(() => {
+      document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
+    }, 150);
+  };
+
+  // Handle local login
+  const handleLocalLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginEmail.trim() || !loginPassword) {
+      addToast("Vui lòng điền đầy đủ email và mật khẩu.", "error");
+      return;
+    }
+
+    const stored = localStorage.getItem("mintcare_users");
+    const users = stored ? JSON.parse(stored) : [];
+
+    const user = users.find((u: any) => u.email.toLowerCase() === loginEmail.trim().toLowerCase());
+    if (!user) {
+      addToast("Email này chưa được đăng ký tài khoản.", "error");
+      return;
+    }
+
+    if (user.password !== loginPassword) {
+      addToast("Mật khẩu không chính xác.", "error");
+      return;
+    }
+
+    // Success
+    setIsLoggedIn(true);
+    setProfile({
+      name: user.name,
+      phone: user.phone || "Chưa cập nhật",
+      email: user.email,
+      address: user.address || "Chưa cập nhật",
+      summary: user.summary || "Chưa cập nhật"
+    });
+
+    addToast(`Đăng nhập thành công! Chào mừng ${user.name}.`, "success");
+    setIsAuthModalOpen(false);
+
+    // Reset fields
+    setLoginEmail("");
+    setLoginPassword("");
+
+    // Scroll to dashboard
+    setTimeout(() => {
+      document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
+    }, 150);
+  };
+
+  // Trigger login simulation
+  const handleLogin = () => {
+    setIsAuthModalOpen(true);
+    setAuthView("login");
+  };
+
+  // Trigger logout
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    addToast("Đã đăng xuất khỏi tài khoản khách hàng.", "info");
+  };
+
+  // Profile update
+  const handleUpdateProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    addToast("Cập nhật thông tin hồ sơ y tế thành công!", "success");
+  };
+
+  // Action: Select Specialist and scroll to Booking Form
+  const selectSpecialistForBooking = (staffId: string) => {
+    if (!isLoggedIn) {
+      addToast("Vui lòng đăng nhập để tiến hành đặt lịch hẹn.", "info");
+      setIsAuthModalOpen(true);
+      setAuthView("login");
+      return;
+    }
+    setBookingStaffId(staffId);
+    
+    // Auto-select first matching service
+    const staffMember = mockStaff.find((s) => s.id === staffId);
+    if (staffMember) {
+      if (staffMember.role.includes("Y tá")) {
+        setBookingServiceId("s1");
+      } else if (staffMember.role.includes("VLTL")) {
+        setBookingServiceId("s2");
+      } else if (staffMember.role.includes("dinh dưỡng")) {
+        setBookingServiceId("s4");
+      } else {
+        setBookingServiceId("s1");
+      }
+    }
+    
+    // Scroll to form
+    document.getElementById("booking-form-section")?.scrollIntoView({ behavior: "smooth" });
+    addToast(`Đã chọn chuyên gia ${staffMember?.name || ""}. Vui lòng nhập thông tin khám.`, "info");
+  };
+
+  // Booking submit handler
+  const handleCreateBooking = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bookingStaffId || !bookingServiceId || !bookingDate || !bookingSlot) {
+      addToast("Vui lòng điền đầy đủ thông tin đặt lịch hẹn.", "error");
+      return;
+    }
+
+    const selectedStaff = mockStaff.find((s) => s.id === bookingStaffId);
+    const selectedService = SERVICES.find((s) => s.id === bookingServiceId);
+
+    if (!selectedStaff || !selectedService) return;
+
+    const newBooking = {
+      id: Math.floor(100 + Math.random() * 900).toString(),
+      staffId: bookingStaffId,
+      staffName: selectedStaff.name,
+      type: selectedService.name,
+      date: bookingDate,
+      time: `${bookingSlot} - ${calculateEndTime(bookingSlot, selectedService.duration)}`,
+      status: "Chờ duyệt",
+      price: selectedService.price.toLocaleString("vi-VN") + " VNĐ",
+      paymentMethod: bookingPayment
+    };
+
+    const updated = [newBooking, ...myBookings];
+    saveBookingsToStorage(updated);
+    addToast("Gửi yêu cầu thành công! Lịch hẹn đang chờ Admin phê duyệt.", "success");
+    
+    // Reset Form
+    setBookingDate("");
+    setBookingSlot("");
+    setBookingNotes("");
+
+    // Scroll to history list
+    setTimeout(() => {
+      document.getElementById("my-appointments-section")?.scrollIntoView({ behavior: "smooth" });
+    }, 200);
+  };
+
+  const calculateEndTime = (start: string, durationStr: string) => {
+    const [h, m] = start.split(":").map(Number);
+    const duration = parseFloat(durationStr.replace("h", ""));
+    const totalMinutes = h * 60 + m + duration * 60;
+    const endH = Math.floor(totalMinutes / 60);
+    const endM = totalMinutes % 60;
+    return `${endH.toString().padStart(2, "0")}:${endM.toString().padStart(2, "0")}`;
+  };
+
+  // Cancel Booking handler
+  const handleCancelBooking = (id: string) => {
+    const updated = myBookings.filter((b) => b.id !== id);
+    saveBookingsToStorage(updated);
+    addToast(`Đã hủy thành công ca hẹn #${id}`, "success");
+  };
+
+  // Download booking slip
+  const handleDownloadSlip = (booking: StoredVisit) => {
+    const content = `
+=============================================
+             PHIẾU XÁC NHẬN ĐẶT LỊCH HẸN
+                    MINTCARE
+=============================================
+Mã lịch hẹn: LH-${booking.id}
+Thời gian tạo phiếu: ${new Date().toLocaleString()}
+Trạng thái duyệt: ${booking.status}
+---------------------------------------------
+Thông tin bệnh nhân:
+- Họ tên: ${profile.name}
+- Điện thoại: ${profile.phone}
+- Địa chỉ khám: ${profile.address}
+- Tiền sử bệnh: ${profile.summary}
+---------------------------------------------
+Thông tin dịch vụ:
+- Chuyên gia y tế: ${booking.staffName}
+- Dịch vụ đặt: ${booking.type}
+- Ngày hẹn: ${booking.date}
+- Thời gian: ${booking.time}
+---------------------------------------------
+Chi phí & Thanh toán:
+- Tổng chi phí: ${booking.price}
+- Phương thức: ${booking.paymentMethod}
+=============================================
+Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
+    `;
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `MintCare-Booking-Receipt-LH-${booking.id}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+    addToast("Đã tải xuống phiếu xác nhận lịch hẹn.", "success");
+  };
+
+  // Support Message submit
+  const handleSendSupport = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contactName || !contactEmail || !contactMsg) {
+      addToast("Vui lòng nhập đầy đủ thông tin liên hệ.", "error");
+      return;
+    }
+    addToast("Gửi lời nhắn thành công! Đội ngũ tư vấn sẽ phản hồi lại sớm nhất.", "success");
+    setContactName("");
+    setContactEmail("");
+    setContactMsg("");
+  };
+
+  // Filter specialists directory
+  const filteredStaff = mockStaff.filter((person) => {
+    const matchesSearch = person.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      person.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      person.department.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesDept = selectedDept === "all" || person.department === selectedDept;
+    
+    return matchesSearch && matchesDept;
+  });
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-600 selection:text-white relative">
+      
+      {/* Toast Notification Container */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm pointer-events-none">
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, y: 30, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.9 }}
+              className={cn(
+                "p-4 rounded-2xl shadow-2xl border flex items-center gap-3 backdrop-blur-md pointer-events-auto",
+                toast.type === "success" 
+                  ? "bg-white border-blue-200 text-blue-900 shadow-blue-50" 
+                  : toast.type === "error" 
+                    ? "bg-orange-50 border-orange-200 text-orange-700 shadow-orange-50" 
+                    : "bg-white border-blue-100 text-slate-800"
+              )}
+            >
+              {toast.type === "success" ? (
+                <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0" />
+              ) : toast.type === "error" ? (
+                <AlertCircle className="w-5 h-5 text-orange-500 shrink-0" />
+              ) : (
+                <Sparkles className="w-5 h-5 text-blue-500 shrink-0 animate-pulse" />
+              )}
+              <span className="text-xs font-black tracking-tight">{toast.message}</span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* Customer Header/Navbar */}
+      <header id="booking-navbar" className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-blue-100 shadow-xs">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-3.5 group cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+            <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/20 transform -rotate-3 transition-transform group-hover:rotate-0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+              </svg>
+            </div>
+            <div>
+              <span className="text-lg font-black tracking-tighter text-blue-950 uppercase">MintCare Portal</span>
+              <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest leading-none mt-0.5">Đặt lịch trực tuyến</p>
+            </div>
+          </div>
+
+          <nav className="hidden md:flex items-center gap-8 text-xs font-black uppercase tracking-wider text-slate-500">
+            <a href="#booking-navbar" className="text-blue-600 hover:text-blue-700 transition-colors">Trang chủ</a>
+            <a href="#specialists-section" className="hover:text-blue-600 transition-colors">Đội ngũ chuyên gia</a>
+            {isLoggedIn && (
+              <>
+                <a href="#booking-form-section" className="hover:text-blue-600 transition-colors">Đặt lịch khám</a>
+                <a href="#my-appointments-section" className="hover:text-blue-600 transition-colors">Hồ sơ & Lịch hẹn</a>
+              </>
+            )}
+            <a href="#contact-section" className="hover:text-blue-600 transition-colors">Liên hệ</a>
+          </nav>
+
+          <div className="flex items-center gap-4">
+            {isLoggedIn ? (
+              <div className="flex items-center gap-3 bg-blue-50/50 p-1.5 pl-4 rounded-full border border-blue-100 shadow-xs">
+                <span className="text-xs font-black text-blue-950 uppercase">{profile.name}</span>
+                <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-black flex items-center justify-center text-xs uppercase">
+                  {profile.name ? profile.name.split(" ").map(n => n[0]).join("").substring(0, 2) : "EG"}
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={handleLogout} 
+                  className="text-orange-500 hover:bg-orange-50 hover:text-orange-600 rounded-full h-8 w-8"
+                >
+                  <LogOut className="w-4.5 h-4.5" />
+                </Button>
+              </div>
+            ) : (
+              <Button 
+                onClick={handleLogin}
+                className="bg-blue-600 text-white rounded-full px-6 h-12 text-xs font-black uppercase tracking-widest hover:bg-blue-700 shadow-lg shadow-blue-600/15"
+              >
+                <LogIn className="w-4 h-4 mr-2" /> Đăng nhập
+              </Button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* --- View 1: Guest Landing Page (Intro view) --- */}
+      <section className="relative overflow-hidden py-24 bg-gradient-to-b from-blue-50/60 via-white to-slate-50">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-[10%] left-[-10%] w-[50%] h-[50%] bg-blue-100/40 rounded-full blur-[140px]" />
+          <div className="absolute bottom-[20%] right-[-5%] w-[45%] h-[45%] bg-blue-50/50 rounded-full blur-[120px]" />
+        </div>
+
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 1 }}
+            className="space-y-8"
+          >
+            <div className="inline-flex items-center gap-2 bg-blue-600/10 px-4 py-2 rounded-full border border-blue-200">
+              <Sparkles className="w-4 h-4 text-blue-600 animate-pulse" />
+              <span className="text-[10px] font-black text-blue-800 uppercase tracking-widest">Y tế thông minh tại gia</span>
+            </div>
+            
+            <h1 className="text-5xl md:text-7xl font-black text-blue-950 leading-[1.05] tracking-tight">
+              Chăm sóc y tế <br />
+              <span className="text-blue-600 bg-linear-to-r from-blue-600 to-sky-500 bg-clip-text text-transparent">Tận tâm tại nhà.</span>
+            </h1>
+
+            <p className="text-lg text-slate-600 leading-relaxed font-medium">
+              MintCare Portal mang đến giải pháp kết nối trực tiếp khách hàng với đội ngũ điều dưỡng và chuyên gia phục hồi chức năng có trình độ chuyên môn cao. Xem lý lịch công khai và đăng ký lịch hẹn chăm sóc ngay tức thì.
+            </p>
+
+            <div className="flex flex-wrap gap-4">
+              <a href="#specialists-section">
+                <Button className="bg-blue-600 text-white rounded-full px-8 h-14 font-black text-xs uppercase tracking-widest hover:bg-blue-700 shadow-xl shadow-blue-600/20">
+                  Khám phá chuyên gia
+                </Button>
+              </a>
+              {!isLoggedIn && (
+                <Button 
+                  onClick={handleLogin}
+                  variant="outline" 
+                  className="rounded-full px-8 h-14 font-black text-xs uppercase tracking-widest border-blue-200 text-blue-900 bg-white hover:bg-blue-50 transition-all shadow-sm"
+                >
+                  Đăng nhập & Đặt lịch
+                </Button>
+              )}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1, delay: 0.2 }}
+            className="relative"
+          >
+            {/* Visual Frame Decorator */}
+            <div className="absolute -inset-4 bg-blue-600/5 rounded-[40px] blur-3xl" />
+            <div className="relative border border-blue-100 rounded-[48px] bg-white p-6 shadow-2xl">
+              <div className="bg-blue-50 rounded-[38px] p-8 space-y-6">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center">
+                      <Stethoscope className="w-5.5 h-5.5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black uppercase text-blue-950 leading-none">Dịch vụ ưu việt</p>
+                      <p className="text-[8px] font-black text-blue-600 uppercase tracking-widest mt-1">Chuẩn y khoa</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-black bg-blue-600/10 text-blue-700 px-3 py-1 rounded-full border border-blue-200">ISO 9001</span>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-blue-100">
+                  <div className="flex gap-4">
+                    <div className="w-5 h-5 rounded-full bg-blue-600/10 text-blue-600 flex items-center justify-center shrink-0">✓</div>
+                    <p className="text-xs text-slate-600 font-bold">100% Chuyên gia được cấp chứng chỉ hành nghề chính thức.</p>
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="w-5 h-5 rounded-full bg-blue-600/10 text-blue-600 flex items-center justify-center shrink-0">✓</div>
+                    <p className="text-xs text-slate-600 font-bold">Quy trình vô khuẩn, chuẩn đoán bệnh án kỹ thuật số an toàn.</p>
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="w-5 h-5 rounded-full bg-blue-600/10 text-blue-600 flex items-center justify-center shrink-0">✓</div>
+                    <p className="text-xs text-slate-600 font-bold">Lộ trình theo dõi, cập nhật tiến trình điều trị thời gian thực.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* --- Value propositions section (Scroll Reveal Animation) --- */}
+      <section className="py-24 bg-white border-y border-blue-50">
+        <div className="max-w-7xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="text-center max-w-2xl mx-auto mb-16 space-y-4"
+          >
+            <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.25em]">Vì sao chọn MintCare?</span>
+            <h2 className="text-4xl font-black text-blue-950 uppercase tracking-tight">Quy trình khám bệnh tại gia tối ưu</h2>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+            {[
+              {
+                icon: Heart,
+                title: "Đặt lịch nhanh chóng",
+                desc: "Tìm kiếm bác sĩ, y tá điều dưỡng phù hợp theo đúng nhu cầu chuyên môn chỉ với vài lượt click đơn giản."
+              },
+              {
+                icon: Clock3,
+                title: "Khung giờ linh hoạt",
+                desc: "Đặt lịch khám theo khung giờ nhàn rỗi của gia đình. Nhân sự y khoa cam kết đến nhà đúng giờ hẹn."
+              },
+              {
+                icon: ShieldCheck,
+                title: "Bảo mật HIPAA",
+                desc: "Toàn bộ thông tin hồ sơ y tế bệnh án được mã hóa AES-256 đầu cuối, tuân thủ nghiêm ngặt chuẩn bảo mật HIPAA."
+              }
+            ].map((card, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: i * 0.15 }}
+                className="bg-blue-50/40 border border-blue-100 rounded-[32px] p-8 hover:bg-white hover:shadow-xl hover:border-blue-200 transition-all text-center space-y-6"
+              >
+                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-md border border-blue-50 mx-auto">
+                  <card.icon className="w-7 h-7" />
+                </div>
+                <h3 className="text-lg font-black text-blue-950 uppercase tracking-tight">{card.title}</h3>
+                <p className="text-xs text-slate-600 font-bold leading-relaxed">{card.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* --- Specialists section (Scroll Reveal Animation) --- */}
+      <section id="specialists-section" className="py-24 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-6 space-y-16">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="text-center max-w-2xl mx-auto space-y-4"
+          >
+            <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.25em]">Đội ngũ lâm sàng</span>
+            <h2 className="text-4xl font-black text-blue-950 uppercase tracking-tight">Chuyên gia y khoa MintCare</h2>
+            <p className="text-xs text-slate-500 font-bold leading-relaxed">Bộ lọc tìm kiếm trực quan giúp lựa chọn chuyên gia phù hợp.</p>
+          </motion.div>
+
+          {/* Filters Bar */}
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <div className="relative flex-1 w-full group">
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+              <Input
+                placeholder="Tìm kiếm chuyên gia theo danh tính hoặc khoa..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-14 h-16 rounded-[24px] bg-white border-blue-100 focus:ring-8 focus:ring-blue-100 transition-all text-sm font-bold shadow-xs placeholder:text-slate-400"
+              />
+            </div>
+            
+            <div className="flex bg-white p-2 rounded-[22px] border border-blue-100 shadow-xs shrink-0 w-full sm:w-auto">
+              <Select value={selectedDept} onValueChange={(val) => setSelectedDept(val || "all")}>
+                <SelectTrigger className="w-full sm:w-[220px] border-none bg-transparent hover:bg-slate-50 shadow-none h-12 font-black text-xs uppercase tracking-widest rounded-xl">
+                  <SelectValue placeholder="Chọn phòng khoa" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border-blue-100 p-2 shadow-2xl bg-white">
+                  <SelectItem value="all" className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest">Tất cả khoa</SelectItem>
+                  <SelectItem value="Nội khoa" className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest">Nội khoa</SelectItem>
+                  <SelectItem value="Ngoại khoa" className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest">Ngoại khoa</SelectItem>
+                  <SelectItem value="Phục hồi chức năng" className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest">Phục hồi chức năng</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Directory Cards Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            {filteredStaff.map((person) => {
+              const reviews = SPECIALIST_REVIEWS[person.id] || [];
+              const avgRating = reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : "5.0";
+
+              return (
+                <motion.div
+                  key={person.id}
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.8 }}
+                  className="group border border-blue-100 rounded-[36px] p-8 bg-white hover:border-blue-300 transition-all relative overflow-hidden shadow-xs hover:shadow-2xl hover:shadow-blue-500/[0.03]"
+                >
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-bl from-blue-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+                  <div className="flex items-start justify-between relative z-10">
+                    <div className="flex items-center gap-6">
+                      <div className="relative">
+                        <img 
+                          src={person.avatar} 
+                          className="w-20 h-20 rounded-[28px] border-4 border-white shadow-xl ring-1 ring-blue-100 object-cover" 
+                          alt={person.name} 
+                        />
+                        <div className={cn(
+                          "absolute -bottom-1 -right-1 w-6 h-6 border-4 border-white rounded-full shadow-lg",
+                          person.available ? "bg-blue-600" : "bg-orange-500"
+                        )} />
+                      </div>
+                      
+                      <div className="min-w-0">
+                        <h3 className="font-black text-2xl text-blue-950 group-hover:text-blue-600 transition-colors leading-none uppercase tracking-tight truncate">
+                          {person.name}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-2 mt-3">
+                          <span className="bg-blue-50 text-blue-700 text-[9px] font-black px-3 py-1 rounded-xl uppercase tracking-widest border border-blue-100">
+                            {person.role.split("•")[0]}
+                          </span>
+                          <div className="w-1 h-1 rounded-full bg-blue-100" />
+                          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                            {person.department}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex items-center gap-1.5 bg-yellow-50 text-yellow-700 px-2.5 py-1 rounded-xl border border-yellow-200">
+                        <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500" />
+                        <span className="text-xs font-black">{avgRating}</span>
+                      </div>
+                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">{reviews.length} đánh giá</span>
+                    </div>
+                  </div>
+
+                  {/* Specialist details - locked/unlocked state */}
+                  <div className="mt-8 pt-8 border-t border-blue-50 relative">
+                    <div className={cn(
+                      "grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-bold text-slate-500 transition-all duration-300",
+                      !isLoggedIn && "filter blur-sm select-none pointer-events-none opacity-40"
+                    )}>
+                      <div className="flex items-center gap-2.5">
+                        <Phone className="w-4 h-4 text-blue-600" />
+                        <span>SĐT: {person.phone}</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <Mail className="w-4 h-4 text-blue-600" />
+                        <span className="truncate">{person.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <MapPin className="w-4 h-4 text-blue-600" />
+                        <span>Khu vực: {person.location}</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <Clock className="w-4 h-4 text-blue-600" />
+                        <span>Trạng thái: {person.available ? "Sẵn sàng nhận lịch" : "Đang có ca"}</span>
+                      </div>
+                    </div>
+
+                    {!isLoggedIn && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/45 backdrop-blur-xs rounded-2xl">
+                        <div className="flex items-center gap-2 bg-white shadow-lg border border-blue-100 rounded-2xl px-5 py-2.5">
+                          <ShieldCheck className="w-4.5 h-4.5 text-blue-600" />
+                          <span className="text-[10px] font-black text-blue-950 uppercase tracking-wider">Đăng nhập để xem liên hệ</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                    <Dialog>
+                      <DialogTrigger 
+                        render={
+                          <Button variant="outline" className="flex-1 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xs border-blue-100 hover:bg-blue-50/50">
+                            <Eye className="w-4 h-4 mr-2 text-blue-600" /> Xem phản hồi khách hàng
+                          </Button>
+                        }
+                        onClick={() => setReviewStaff(person)}
+                      />
+                      {reviewStaff && (
+                        <DialogContent className="sm:max-w-[500px] rounded-[36px] border-blue-100 shadow-2xl p-10 bg-white">
+                          <DialogHeader>
+                            <DialogTitle className="text-2xl font-black tight-tracking text-blue-950 uppercase">
+                              Nhận xét về <br /> {reviewStaff.name}
+                            </DialogTitle>
+                            <DialogDescription className="text-slate-400 text-xs font-semibold mt-2">
+                              Ý kiến đánh giá xác thực từ những bệnh nhân trước đó.
+                            </DialogDescription>
+                          </DialogHeader>
+
+                          <div className="space-y-6 py-6 max-h-[350px] overflow-y-auto pr-1">
+                            {isLoggedIn ? (
+                              (SPECIALIST_REVIEWS[reviewStaff.id] || []).length > 0 ? (
+                                (SPECIALIST_REVIEWS[reviewStaff.id] || []).map((rev, idx) => (
+                                  <div key={idx} className="bg-blue-50/30 p-5 rounded-2xl border border-blue-100/50 relative">
+                                    <div className="flex items-center justify-between mb-3">
+                                      <span className="text-xs font-black text-blue-950">{rev.author}</span>
+                                      <div className="flex items-center gap-1">
+                                        {Array.from({ length: 5 }).map((_, i) => (
+                                          <Star key={i} className={cn("w-3.5 h-3.5", i < rev.rating ? "fill-yellow-500 text-yellow-500" : "text-blue-100")} />
+                                        ))}
+                                      </div>
+                                    </div>
+                                    <p className="text-xs font-semibold text-slate-600 leading-relaxed">"{rev.text}"</p>
+                                    <p className="text-[9px] text-slate-400 font-black text-right mt-2">{rev.date}</p>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-xs text-muted-foreground text-center py-6">Chưa có phản hồi nào.</p>
+                              )
+                            ) : (
+                              <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100 flex flex-col items-center gap-4 text-center">
+                                <ShieldCheck className="w-10 h-10 text-blue-600 animate-pulse" />
+                                <div>
+                                  <p className="text-xs font-black text-blue-950 uppercase tracking-wider">Đánh giá bị ẩn</p>
+                                  <p className="text-[11px] font-bold text-slate-500 mt-1">Bạn cần đăng nhập để xem thông tin phản hồi chi tiết.</p>
+                                </div>
+                                <Button size="sm" onClick={handleLogin} className="bg-blue-600 text-white text-[9px] font-black uppercase tracking-wider px-6 py-2.5 rounded-xl">Đăng nhập</Button>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <DialogFooter>
+                            <Button className="w-full rounded-full h-12 bg-slate-100 text-slate-800 hover:bg-slate-200 text-xs font-black uppercase tracking-widest shadow-none">Đóng</Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      )}
+                    </Dialog>
+
+                    <Button 
+                      onClick={() => selectSpecialistForBooking(person.id)}
+                      className="flex-1 bg-blue-600 text-white rounded-2xl h-14 font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/15 hover:bg-blue-700"
+                    >
+                      <CalendarPlus className="w-4 h-4 mr-2" /> Chọn & Đặt lịch hẹn
+                    </Button>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* --- View 2: Logged-in Customer Booking Workspace & History --- */}
+      {isLoggedIn && (
+        <section id="booking-workspace" className="py-24 bg-white border-t border-blue-100 relative">
+          <div className="max-w-7xl mx-auto px-6 space-y-24">
+            
+            {/* Header section */}
+            <div className="text-center max-w-2xl mx-auto space-y-4">
+              <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.25em]">Thủ tục đặt lịch</span>
+              <h2 className="text-4xl font-black text-blue-950 uppercase tracking-tight">Khai báo thông tin khám</h2>
+              <p className="text-xs text-slate-500 font-bold leading-relaxed">Sau khi đặt lịch, thông tin sẽ được gửi đến Admin để điều phối lịch trực chính thức.</p>
+            </div>
+
+            {/* Booking Form section */}
+            <div id="booking-form-section" className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start scroll-mt-24">
+              <form onSubmit={handleCreateBooking} className="lg:col-span-8 bg-white border border-blue-100 rounded-[36px] p-10 shadow-2xl shadow-blue-950/[0.02] space-y-8 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-36 h-36 bg-blue-50/60 rounded-bl-[120px] -mr-8 -mt-8 pointer-events-none" />
+                
+                <div>
+                  <h3 className="text-2xl font-black text-blue-950 uppercase">Phiếu thông tin khám</h3>
+                  <p className="text-xs text-slate-400 mt-1 font-semibold">Vui lòng điền đủ chi tiết ngày, giờ và tình trạng vết thương.</p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Chuyên gia y khoa</Label>
+                    <Select value={bookingStaffId} onValueChange={(val) => setBookingStaffId(val || "")}>
+                      <SelectTrigger className="w-full rounded-2xl border-blue-100 h-14 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950">
+                        <SelectValue placeholder="Chọn chuyên gia" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-2xl border-blue-100 shadow-2xl p-2 bg-white">
+                        {mockStaff.map((s) => (
+                          <SelectItem key={s.id} value={s.id} className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest">
+                            {s.name} ({s.department})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Dịch vụ chăm sóc</Label>
+                    <Select value={bookingServiceId} onValueChange={(val) => setBookingServiceId(val || "")}>
+                      <SelectTrigger className="w-full rounded-2xl border-blue-100 h-14 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950">
+                        <SelectValue placeholder="Chọn loại dịch vụ" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-2xl border-blue-100 shadow-2xl p-2 bg-white">
+                        {SERVICES.map((serv) => (
+                          <SelectItem key={serv.id} value={serv.id} className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest">
+                            {serv.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Chọn ngày khám</Label>
+                    <Input 
+                      type="date" 
+                      value={bookingDate}
+                      onChange={(e) => setBookingDate(e.target.value)}
+                      className="rounded-2xl border-blue-100 h-14 bg-slate-50 focus:bg-white transition-all font-bold text-sm uppercase shadow-none text-blue-950" 
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Khung giờ rảnh rỗi</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {["08:00", "10:00", "14:00", "16:00", "18:00"].map((time) => (
+                        <button
+                          key={time}
+                          type="button"
+                          onClick={() => setBookingSlot(time)}
+                          className={cn(
+                            "py-3 border text-xs font-black rounded-xl transition-all",
+                            bookingSlot === time 
+                              ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-600/20 scale-105" 
+                              : "bg-slate-50 border-blue-100 hover:bg-white hover:border-blue-300 text-slate-800"
+                          )}
+                        >
+                          {time}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Địa chỉ khám bệnh tại nhà</Label>
+                    <Input 
+                      value={profile.address}
+                      onChange={(e) => setProfile(prev => ({ ...prev, address: e.target.value }))}
+                      className="rounded-2xl border-blue-100 h-14 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950" 
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Thanh toán</Label>
+                    <Select value={bookingPayment} onValueChange={(val) => setBookingPayment(val || "Tiền mặt")}>
+                      <SelectTrigger className="w-full rounded-2xl border-blue-100 h-14 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950">
+                        <SelectValue placeholder="Hình thức" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-2xl border-blue-100 shadow-2xl p-2 bg-white">
+                        <SelectItem value="Tiền mặt" className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest">Tiền mặt tại gia</SelectItem>
+                        <SelectItem value="Chuyển khoản" className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest">Chuyển khoản ngân hàng</SelectItem>
+                        <SelectItem value="Ví điện tử" className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest">Ví điện tử MoMo/ZaloPay</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Mô tả triệu chứng lâm sàng</Label>
+                  <Textarea 
+                    value={bookingNotes}
+                    onChange={(e) => setBookingNotes(e.target.value)}
+                    placeholder="Mô tả cụ thể triệu chứng, lịch sử dùng thuốc hoặc các vấn đề cần lưu ý..." 
+                    className="rounded-2xl border-blue-100 bg-slate-50 focus:bg-white transition-all min-h-[100px] shadow-none font-semibold leading-relaxed text-sm text-blue-950" 
+                  />
+                </div>
+
+                <div className="pt-4">
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-blue-600 text-white rounded-full py-9 h-14 text-base font-black uppercase tracking-[0.2em] hover:bg-blue-700 shadow-2xl shadow-blue-600/10 transition-all border-b-4 border-white/10 active:border-b-0 active:translate-y-1 group"
+                  >
+                    Gửi yêu cầu đặt lịch hẹn <Sparkles className="w-5 h-5 ml-2 group-hover:rotate-180 transition-transform duration-500" />
+                  </Button>
+                </div>
+              </form>
+
+              {/* Hóa đơn xem trước */}
+              <div className="lg:col-span-4 bg-slate-50 border border-blue-100 rounded-[36px] p-8 flex flex-col h-full relative overflow-hidden">
+                <h4 className="text-base font-black uppercase tracking-wider text-blue-950 mb-6">Chi tiết thanh toán</h4>
+                
+                {bookingServiceId ? (
+                  <div className="flex-1 flex flex-col justify-between space-y-6">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-start">
+                        <span className="text-xs text-slate-500 font-bold">Dịch vụ:</span>
+                        <span className="text-xs font-black text-right max-w-[180px] leading-tight text-blue-950">
+                          {SERVICES.find((s) => s.id === bookingServiceId)?.name}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-slate-500 font-bold">Thời lượng phiên:</span>
+                        <span className="text-xs font-black text-blue-950">
+                          {SERVICES.find((s) => s.id === bookingServiceId)?.duration}
+                        </span>
+                      </div>
+                      {bookingStaffId && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-slate-500 font-bold">Chuyên gia:</span>
+                          <span className="text-xs font-black text-blue-950">
+                            {mockStaff.find((s) => s.id === bookingStaffId)?.name}
+                          </span>
+                        </div>
+                      )}
+                      {bookingDate && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-slate-500 font-bold">Ngày khám:</span>
+                          <span className="text-xs font-black text-blue-950 uppercase">{bookingDate}</span>
+                        </div>
+                      )}
+                      {bookingSlot && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-slate-500 font-bold">Bắt đầu:</span>
+                          <span className="text-xs font-black text-blue-950">{bookingSlot}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="border-t border-blue-100 pt-6 space-y-4 mt-auto">
+                      <div className="flex justify-between items-end">
+                        <div>
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Chi phí tạm tính</p>
+                          <p className="text-3xl font-black text-blue-950 tracking-tighter mt-1">
+                            {(SERVICES.find((s) => s.id === bookingServiceId)?.price || 0).toLocaleString("vi-VN")}
+                            <span className="text-xs text-slate-400 ml-1">đ</span>
+                          </p>
+                        </div>
+                        <div className="bg-blue-50 text-blue-700 text-[9px] font-black px-3 py-1 rounded-xl uppercase border border-blue-200">
+                          Đã bao gồm VAT
+                        </div>
+                      </div>
+
+                      <p className="text-[10px] text-slate-500 leading-relaxed font-semibold">
+                        * Chi phí đã bao gồm các trang thiết bị y tế đi kèm và chi phí di chuyển đến nhà.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center py-16 space-y-4">
+                    <CreditCard className="w-12 h-12 text-slate-300 opacity-60" />
+                    <p className="text-xs font-bold text-slate-400">Vui lòng chọn Dịch vụ để bắt đầu tính toán chi phí.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Appointments list and profile */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-12 items-start pt-16 border-t border-blue-100">
+              
+              {/* Lịch sử đặt lịch */}
+              <div id="my-appointments-section" className="xl:col-span-8 space-y-10 scroll-mt-24">
+                <div>
+                  <h3 className="text-2xl font-black text-blue-950 uppercase">Lịch hẹn của bạn</h3>
+                  <p className="text-xs text-slate-400 mt-1 font-semibold">Theo dõi tiến trình phê duyệt của Admin và trạng thái di chuyển của nhân sự.</p>
+                </div>
+
+                <div className="space-y-8">
+                  {myBookings.length > 0 ? (
+                    myBookings.map((booking) => {
+                      const isPending = booking.status === "Chờ duyệt";
+                      const isOngoing = booking.status === "Đang thực hiện";
+                      const isConfirmed = booking.status === "Đã xác nhận";
+                      
+                      return (
+                        <motion.div 
+                          key={booking.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="bg-white border border-blue-100 rounded-[36px] p-8 shadow-xs hover:border-blue-200 transition-all flex flex-col gap-6 relative overflow-hidden"
+                        >
+                          {isOngoing && (
+                            <div className="absolute top-0 left-0 right-0 h-1 bg-blue-600 shadow-[0_0_12px_rgba(37,99,235,0.6)]" />
+                          )}
+
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div className="flex items-center gap-4">
+                              <span className={cn(
+                                "font-mono text-[9px] font-black px-2.5 py-1.5 rounded-xl border shadow-xs",
+                                isPending 
+                                  ? "bg-slate-100 text-slate-700 border-slate-200" 
+                                  : "bg-blue-50 text-blue-700 border-blue-200"
+                              )}>
+                                #LH-{booking.id}
+                              </span>
+                              <div>
+                                <h4 className="text-sm font-black uppercase text-blue-950 leading-none">{booking.type}</h4>
+                                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-2">{booking.staffName}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                              <Button 
+                                variant="outline" 
+                                onClick={() => handleDownloadSlip(booking)}
+                                className="h-11 px-4 rounded-xl border-blue-100 bg-white font-black text-[9px] uppercase tracking-widest flex items-center gap-2 shadow-xs"
+                              >
+                                <Download className="w-3.5 h-3.5 text-blue-600" /> Xuất phiếu
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                onClick={() => handleCancelBooking(booking.id)}
+                                className="h-11 px-4 rounded-xl border-blue-100 bg-white hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 font-black text-[9px] uppercase tracking-widest flex items-center gap-2 shadow-xs text-slate-500"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-orange-500" /> Hủy lịch
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Progress Stepper Timeline */}
+                          <div className="pt-4 border-t border-blue-50">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Trạng thái điều phối</p>
+                            
+                            <div className="grid grid-cols-4 gap-2 relative">
+                              {/* Horizontal Line background */}
+                              <div className="absolute top-4 left-[12.5%] right-[12.5%] h-1 bg-slate-100 -z-10" />
+                              <div className={cn(
+                                "absolute top-4 left-[12.5%] h-1 bg-blue-600 -z-10 transition-all duration-1000",
+                                isOngoing ? "w-[75%]" : isConfirmed ? "w-[37.5%]" : isPending ? "w-[0%]" : "w-[0%]"
+                              )} />
+
+                              {[
+                                { label: "Gửi yêu cầu", done: true, pulse: false },
+                                { label: "Phê duyệt", done: !isPending, pulse: isPending },
+                                { label: "Đang di chuyển", done: isOngoing, pulse: isConfirmed },
+                                { label: "Hoàn tất", done: false, pulse: isOngoing }
+                              ].map((step, idx) => (
+                                <div key={idx} className="flex flex-col items-center text-center">
+                                  <div className={cn(
+                                    "w-9 h-9 rounded-full flex items-center justify-center border-4 border-white shadow-md text-xs font-black transition-colors duration-500",
+                                    step.done 
+                                      ? "bg-blue-600 text-white" 
+                                      : step.pulse 
+                                        ? "bg-blue-600 animate-pulse text-white" 
+                                        : "bg-slate-100 text-slate-400"
+                                  )}>
+                                    {idx + 1}
+                                  </div>
+                                  <span className={cn(
+                                    "text-[8px] font-black uppercase tracking-widest mt-2 block",
+                                    step.done || step.pulse ? "text-blue-950" : "text-slate-400 opacity-70"
+                                  )}>
+                                    {step.label}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-blue-50 text-[10px] font-bold text-slate-500">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-blue-600" />
+                              <span>{booking.date}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-blue-600" />
+                              <span>{booking.time}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <CreditCard className="w-4 h-4 text-blue-600" />
+                              <span>Chi phí: {booking.price} ({booking.paymentMethod})</span>
+                            </div>
+                            <div>
+                              <span className={cn(
+                                "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border",
+                                isPending 
+                                  ? "bg-slate-50 text-slate-600 border-slate-200 animate-pulse" 
+                                  : isOngoing 
+                                    ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20" 
+                                    : "bg-blue-50 text-blue-700 border-blue-200"
+                              )}>
+                                {booking.status}
+                              </span>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })
+                  ) : (
+                    <div className="bg-slate-50 rounded-[32px] border border-blue-100 p-16 text-center">
+                      <p className="text-xs font-bold text-slate-400">Bạn chưa có lịch hẹn nào sắp tới.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Hồ sơ bệnh nhân - Health Profile Editor */}
+              <div className="xl:col-span-4 space-y-10">
+                <div>
+                  <h3 className="text-2xl font-black text-blue-950 uppercase">Hồ sơ y khoa</h3>
+                  <p className="text-xs text-slate-400 mt-1 font-semibold">Vui lòng cập nhật tiền sử bệnh án để hỗ trợ y tá chuẩn đoán lâm sàng chính xác.</p>
+                </div>
+
+                <form onSubmit={handleUpdateProfile} className="bg-white border border-blue-100 rounded-[36px] p-8 shadow-2xl shadow-blue-950/[0.01] space-y-6">
+                  <div className="space-y-2">
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Họ tên bệnh nhân</Label>
+                    <Input 
+                      value={profile.name}
+                      onChange={(e) => setProfile(prev => ({ ...prev, name: e.target.value }))}
+                      className="rounded-2xl border-blue-100 h-12 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950" 
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Số điện thoại liên hệ</Label>
+                    <Input 
+                      value={profile.phone}
+                      onChange={(e) => setProfile(prev => ({ ...prev, phone: e.target.value }))}
+                      className="rounded-2xl border-blue-100 h-12 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950" 
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Địa chỉ phục vụ</Label>
+                    <Input 
+                      value={profile.address}
+                      onChange={(e) => setProfile(prev => ({ ...prev, address: e.target.value }))}
+                      className="rounded-2xl border-blue-100 h-12 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950" 
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Ghi chú lâm sàng / Tiền sử bệnh án</Label>
+                    <Textarea 
+                      value={profile.summary}
+                      onChange={(e) => setProfile(prev => ({ ...prev, summary: e.target.value }))}
+                      className="rounded-2xl border-blue-100 bg-slate-50 focus:bg-white transition-all min-h-[140px] shadow-none font-semibold leading-relaxed text-xs text-blue-950" 
+                    />
+                  </div>
+
+                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-6 h-12 text-xs font-black uppercase tracking-widest shadow-md shadow-blue-600/10">
+                    Lưu hồ sơ bệnh nhân
+                  </Button>
+                </form>
+              </div>
+
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* --- View 3: Contact & Support (Scroll Reveal Animation) --- */}
+      <section id="contact-section" className="py-24 bg-slate-50 border-t border-blue-100">
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
+          
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="lg:col-span-5 space-y-8"
+          >
+            <div className="space-y-4">
+              <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.25em]">Hỗ trợ khẩn cấp</span>
+              <h2 className="text-4xl font-black text-blue-950 uppercase tracking-tight">Kênh tư vấn trực tuyến</h2>
+              <p className="text-xs text-slate-500 font-bold leading-relaxed">
+                Đội ngũ điều hành của MintCare luôn túc trực 24/7 để tiếp nhận các yêu cầu khẩn cấp của bệnh nhân.
+              </p>
+            </div>
+
+            <div className="bg-white border border-blue-100 rounded-[36px] p-8 shadow-xs flex items-center gap-5">
+              <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shrink-0">
+                <Phone className="w-7 h-7 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Hotline khẩn cấp</p>
+                <p className="text-2xl font-black text-blue-600 tracking-tighter mt-1">1900 8198</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex gap-4 text-xs font-semibold text-slate-600">
+                <Mail className="w-5 h-5 text-blue-600 shrink-0" />
+                <span>Email: support@mintcare.com</span>
+              </div>
+              <div className="flex gap-4 text-xs font-semibold text-slate-600">
+                <MapPin className="w-5 h-5 text-blue-600 shrink-0" />
+                <span>Trung tâm điều phối: 42 Cống Quỳnh, Phạm Ngũ Lão, Quận 1, TP. HCM</span>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.form
+            onSubmit={handleSendSupport}
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="lg:col-span-7 bg-white border border-blue-100 rounded-[36px] p-10 shadow-xs space-y-6"
+          >
+            <h3 className="text-xl font-black text-blue-950 uppercase tracking-tight">Gửi tin nhắn phản hồi</h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Họ tên của bạn</Label>
+                <Input 
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder="VD: Nguyễn Văn A"
+                  className="rounded-2xl border-blue-100 h-12 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950" 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Địa chỉ Email liên hệ</Label>
+                <Input 
+                  value={contactEmail}
+                  type="email"
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="rounded-2xl border-blue-100 h-12 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950" 
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Lời nhắn hỗ trợ</Label>
+              <Textarea 
+                value={contactMsg}
+                onChange={(e) => setContactMsg(e.target.value)}
+                placeholder="Nhập câu hỏi hoặc yêu cầu tư vấn cụ thể của bạn..." 
+                className="rounded-2xl border-blue-100 bg-slate-50 focus:bg-white transition-all min-h-[140px] shadow-none font-semibold leading-relaxed text-sm text-blue-950" 
+              />
+            </div>
+
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-6 h-12 text-xs font-black uppercase tracking-widest shadow-md shadow-blue-600/10 flex items-center justify-center gap-2">
+              <Send className="w-4 h-4" /> Gửi lời nhắn hỗ trợ
+            </Button>
+          </motion.form>
+          
+        </div>
+      </section>
+
+      {/* --- Footer (Blue & White) --- */}
+      <footer className="bg-white border-t border-blue-100 py-16">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-8">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shadow-md">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+              </svg>
+            </div>
+            <div>
+              <span className="text-base font-black tracking-tight text-blue-950 uppercase">MintCare Portal</span>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Hệ thống cốt lõi &copy; 2026</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-8 text-xs font-bold text-slate-500">
+            <a href="#" className="hover:text-blue-600 transition-colors">Điều khoản dịch vụ</a>
+            <a href="#" className="hover:text-blue-600 transition-colors">Chính sách bảo mật</a>
+            <a href="#" className="hover:text-blue-600 transition-colors">Hỗ trợ kỹ thuật</a>
+          </div>
+        </div>
+      </footer>
+
+      {/* Authentication Modal - Sliding Login & Register */}
+      <AnimatePresence>
+        {isAuthModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAuthModalOpen(false)}
+              className="absolute inset-0 bg-blue-950/60 backdrop-blur-md"
+            />
+
+            {/* Modal Card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              className="bg-white rounded-[32px] shadow-2xl border border-blue-100 w-full max-w-md overflow-hidden relative z-10 flex flex-col"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setIsAuthModalOpen(false)}
+                className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 hover:bg-slate-50 p-2 rounded-full transition-all z-20"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Modal Header */}
+              <div className="p-8 pb-4 text-center space-y-4">
+                <div className="mx-auto w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center border border-blue-100 shadow-sm text-blue-600">
+                  <Stethoscope className="w-6 h-6 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black uppercase tracking-tight text-blue-950">
+                    Chào mừng tới MintCare
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">
+                    Đăng nhập hoặc đăng ký tài khoản chăm sóc
+                  </p>
+                </div>
+
+                {/* Sliding Tabs Indicator */}
+                <div className="relative flex bg-slate-100 p-1 rounded-2xl border border-slate-200/50 mt-4">
+                  <motion.div
+                    className="absolute top-1 bottom-1 left-1 bg-white rounded-xl shadow-xs border border-blue-100"
+                    layoutId="activeTabBg"
+                    style={{
+                      width: "calc(50% - 4px)",
+                    }}
+                    animate={{
+                      x: authView === "login" ? 0 : "100%",
+                    }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthView("login");
+                      setShowPassword(false);
+                    }}
+                    className={cn(
+                      "relative z-10 w-1/2 text-center py-2.5 text-xs font-black uppercase tracking-wider transition-colors duration-200",
+                      authView === "login" ? "text-blue-600" : "text-slate-500"
+                    )}
+                  >
+                    Đăng nhập
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthView("register");
+                      setShowPassword(false);
+                    }}
+                    className={cn(
+                      "relative z-10 w-1/2 text-center py-2.5 text-xs font-black uppercase tracking-wider transition-colors duration-200",
+                      authView === "register" ? "text-blue-600" : "text-slate-500"
+                    )}
+                  >
+                    Đăng ký
+                  </button>
+                </div>
+              </div>
+
+              {/* Sliding Form Container */}
+              <div className="overflow-hidden relative w-full">
+                <motion.div
+                  className="flex w-[200%]"
+                  animate={{ x: authView === "login" ? "0%" : "-50%" }}
+                  transition={{ type: "spring", stiffness: 260, damping: 28 }}
+                >
+                  {/* Left Form: Login */}
+                  <form onSubmit={handleLocalLogin} className="w-1/2 px-8 pb-8 pt-2 space-y-5 flex flex-col justify-between">
+                    <div className="space-y-4">
+                      {/* Email Input */}
+                      <div className="space-y-2">
+                        <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Địa chỉ Email</Label>
+                        <div className="relative">
+                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <Input
+                            type="email"
+                            required
+                            placeholder="evelyn.green@gmail.com"
+                            value={loginEmail}
+                            onChange={(e) => setLoginEmail(e.target.value)}
+                            className="rounded-2xl border-blue-100 pl-11 h-12 bg-slate-50 focus:bg-white transition-all font-semibold text-sm shadow-none text-blue-950"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Password Input */}
+                      <div className="space-y-2">
+                        <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Mật khẩu</Label>
+                        <div className="relative">
+                          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            required
+                            placeholder="••••••"
+                            value={loginPassword}
+                            onChange={(e) => setLoginPassword(e.target.value)}
+                            className="rounded-2xl border-blue-100 pl-11 pr-11 h-12 bg-slate-50 focus:bg-white transition-all font-semibold text-sm shadow-none text-blue-950"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <button
+                          type="button"
+                          onClick={() => addToast("Mẹo: Mật khẩu mặc định của Evelyn Green là '123456'", "info")}
+                          className="text-[10px] font-bold text-blue-600 hover:text-blue-700 hover:underline"
+                        >
+                          Quên mật khẩu?
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 pt-2">
+                      <Button
+                        type="submit"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl py-6 h-12 text-xs font-black uppercase tracking-widest shadow-md shadow-blue-600/10 flex items-center justify-center gap-2"
+                      >
+                        <LogIn className="w-4 h-4" /> Đăng nhập
+                      </Button>
+
+                      {/* Social Login Divider */}
+                      <div className="relative flex py-1 items-center">
+                        <div className="flex-grow border-t border-slate-100"></div>
+                        <span className="flex-shrink mx-4 text-[9px] text-slate-400 font-bold uppercase tracking-widest">Hoặc</span>
+                        <div className="flex-grow border-t border-slate-100"></div>
+                      </div>
+
+                      {/* Google/Facebook buttons */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsLoggedIn(true);
+                            setProfile({
+                              name: "Evelyn Green",
+                              phone: "090 987 6543",
+                              email: "evelyn.green@gmail.com",
+                              address: "Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM",
+                              summary: "Bệnh nhân có tiền sử cao huyết áp và tiểu đường type 2. Đang trong lộ trình phục hồi sau phẫu thuật thay khớp gối trái."
+                            });
+                            addToast("Đã đăng nhập nhanh bằng Google!", "success");
+                            setIsAuthModalOpen(false);
+                            setTimeout(() => {
+                              document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
+                            }, 150);
+                          }}
+                          className="flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 transition-all rounded-xl py-2 text-[10px] font-bold text-slate-600"
+                        >
+                          <svg className="w-4 h-4" viewBox="0 0 24 24">
+                            <path fill="#EA4335" d="M12 5.04c1.62 0 3.08.56 4.22 1.65l3.15-3.15C17.45 1.76 14.93 1 12 1 7.35 1 3.4 3.65 1.48 7.5l3.8 2.95C6.18 7.28 8.87 5.04 12 5.04z"/>
+                            <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.47h6.44c-.28 1.47-1.11 2.71-2.36 3.55l3.65 2.84c2.14-1.97 3.38-4.87 3.38-8.5z"/>
+                            <path fill="#FBBC05" d="M5.28 10.45A7.19 7.19 0 0112 7.15c1.11 0 2.16.26 3.1.72l3.65-2.84C16.92 3.66 14.59 3.04 12 3.04 8.21 3.04 4.88 5.16 3.08 8.3l2.2 2.15z"/>
+                            <path fill="#34A853" d="M12 18.96c-3.13 0-5.82-2.24-6.72-5.41L1.48 16.5C3.4 20.35 7.35 23 12 23c2.93 0 5.39-.97 7.18-2.64l-3.65-2.84c-1 .67-2.28 1.44-3.53 1.44z"/>
+                          </svg>
+                          Google
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsLoggedIn(true);
+                            addToast("Đã đăng nhập nhanh bằng Facebook!", "success");
+                            setIsAuthModalOpen(false);
+                            setTimeout(() => {
+                              document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
+                            }, 150);
+                          }}
+                          className="flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 transition-all rounded-xl py-2 text-[10px] font-bold text-slate-600"
+                        >
+                          <svg className="w-4 h-4 fill-blue-600" viewBox="0 0 24 24">
+                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                          </svg>
+                          Facebook
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+
+                  {/* Right Form: Register */}
+                  <form onSubmit={handleLocalRegister} className="w-1/2 px-8 pb-8 pt-2 space-y-4 flex flex-col justify-between">
+                    <div className="space-y-3.5">
+                      {/* Name Input */}
+                      <div className="space-y-1.5">
+                        <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Họ và tên</Label>
+                        <div className="relative">
+                          <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <Input
+                            type="text"
+                            required
+                            placeholder="VD: Nguyễn Văn A"
+                            value={regName}
+                            onChange={(e) => setRegName(e.target.value)}
+                            className="rounded-2xl border-blue-100 pl-11 h-11 bg-slate-50 focus:bg-white transition-all font-semibold text-sm shadow-none text-blue-950"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Phone Input */}
+                      <div className="space-y-1.5">
+                        <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Số điện thoại</Label>
+                        <div className="relative">
+                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <Input
+                            type="tel"
+                            required
+                            placeholder="VD: 091 234 5678"
+                            value={regPhone}
+                            onChange={(e) => setRegPhone(e.target.value)}
+                            className="rounded-2xl border-blue-100 pl-11 h-11 bg-slate-50 focus:bg-white transition-all font-semibold text-sm shadow-none text-blue-950"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Email Input */}
+                      <div className="space-y-1.5">
+                        <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Địa chỉ Email</Label>
+                        <div className="relative">
+                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <Input
+                            type="email"
+                            required
+                            placeholder="name@example.com"
+                            value={regEmail}
+                            onChange={(e) => setRegEmail(e.target.value)}
+                            className="rounded-2xl border-blue-100 pl-11 h-11 bg-slate-50 focus:bg-white transition-all font-semibold text-sm shadow-none text-blue-950"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Password Input */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Mật khẩu</Label>
+                          <div className="relative">
+                            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                            <Input
+                              type={showPassword ? "text" : "password"}
+                              required
+                              placeholder="••••••"
+                              value={regPassword}
+                              onChange={(e) => setRegPassword(e.target.value)}
+                              className="rounded-2xl border-blue-100 pl-9.5 h-11 bg-slate-50 focus:bg-white transition-all font-semibold text-sm shadow-none text-blue-950"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Xác nhận</Label>
+                          <div className="relative">
+                            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                            <Input
+                              type={showPassword ? "text" : "password"}
+                              required
+                              placeholder="••••••"
+                              value={regConfirmPassword}
+                              onChange={(e) => setRegConfirmPassword(e.target.value)}
+                              className="rounded-2xl border-blue-100 pl-9.5 h-11 bg-slate-50 focus:bg-white transition-all font-semibold text-sm shadow-none text-blue-950"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 pl-1">
+                        <input
+                          type="checkbox"
+                          id="terms"
+                          required
+                          defaultChecked
+                          className="w-3.5 h-3.5 rounded text-blue-600 border-blue-200 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <label htmlFor="terms" className="text-[10px] text-slate-400 font-bold select-none cursor-pointer">
+                          Tôi đồng ý với các điều khoản dịch vụ y tế.
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <Button
+                        type="submit"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl py-6 h-12 text-xs font-black uppercase tracking-widest shadow-md shadow-blue-600/10 flex items-center justify-center gap-2"
+                      >
+                        <User className="w-4 h-4" /> Đăng ký tài khoản
+                      </Button>
+                    </div>
+                  </form>
+                </motion.div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -30,15 +28,7 @@ export default function RootLayout({
         className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
         suppressHydrationWarning
       >
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <div className="flex-1 ml-64 flex flex-col min-h-screen bg-white">
-            <Header />
-            <main className="flex-1 overflow-y-auto">
-              {children}
-            </main>
-          </div>
-        </div>
+        {children}
       </body>
     </html>
   );

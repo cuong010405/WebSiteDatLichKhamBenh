@@ -1,18 +1,45 @@
 "use client"
 
-import { Calendar, Clock, ChevronRight } from "lucide-react"
-import { visits } from "@/lib/mock-data"
+import * as React from "react"
+import { Calendar, Clock, ChevronRight, Activity } from "lucide-react"
+import { visits as mockVisits } from "@/lib/mock-data"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
 export function TodayVisits() {
+  const [visits, setVisits] = React.useState<any[]>([])
+
+  React.useEffect(() => {
+    const stored = localStorage.getItem("mintcare_visits");
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      import("@/lib/mock-data").then((m) => {
+        const formatted = parsed.map((b: any) => {
+          const matchMock = m.visits.find(v => v.id === b.id);
+          return {
+            id: b.id,
+            type: b.type,
+            patientName: "Evelyn Green",
+            time: b.time,
+            status: b.status,
+            icon: matchMock?.icon || Activity
+          };
+        });
+        // Filter out pending approvals from today's list
+        setVisits(formatted.filter((v: any) => v.status !== "Chờ duyệt"));
+      });
+    } else {
+      setVisits(mockVisits);
+    }
+  }, []);
+
   return (
     <section className="lg:col-span-1">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h2 className="text-2xl font-bold tight-tracking text-foreground">Lịch khám hôm nay</h2>
-          <p className="text-sm text-muted-foreground mt-1">Tổng cộng 4 ca trực đã xác nhận.</p>
+          <p className="text-sm text-muted-foreground mt-1">Tổng cộng {visits.length} ca trực hoạt động.</p>
         </div>
         <Button variant="ghost" size="icon" className="text-on-surface-tertiary hover:text-foreground h-10 w-10 rounded-full border border-hairline">
           <Calendar className="w-5 h-5" />

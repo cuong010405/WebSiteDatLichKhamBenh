@@ -2,7 +2,7 @@ import type { ElementType } from "react";
 
 export type StaffStatus = "Sẵn sàng" | "Đang bận" | "Nghỉ phép";
 export type PatientStatus = "Đang điều trị" | "Chờ tái khám" | "Đã xuất viện";
-export type VisitStatus = "Đang thực hiện" | "Đã xác nhận" | "Đã hoàn tất" | "Đã hủy";
+export type VisitStatus = "Đang thực hiện" | "Đã xác nhận" | "Đã hoàn tất" | "Đã hủy" | "Chờ duyệt";
 
 export interface Staff {
   id: string;
