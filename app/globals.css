@@ -1,0 +1,75 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-primary: #18BE66;
+  --color-primary-strong: #16A34A;
+  --color-action: #18181B;
+  --color-surface: #FFFFFF;
+  --color-surface-secondary: #F5F6F7;
+  --color-surface-tinted: #ECFBF2;
+  --color-hairline: #E4E4E7;
+
+  --color-background: var(--color-surface);
+  --color-foreground: #0A0A0A;
+  --color-card: var(--color-surface);
+  --color-card-foreground: #0A0A0A;
+  --color-popover: var(--color-surface);
+  --color-popover-foreground: #0A0A0A;
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: var(--color-surface-secondary);
+  --color-secondary-foreground: #0A0A0A;
+  --color-muted: var(--color-surface-secondary);
+  --color-muted-foreground: #52525B;
+  --color-accent: var(--color-surface-tinted);
+  --color-accent-foreground: var(--color-primary-strong);
+  --color-border: var(--color-hairline);
+  --color-input: var(--color-hairline);
+  --color-ring: var(--color-primary);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  --color-sidebar: var(--color-surface);
+  --color-sidebar-foreground: #52525B;
+  --color-sidebar-primary: var(--color-primary);
+  --color-sidebar-primary-foreground: #FFFFFF;
+  --color-sidebar-accent: var(--color-surface-secondary);
+  --color-sidebar-accent-foreground: #0A0A0A;
+  --color-sidebar-border: var(--color-hairline);
+  --color-sidebar-ring: var(--color-primary);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+@layer utilities {
+  .tight-tracking {
+    letter-spacing: -0.02em;
+  }
+  .eyebrow {
+    @apply text-[13px] font-medium uppercase tracking-[0.04em] text-primary-strong font-mono;
+  }
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  .animate-shimmer {
+    animation: shimmer 2s infinite linear;
+  }
+}
