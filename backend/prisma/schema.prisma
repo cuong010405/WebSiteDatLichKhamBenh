@@ -1,61 +1,70 @@
-datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
 model Staff {
-  id         String    @id
-  name       String
-  role       String
-  status     String    // "Sẵn sàng" | "Đang bận" | "Nghỉ phép"
-  department String
-  phone      String
-  email      String
-  location   String
-  avatar     String?
-  available  Boolean   @default(true)
-  isNew      Boolean   @default(false)
-  patients   Patient[] @relation("PatientStaff")
-  visits     Visit[]
+  Id           String         @id(map: "PK__Staff__3214EC07A0920845") @db.NVarChar(50)
+  Name         String         @db.NVarChar(200)
+  Role         String         @db.NVarChar(100)
+  Status       String         @db.NVarChar(100)
+  Department   String         @db.NVarChar(100)
+  Phone        String         @db.NVarChar(20)
+  Email        String         @db.NVarChar(200)
+  Location     String         @db.NVarChar(200)
+  Avatar       String?        @db.NVarChar(Max)
+  Available    Boolean        @default(true, map: "DF__Staff__Available__37A5467C")
+  IsNew        Boolean        @default(false, map: "DF__Staff__IsNew__38996AB5")
+  PatientStaff PatientStaff[]
+  Visit        Visit[]
 }
 
 model Patient {
-  id            String   @id // Ví dụ: BN-0842
-  name          String
-  age           Int
-  gender        String   // "Nam" | "Nữ"
-  lastVisit     String
-  lastVisitTime String
-  status        String   // "Đang điều trị" | "Chờ tái khám" | "Đã xuất viện"
-  summary       String?
-  assignedStaff Staff[]  @relation("PatientStaff")
-  visits        Visit[]
+  Id            String         @id(map: "PK__Patient__3214EC073C30341E") @db.NVarChar(50)
+  Name          String         @db.NVarChar(200)
+  Age           Int
+  Gender        String         @db.NVarChar(20)
+  LastVisit     String?        @db.NVarChar(100)
+  LastVisitTime String?        @db.NVarChar(100)
+  Status        String?        @db.NVarChar(100)
+  Summary       String?        @db.NVarChar(Max)
+  PatientStaff  PatientStaff[]
+  Visit         Visit[]
 }
 
 model Visit {
-  id          String   @id
-  type        String
-  patientId   String
-  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  staffId     String
-  staff       Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  time        String   // Ví dụ: "08:00 - 09:00"
-  startTime   String?
-  endTime     String?
-  duration    String
-  status      String   // "Đang thực hiện" | "Đã xác nhận" | "Đã hoàn tất" | "Đã hủy" | "Chờ duyệt"
+  Id        String  @id(map: "PK__Visit__3214EC07DB2D450F") @db.NVarChar(50)
+  Type      String? @db.NVarChar(100)
+  PatientId String  @db.NVarChar(50)
+  StaffId   String  @db.NVarChar(50)
+  Time      String? @db.NVarChar(100)
+  StartTime String? @db.NVarChar(100)
+  EndTime   String? @db.NVarChar(100)
+  Duration  String? @db.NVarChar(100)
+  Status    String? @db.NVarChar(100)
+  Patient   Patient @relation(fields: [PatientId], references: [Id], onUpdate: NoAction, map: "FK_Visit_Patient")
+  Staff     Staff   @relation(fields: [StaffId], references: [Id], onUpdate: NoAction, map: "FK_Visit_Staff")
 }
 
 model ActivityLog {
-  id        String   @id
-  status    String   // "completed" | "assigned" | "review"
-  title     String
-  desc      String
-  time      String   // Ví dụ: "14:22 PM"
-  color     String
-  createdAt DateTime @default(now())
+  Id        String    @id(map: "PK__Activity__3214EC072A9F69A4") @db.NVarChar(50)
+  Status    String?   @db.NVarChar(50)
+  Title     String?   @db.NVarChar(200)
+  Desc      String?   @db.NVarChar(Max)
+  Time      String?   @db.NVarChar(50)
+  Color     String?   @db.NVarChar(50)
+  CreatedAt DateTime? @default(now(), map: "DF__ActivityL__Creat__412EB0B6") @db.DateTime
+}
+
+model PatientStaff {
+  PatientId String  @db.NVarChar(50)
+  StaffId   String  @db.NVarChar(50)
+  Patient   Patient @relation(fields: [PatientId], references: [Id], onUpdate: NoAction, map: "FK__PatientSt__Patie__440B1D61")
+  Staff     Staff   @relation(fields: [StaffId], references: [Id], onUpdate: NoAction, map: "FK__PatientSt__Staff__44FF419A")
+
+  @@id([PatientId, StaffId], map: "PK__PatientS__FE6389D7F530403A")
 }

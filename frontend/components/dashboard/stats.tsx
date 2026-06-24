@@ -42,6 +42,12 @@ const defaultStats = [
 export function Stats() {
   const [stats, setStats] = React.useState(defaultStats)
   const [loaded, setLoaded] = React.useState(false)
+  const [mounted, setMounted] = React.useState(false)
+
+  // Đợi DOM mount xong mới render chart để tránh width/height = -1
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
 
   React.useEffect(() => {
     fetch(`${API_URL}/reports`)
@@ -121,22 +127,24 @@ export function Stats() {
               <p className="text-xs text-on-surface-tertiary font-medium mt-auto">{stat.sub}</p>
             </div>
 
-            {/* Sparkline Overlay */}
-            <div className="absolute bottom-0 left-0 right-0 h-10 opacity-20 group-hover:opacity-40 transition-opacity pointer-events-none">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={stat.data.map((v) => ({ value: v }))}>
-                  <Line 
-                    type="monotone" 
-                    dataKey="value" 
-                    stroke={stat.color} 
-                    strokeWidth={2} 
-                    dot={false}
-                    animationDuration={1500}
-                    animationBegin={300 + i * 100}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {/* Sparkline Overlay - chỉ render sau khi DOM đã mount */}
+            {mounted && (
+              <div className="absolute bottom-0 left-0 right-0 h-10 opacity-20 group-hover:opacity-40 transition-opacity pointer-events-none">
+                <ResponsiveContainer width="100%" height="100%" minHeight={40}>
+                  <LineChart data={stat.data.map((v) => ({ value: v }))}>
+                    <Line 
+                      type="monotone" 
+                      dataKey="value" 
+                      stroke={stat.color} 
+                      strokeWidth={2} 
+                      dot={false}
+                      animationDuration={1500}
+                      animationBegin={300 + i * 100}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </Card>
         </motion.div>
       ))}

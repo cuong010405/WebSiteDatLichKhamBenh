@@ -172,6 +172,7 @@ async function main() {
   console.log("Bắt đầu dọn dẹp cơ sở dữ liệu cũ...");
   await prisma.activityLog.deleteMany();
   await prisma.visit.deleteMany();
+  await prisma.patientStaff.deleteMany();
   await prisma.patient.deleteMany();
   await prisma.staff.deleteMany();
 
@@ -179,17 +180,17 @@ async function main() {
   for (const s of staffData) {
     await prisma.staff.create({
       data: {
-        id: s.id,
-        name: s.name,
-        role: s.role,
-        status: s.status,
-        department: s.department,
-        phone: s.phone,
-        email: s.email,
-        location: s.location,
-        avatar: s.avatar,
-        available: s.available,
-        isNew: s.isNew,
+        Id: s.id,
+        Name: s.name,
+        Role: s.role,
+        Status: s.status,
+        Department: s.department,
+        Phone: s.phone,
+        Email: s.email,
+        Location: s.location,
+        Avatar: s.avatar,
+        Available: s.available,
+        IsNew: s.isNew,
       },
     });
   }
@@ -198,34 +199,43 @@ async function main() {
   for (const p of patientData) {
     await prisma.patient.create({
       data: {
-        id: p.id,
-        name: p.name,
-        age: p.age,
-        gender: p.gender,
-        lastVisit: p.lastVisit,
-        lastVisitTime: p.lastVisitTime,
-        status: p.status,
-        summary: p.summary,
-        assignedStaff: {
-          connect: p.assignedStaff.map((id) => ({ id })),
-        },
+        Id: p.id,
+        Name: p.name,
+        Age: p.age,
+        Gender: p.gender,
+        LastVisit: p.lastVisit,
+        LastVisitTime: p.lastVisitTime,
+        Status: p.status,
+        Summary: p.summary,
       },
     });
+  }
+
+  console.log("Đang liên kết bệnh nhân với nhân viên y tế...");
+  for (const p of patientData) {
+    for (const staffId of p.assignedStaff) {
+      await prisma.patientStaff.create({
+        data: {
+          PatientId: p.id,
+          StaffId: staffId,
+        },
+      });
+    }
   }
 
   console.log("Đang import dữ liệu lịch khám...");
   for (const v of visitData) {
     await prisma.visit.create({
       data: {
-        id: v.id,
-        type: v.type,
-        patientId: v.patientId,
-        staffId: v.staffId,
-        time: v.time,
-        startTime: v.startTime,
-        endTime: v.endTime,
-        duration: v.duration,
-        status: v.status,
+        Id: v.id,
+        Type: v.type,
+        PatientId: v.patientId,
+        StaffId: v.staffId,
+        Time: v.time,
+        StartTime: v.startTime,
+        EndTime: v.endTime,
+        Duration: v.duration,
+        Status: v.status,
       },
     });
   }
@@ -234,12 +244,12 @@ async function main() {
   for (const l of logData) {
     await prisma.activityLog.create({
       data: {
-        id: l.id,
-        status: l.status,
-        title: l.title,
-        desc: l.desc,
-        time: l.time,
-        color: l.color,
+        Id: l.id,
+        Status: l.status,
+        Title: l.title,
+        Desc: l.desc,
+        Time: l.time,
+        Color: l.color,
       },
     });
   }

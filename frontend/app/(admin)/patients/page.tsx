@@ -185,7 +185,7 @@ function PatientRow({ patient }: { patient: Patient }) {
                           <ClipboardList className="w-4 h-4 text-primary" />
                           <span className="text-[10px] font-black text-on-surface-tertiary uppercase tracking-widest">Chẩn đoán hiện tại</span>
                        </div>
-                       <p className="text-base text-foreground leading-relaxed font-medium relative z-10 antialiased">
+                       <p className="text-base text-foreground leading-relaxed font-medium relative z-10 antialiased whitespace-pre-wrap break-words">
                         {patient.summary}
                       </p>
                     </div>

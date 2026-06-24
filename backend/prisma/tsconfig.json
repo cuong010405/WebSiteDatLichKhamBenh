@@ -7,6 +7,10 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "moduleResolution": "node",
-    "types": ["node"]
+    "types": ["node"],
+    "baseUrl": "..",
+    "paths": {
+      "@prisma/client": ["node_modules/@prisma/client"]
+    }
   }
 }
