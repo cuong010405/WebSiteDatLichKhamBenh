@@ -24,6 +24,7 @@ import {
   Users,
   Activity,
   ChevronRight,
+  ChevronLeft,
   Eye,
   EyeOff,
   Lock,
@@ -105,10 +106,368 @@ interface StoredVisit {
   paymentMethod: string;
 }
 
+// 3D Doctor Carousel Component
+function Doctor3DCarousel({
+  staff,
+  isLoggedIn,
+  selectSpecialistForBooking,
+  reviewStaff,
+  setReviewStaff,
+  handleLogin
+}: {
+  staff: any[];
+  isLoggedIn: boolean;
+  selectSpecialistForBooking: (id: string) => void;
+  reviewStaff: any;
+  setReviewStaff: (staff: any) => void;
+  handleLogin: () => void;
+}) {
+  const [currentIndex, setCurrentIndex] = React.useState(0);
+  const [isHovered, setIsHovered] = React.useState<number | null>(null);
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev - 1 + staff.length) % staff.length);
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % staff.length);
+  };
+
+  const handleDragEnd = (event: any, info: any) => {
+    const swipeThreshold = 50;
+    if (info.offset.x > swipeThreshold) {
+      handlePrev();
+    } else if (info.offset.x < -swipeThreshold) {
+      handleNext();
+    }
+  };
+
+  if (!staff || staff.length === 0) return null;
+
+  return (
+    <div className="relative w-full py-16 flex flex-col items-center justify-center overflow-visible">
+      {/* 3D Carousel Stage */}
+      <div className="relative w-full max-w-5xl h-[520px] flex items-center justify-center perspective-[1200px] overflow-visible">
+        {/* Navigation Buttons */}
+        <button
+          onClick={handlePrev}
+          type="button"
+          className="absolute left-0 md:left-4 z-40 p-4 rounded-full bg-white/70 hover:bg-white/90 backdrop-blur-md border border-white/80 shadow-xl text-blue-600 transition-all hover:scale-110 active:scale-95 cursor-pointer hover:ring-4 hover:ring-blue-100/60"
+          aria-label="Previous specialist"
+        >
+          <ChevronLeft className="w-6 h-6 stroke-[2.5]" />
+        </button>
+
+        <button
+          onClick={handleNext}
+          type="button"
+          className="absolute right-0 md:right-4 z-40 p-4 rounded-full bg-white/70 hover:bg-white/90 backdrop-blur-md border border-white/80 shadow-xl text-blue-600 transition-all hover:scale-110 active:scale-95 cursor-pointer hover:ring-4 hover:ring-blue-100/60"
+          aria-label="Next specialist"
+        >
+          <ChevronRight className="w-6 h-6 stroke-[2.5]" />
+        </button>
+
+        {/* 3D Cards Container */}
+        <motion.div 
+          className="relative w-[360px] h-[460px] flex items-center justify-center select-none"
+          style={{ transformStyle: "preserve-3d" }}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          onDragEnd={handleDragEnd}
+        >
+          {staff.map((person, i) => {
+            const diff = (i - currentIndex + staff.length) % staff.length;
+            let offset = diff;
+            if (offset > staff.length / 2) {
+              offset -= staff.length;
+            }
+
+            const isActive = i === currentIndex;
+            const absOffset = Math.abs(offset);
+            
+            // Layout calculations for a clean 3D carousel effect
+            const rotateY = offset * 35; // degrees of Y-axis rotation
+            const z = -absOffset * 150; // push depth
+            const x = offset * 280; // slide left/right spacing
+            const scale = 1 - absOffset * 0.12;
+            const opacity = absOffset > 1 ? 0 : 1 - absOffset * 0.35;
+            const zIndex = 20 - absOffset;
+
+            const reviews = SPECIALIST_REVIEWS[person.id] || [];
+            const avgRating = reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : "5.0";
+
+            // Premium dynamic hover gradient matching specialist department
+            const getOverlayGradient = (dept: string) => {
+              switch (dept) {
+                case "Ngoại khoa":
+                  return "from-purple-950/96 via-fuchsia-950/98 to-purple-950/98 border-purple-800/40";
+                case "Phục hồi chức năng":
+                  return "from-emerald-950/96 via-teal-950/98 to-emerald-950/98 border-emerald-800/40";
+                case "Nội khoa":
+                  return "from-indigo-950/96 via-blue-950/98 to-indigo-950/98 border-blue-800/40";
+                default:
+                  return "from-slate-950/96 via-slate-900/98 to-slate-950/98 border-slate-800/40";
+              }
+            };
+
+            const getAccentColor = (dept: string) => {
+              switch (dept) {
+                case "Ngoại khoa":
+                  return "text-purple-300";
+                case "Phục hồi chức năng":
+                  return "text-emerald-300";
+                case "Nội khoa":
+                  return "text-blue-300";
+                default:
+                  return "text-slate-300";
+              }
+            };
+
+            return (
+              <motion.div
+                key={person.id}
+                style={{
+                  position: "absolute",
+                  width: "350px",
+                  height: "460px",
+                  zIndex: zIndex,
+                  transformStyle: "preserve-3d",
+                  cursor: isActive ? "grab" : "pointer",
+                }}
+                animate={{
+                  x: x,
+                  z: z,
+                  rotateY: rotateY,
+                  scale: scale,
+                  opacity: opacity,
+                }}
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 30,
+                }}
+                onClick={() => {
+                  if (!isActive) setCurrentIndex(i);
+                }}
+                onMouseEnter={() => isActive && setIsHovered(i)}
+                onMouseLeave={() => isActive && setIsHovered(null)}
+                className={cn(
+                  "bg-white border rounded-[40px] p-8 flex flex-col justify-between items-center transition-all duration-500 relative overflow-hidden",
+                  isActive 
+                    ? "border-blue-200/80 shadow-[0_30px_70px_-15px_rgba(59,130,246,0.22),_0_0_35px_rgba(59,130,246,0.12)] ring-1 ring-blue-500/10" 
+                    : "border-slate-100 shadow-xl"
+                )}
+              >
+                {/* Standard face card */}
+                <div className="flex flex-col items-center text-center space-y-6 w-full mt-6">
+                  {/* Glowing Profile Avatar */}
+                  <div className="relative">
+                    <div className={cn(
+                      "absolute -inset-1 rounded-[38px] blur-sm transition-all duration-700 opacity-0 bg-gradient-to-r",
+                      isActive && "opacity-100 animate-pulse",
+                      person.department === "Ngoại khoa" ? "from-purple-500 to-fuchsia-500" :
+                      person.department === "Phục hồi chức năng" ? "from-emerald-500 to-teal-500" :
+                      "from-blue-500 to-indigo-500"
+                    )} />
+                    <img 
+                      src={person.avatar} 
+                      className="relative z-10 w-32 h-32 rounded-[36px] border-4 border-white shadow-2xl object-cover" 
+                      alt={person.name} 
+                    />
+                    <div className={cn(
+                      "absolute -bottom-1 -right-1 w-7 h-7 border-4 border-white rounded-full shadow-lg z-20",
+                      person.available ? "bg-blue-600" : "bg-orange-500"
+                    )} />
+                  </div>
+
+                  <div className="space-y-3">
+                    <span className={cn(
+                      "text-[10px] font-black px-4 py-1.5 rounded-xl uppercase tracking-widest border",
+                      person.department === "Ngoại khoa" ? "bg-purple-50 text-purple-700 border-purple-100" :
+                      person.department === "Phục hồi chức năng" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                      "bg-blue-50 text-blue-700 border-blue-100"
+                    )}>
+                      {person.department}
+                    </span>
+                    <h3 className="font-black text-2xl text-blue-950 leading-tight uppercase tracking-tight pt-2">
+                      {person.name}
+                    </h3>
+                    <p className="text-xs font-semibold text-slate-500">
+                      {person.role}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Stars review */}
+                <div className="flex items-center gap-1.5 bg-yellow-50/70 text-yellow-700 px-3.5 py-1.5 rounded-2xl border border-yellow-200/60 mb-6">
+                  <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
+                  <span className="text-xs font-black">{avgRating}</span>
+                  <span className="text-[10px] font-bold text-yellow-600/80">({reviews.length} đánh giá)</span>
+                </div>
+
+                {/* Hover Details Overlay */}
+                <AnimatePresence>
+                  {isHovered === i && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className={cn(
+                        "absolute inset-0 bg-gradient-to-b backdrop-blur-md rounded-[40px] p-8 flex flex-col justify-between text-white z-50 shadow-2xl border",
+                        getOverlayGradient(person.department)
+                      )}
+                    >
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-4">
+                          <img 
+                            src={person.avatar} 
+                            className="w-14 h-14 rounded-2xl border-2 border-white/20 object-cover" 
+                            alt={person.name} 
+                          />
+                          <div>
+                            <h4 className="font-black text-lg text-white leading-tight uppercase tracking-wide">{person.name}</h4>
+                            <p className={cn("text-[10px] font-bold uppercase tracking-widest", getAccentColor(person.department))}>
+                              {person.role.split("•")[0]}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="h-px bg-white/10 my-4" />
+
+                        <div className="space-y-3.5 text-xs font-semibold text-slate-200">
+                          <div className="flex items-center gap-3">
+                            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
+                              <Phone className="w-3.5 h-3.5 text-blue-400" />
+                            </div>
+                            <span>SĐT: {isLoggedIn ? person.phone : "•••• ••• •••"}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
+                              <Mail className="w-3.5 h-3.5 text-blue-400" />
+                            </div>
+                            <span className="truncate">Email: {isLoggedIn ? person.email : "••••••••@mintcare.com"}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
+                              <MapPin className="w-3.5 h-3.5 text-blue-400" />
+                            </div>
+                            <span>Khu vực: {isLoggedIn ? person.location : "Đăng nhập để xem"}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
+                              <Clock className="w-3.5 h-3.5 text-blue-400" />
+                            </div>
+                            <span className={person.available ? "text-emerald-400 font-bold" : "text-orange-400 font-bold"}>
+                              {person.available ? "Sẵn sàng nhận lịch" : "Đang có ca"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {!isLoggedIn && (
+                          <div className="bg-white/10 backdrop-blur-xs rounded-xl p-3 flex items-center gap-2 border border-white/5 mt-2">
+                            <ShieldCheck className="w-4 h-4 text-blue-400" />
+                            <span className="text-[9px] font-black uppercase tracking-wider text-slate-300">Đăng nhập để xem liên hệ</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col gap-2.5 mt-4">
+                        <Dialog>
+                          <DialogTrigger 
+                            render={
+                              <Button variant="outline" className="w-full h-11 rounded-xl font-black text-[9px] uppercase tracking-widest border-white/20 text-white hover:bg-white/10 hover:text-white bg-transparent">
+                                <Eye className="w-3.5 h-3.5 mr-2 text-blue-400" /> Nhận xét
+                              </Button>
+                            }
+                            onClick={() => setReviewStaff(person)}
+                          />
+                          {reviewStaff && (
+                            <DialogContent className="sm:max-w-[500px] rounded-[36px] border-blue-100 shadow-2xl p-10 bg-white text-slate-900">
+                              <DialogHeader>
+                                <DialogTitle className="text-2xl font-black tight-tracking text-blue-950 uppercase">
+                                  Nhận xét về <br /> {reviewStaff.name}
+                                </DialogTitle>
+                                <DialogDescription className="text-slate-400 text-xs font-semibold mt-2">
+                                  Ý kiến đánh giá xác thực từ những bệnh nhân trước đó.
+                                </DialogDescription>
+                              </DialogHeader>
+
+                              <div className="space-y-6 py-6 max-h-[350px] overflow-y-auto pr-1">
+                                {isLoggedIn ? (
+                                  (SPECIALIST_REVIEWS[reviewStaff.id] || []).length > 0 ? (
+                                    (SPECIALIST_REVIEWS[reviewStaff.id] || []).map((rev, idx) => (
+                                      <div key={idx} className="bg-blue-50/30 p-5 rounded-2xl border border-blue-100/50 relative text-left">
+                                        <div className="flex items-center justify-between mb-3">
+                                          <span className="text-xs font-black text-blue-950">{rev.author}</span>
+                                          <div className="flex items-center gap-1">
+                                            {Array.from({ length: 5 }).map((_, i) => (
+                                              <Star key={i} className={cn("w-3.5 h-3.5", i < rev.rating ? "fill-yellow-500 text-yellow-500" : "text-blue-100")} />
+                                            ))}
+                                          </div>
+                                        </div>
+                                        <p className="text-xs font-semibold text-slate-600 leading-relaxed">"{rev.text}"</p>
+                                        <p className="text-[9px] text-slate-400 font-black text-right mt-2">{rev.date}</p>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-xs text-muted-foreground text-center py-6">Chưa có phản hồi nào.</p>
+                                  )
+                                ) : (
+                                  <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100 flex flex-col items-center gap-4 text-center">
+                                    <ShieldCheck className="w-10 h-10 text-blue-600 animate-pulse" />
+                                    <div>
+                                      <p className="text-xs font-black text-blue-950 uppercase tracking-wider">Đánh giá bị ẩn</p>
+                                      <p className="text-[11px] font-bold text-slate-500 mt-1">Bạn cần đăng nhập để xem thông tin phản hồi chi tiết.</p>
+                                    </div>
+                                    <Button size="sm" onClick={handleLogin} className="bg-blue-600 text-white text-[9px] font-black uppercase tracking-wider px-6 py-2.5 rounded-xl">Đăng nhập</Button>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <DialogFooter>
+                                <Button className="w-full rounded-full h-12 bg-slate-100 text-slate-800 hover:bg-slate-200 text-xs font-black uppercase tracking-widest shadow-none">Đóng</Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          )}
+                        </Dialog>
+
+                        <Button 
+                          onClick={() => selectSpecialistForBooking(person.id)}
+                          className="w-full bg-linear-to-r from-blue-500 to-sky-500 text-white rounded-xl h-11 font-black text-[9px] uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:brightness-110 border-none"
+                        >
+                          <CalendarPlus className="w-3.5 h-3.5 mr-2" /> Đặt lịch hẹn
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      </div>
+
+      {/* Slide Indicators / Dots */}
+      <div className="flex gap-2.5 mt-8">
+        {staff.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setCurrentIndex(i)}
+            className={cn(
+              "h-2.5 rounded-full transition-all duration-300 cursor-pointer",
+              i === currentIndex ? "w-8 bg-blue-600" : "w-2.5 bg-blue-200 hover:bg-blue-300"
+            )}
+            aria-label={`Go to slide ${i + 1}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function BookingPage() {
   const [isLoggedIn, setIsLoggedIn] = React.useState(false);
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [selectedDept, setSelectedDept] = React.useState("all");
   
   // Authentication Modal States
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
@@ -559,17 +918,6 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
     setContactMsg("");
   };
 
-  // Filter specialists directory
-  const filteredStaff = staff.filter((person) => {
-    const matchesSearch = person.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      person.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      person.department.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesDept = selectedDept === "all" || person.department === selectedDept;
-    
-    return matchesSearch && matchesDept;
-  });
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-600 selection:text-white relative">
       
@@ -748,18 +1096,45 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
         </div>
       </section>
 
+      {/* --- Specialists Carousel Section (3D Rotate Showcase) --- */}
+      <section id="specialists-section" className="py-24 bg-white relative overflow-visible border-t border-slate-100">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-[20%] right-[-10%] w-[40%] h-[40%] bg-blue-100/30 rounded-full blur-[120px]" />
+          <div className="absolute bottom-[10%] left-[-5%] w-[35%] h-[35%] bg-blue-50/40 rounded-full blur-[100px]" />
+        </div>
+
+        <div className="max-w-7xl mx-auto px-6 relative z-10">
+          <div className="text-center max-w-2xl mx-auto mb-12 space-y-4">
+            <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.25em]">Đội ngũ lâm sàng</span>
+            <h2 className="text-4xl font-black text-blue-950 uppercase tracking-tight">Giới thiệu bác sĩ của tôi</h2>
+            <p className="text-xs text-slate-500 font-bold leading-relaxed">
+              Những chuyên gia y tá, bác sĩ điều trị và chăm sóc sức khỏe hàng đầu luôn sẵn sàng hỗ trợ bạn.
+            </p>
+          </div>
+
+          <Doctor3DCarousel
+            staff={staff}
+            isLoggedIn={isLoggedIn}
+            selectSpecialistForBooking={selectSpecialistForBooking}
+            reviewStaff={reviewStaff}
+            setReviewStaff={setReviewStaff}
+            handleLogin={handleLogin}
+          />
+        </div>
+      </section>
+
       {/* --- Value propositions section (Scroll Reveal Animation) --- */}
-      <section className="py-24 bg-white border-y border-blue-50">
+      <section className="py-24 bg-slate-50 border-y border-slate-200/60">
         <div className="max-w-7xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
-            className="text-center max-w-2xl mx-auto mb-16 space-y-4"
+            className="text-center max-w-4xl mx-auto mb-16 space-y-4"
           >
             <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.25em]">Vì sao chọn MintCare?</span>
-            <h2 className="text-4xl font-black text-blue-950 uppercase tracking-tight">Quy trình khám bệnh tại gia tối ưu</h2>
+            <h2 className="text-4xl font-black text-blue-950 uppercase tracking-tight md:whitespace-nowrap">Quy trình khám bệnh tại gia tối ưu</h2>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
@@ -799,211 +1174,6 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
         </div>
       </section>
 
-      {/* --- Specialists section (Scroll Reveal Animation) --- */}
-      <section id="specialists-section" className="py-24 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-6 space-y-16">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="text-center max-w-2xl mx-auto space-y-4"
-          >
-            <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.25em]">Đội ngũ lâm sàng</span>
-            <h2 className="text-4xl font-black text-blue-950 uppercase tracking-tight">Chuyên gia y khoa MintCare</h2>
-            <p className="text-xs text-slate-500 font-bold leading-relaxed">Bộ lọc tìm kiếm trực quan giúp lựa chọn chuyên gia phù hợp.</p>
-          </motion.div>
-
-          {/* Filters Bar */}
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            <div className="relative flex-1 w-full group">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
-              <Input
-                placeholder="Tìm kiếm chuyên gia theo danh tính hoặc khoa..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-14 h-16 rounded-[24px] bg-white border-blue-100 focus:ring-8 focus:ring-blue-100 transition-all text-sm font-bold shadow-xs placeholder:text-slate-400"
-              />
-            </div>
-            
-            <div className="flex bg-white p-2 rounded-[22px] border border-blue-100 shadow-xs shrink-0 w-full sm:w-auto">
-              <Select value={selectedDept} onValueChange={(val) => setSelectedDept(val || "all")}>
-                <SelectTrigger className="w-full sm:w-[220px] border-none bg-transparent hover:bg-slate-50 shadow-none h-12 font-black text-xs uppercase tracking-widest rounded-xl">
-                  <SelectValue placeholder="Chọn phòng khoa" />
-                </SelectTrigger>
-                <SelectContent className="rounded-2xl border-blue-100 p-2 shadow-2xl bg-white">
-                  <SelectItem value="all" className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest">Tất cả khoa</SelectItem>
-                  <SelectItem value="Nội khoa" className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest">Nội khoa</SelectItem>
-                  <SelectItem value="Ngoại khoa" className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest">Ngoại khoa</SelectItem>
-                  <SelectItem value="Phục hồi chức năng" className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest">Phục hồi chức năng</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Directory Cards Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-            {filteredStaff.map((person) => {
-              const reviews = SPECIALIST_REVIEWS[person.id] || [];
-              const avgRating = reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : "5.0";
-
-              return (
-                <motion.div
-                  key={person.id}
-                  initial={{ opacity: 0, y: 40 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.8 }}
-                  className="group border border-blue-100 rounded-[36px] p-8 bg-white hover:border-blue-300 transition-all relative overflow-hidden shadow-xs hover:shadow-2xl hover:shadow-blue-500/[0.03]"
-                >
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-bl from-blue-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-
-                  <div className="flex items-start justify-between relative z-10">
-                    <div className="flex items-center gap-6">
-                      <div className="relative">
-                        <img 
-                          src={person.avatar} 
-                          className="w-20 h-20 rounded-[28px] border-4 border-white shadow-xl ring-1 ring-blue-100 object-cover" 
-                          alt={person.name} 
-                        />
-                        <div className={cn(
-                          "absolute -bottom-1 -right-1 w-6 h-6 border-4 border-white rounded-full shadow-lg",
-                          person.available ? "bg-blue-600" : "bg-orange-500"
-                        )} />
-                      </div>
-                      
-                      <div className="min-w-0">
-                        <h3 className="font-black text-2xl text-blue-950 group-hover:text-blue-600 transition-colors leading-none uppercase tracking-tight truncate">
-                          {person.name}
-                        </h3>
-                        <div className="flex flex-wrap items-center gap-2 mt-3">
-                          <span className="bg-blue-50 text-blue-700 text-[9px] font-black px-3 py-1 rounded-xl uppercase tracking-widest border border-blue-100">
-                            {person.role.split("•")[0]}
-                          </span>
-                          <div className="w-1 h-1 rounded-full bg-blue-100" />
-                          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                            {person.department}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-1">
-                      <div className="flex items-center gap-1.5 bg-yellow-50 text-yellow-700 px-2.5 py-1 rounded-xl border border-yellow-200">
-                        <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500" />
-                        <span className="text-xs font-black">{avgRating}</span>
-                      </div>
-                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">{reviews.length} đánh giá</span>
-                    </div>
-                  </div>
-
-                  {/* Specialist details - locked/unlocked state */}
-                  <div className="mt-8 pt-8 border-t border-blue-50 relative">
-                    <div className={cn(
-                      "grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-bold text-slate-500 transition-all duration-300",
-                      !isLoggedIn && "filter blur-sm select-none pointer-events-none opacity-40"
-                    )}>
-                      <div className="flex items-center gap-2.5">
-                        <Phone className="w-4 h-4 text-blue-600" />
-                        <span>SĐT: {person.phone}</span>
-                      </div>
-                      <div className="flex items-center gap-2.5">
-                        <Mail className="w-4 h-4 text-blue-600" />
-                        <span className="truncate">{person.email}</span>
-                      </div>
-                      <div className="flex items-center gap-2.5">
-                        <MapPin className="w-4 h-4 text-blue-600" />
-                        <span>Khu vực: {person.location}</span>
-                      </div>
-                      <div className="flex items-center gap-2.5">
-                        <Clock className="w-4 h-4 text-blue-600" />
-                        <span>Trạng thái: {person.available ? "Sẵn sàng nhận lịch" : "Đang có ca"}</span>
-                      </div>
-                    </div>
-
-                    {!isLoggedIn && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-white/45 backdrop-blur-xs rounded-2xl">
-                        <div className="flex items-center gap-2 bg-white shadow-lg border border-blue-100 rounded-2xl px-5 py-2.5">
-                          <ShieldCheck className="w-4.5 h-4.5 text-blue-600" />
-                          <span className="text-[10px] font-black text-blue-950 uppercase tracking-wider">Đăng nhập để xem liên hệ</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                    <Dialog>
-                      <DialogTrigger 
-                        render={
-                          <Button variant="outline" className="flex-1 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xs border-blue-100 hover:bg-blue-50/50">
-                            <Eye className="w-4 h-4 mr-2 text-blue-600" /> Xem phản hồi khách hàng
-                          </Button>
-                        }
-                        onClick={() => setReviewStaff(person)}
-                      />
-                      {reviewStaff && (
-                        <DialogContent className="sm:max-w-[500px] rounded-[36px] border-blue-100 shadow-2xl p-10 bg-white">
-                          <DialogHeader>
-                            <DialogTitle className="text-2xl font-black tight-tracking text-blue-950 uppercase">
-                              Nhận xét về <br /> {reviewStaff.name}
-                            </DialogTitle>
-                            <DialogDescription className="text-slate-400 text-xs font-semibold mt-2">
-                              Ý kiến đánh giá xác thực từ những bệnh nhân trước đó.
-                            </DialogDescription>
-                          </DialogHeader>
-
-                          <div className="space-y-6 py-6 max-h-[350px] overflow-y-auto pr-1">
-                            {isLoggedIn ? (
-                              (SPECIALIST_REVIEWS[reviewStaff.id] || []).length > 0 ? (
-                                (SPECIALIST_REVIEWS[reviewStaff.id] || []).map((rev, idx) => (
-                                  <div key={idx} className="bg-blue-50/30 p-5 rounded-2xl border border-blue-100/50 relative">
-                                    <div className="flex items-center justify-between mb-3">
-                                      <span className="text-xs font-black text-blue-950">{rev.author}</span>
-                                      <div className="flex items-center gap-1">
-                                        {Array.from({ length: 5 }).map((_, i) => (
-                                          <Star key={i} className={cn("w-3.5 h-3.5", i < rev.rating ? "fill-yellow-500 text-yellow-500" : "text-blue-100")} />
-                                        ))}
-                                      </div>
-                                    </div>
-                                    <p className="text-xs font-semibold text-slate-600 leading-relaxed">"{rev.text}"</p>
-                                    <p className="text-[9px] text-slate-400 font-black text-right mt-2">{rev.date}</p>
-                                  </div>
-                                ))
-                              ) : (
-                                <p className="text-xs text-muted-foreground text-center py-6">Chưa có phản hồi nào.</p>
-                              )
-                            ) : (
-                              <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100 flex flex-col items-center gap-4 text-center">
-                                <ShieldCheck className="w-10 h-10 text-blue-600 animate-pulse" />
-                                <div>
-                                  <p className="text-xs font-black text-blue-950 uppercase tracking-wider">Đánh giá bị ẩn</p>
-                                  <p className="text-[11px] font-bold text-slate-500 mt-1">Bạn cần đăng nhập để xem thông tin phản hồi chi tiết.</p>
-                                </div>
-                                <Button size="sm" onClick={handleLogin} className="bg-blue-600 text-white text-[9px] font-black uppercase tracking-wider px-6 py-2.5 rounded-xl">Đăng nhập</Button>
-                              </div>
-                            )}
-                          </div>
-                          
-                          <DialogFooter>
-                            <Button className="w-full rounded-full h-12 bg-slate-100 text-slate-800 hover:bg-slate-200 text-xs font-black uppercase tracking-widest shadow-none">Đóng</Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      )}
-                    </Dialog>
-
-                    <Button 
-                      onClick={() => selectSpecialistForBooking(person.id)}
-                      className="flex-1 bg-blue-600 text-white rounded-2xl h-14 font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/15 hover:bg-blue-700"
-                    >
-                      <CalendarPlus className="w-4 h-4 mr-2" /> Chọn & Đặt lịch hẹn
-                    </Button>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
 
       {/* --- View 2: Logged-in Customer Booking Workspace & History --- */}
       {isLoggedIn && (
