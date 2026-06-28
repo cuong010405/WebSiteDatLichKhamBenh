@@ -68,3 +68,13 @@ model PatientStaff {
 
   @@id([PatientId, StaffId], map: "PK__PatientS__FE6389D7F530403A")
 }
+
+model User {
+  Id           String   @id @default(uuid()) @db.NVarChar(50)
+  Email        String   @unique @db.NVarChar(200)
+  PasswordHash String   @db.NVarChar(500)
+  FullName     String   @db.NVarChar(200)
+  Phone        String?  @db.NVarChar(30)
+  Role         String   @default("customer") @db.NVarChar(20)
+  CreatedAt    DateTime @default(now()) @db.DateTime
+}

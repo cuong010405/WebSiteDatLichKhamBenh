@@ -94,7 +94,7 @@ export function TodayVisits() {
                       <span className="text-[10px] font-bold font-mono text-on-surface-tertiary uppercase tracking-tight">{visit.time.split(' - ')[0]}</span>
                     </div>
                     <span className={cn(
-                      "text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-widest border transition-all",
+                      "text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-widest border transition-all whitespace-nowrap",
                       isOngoing 
                         ? "bg-primary text-white border-primary shadow-sm shadow-primary/20" 
                         : "bg-surface-secondary text-muted-foreground border-hairline group-hover:border-primary/20 group-hover:bg-white"

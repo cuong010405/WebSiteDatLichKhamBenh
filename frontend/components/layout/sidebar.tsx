@@ -17,12 +17,13 @@ import {
 import { cn } from "@/lib/utils"
 
 const navItems = [
-  { label: "Tổng quan", href: "/", icon: LayoutGrid },
-  { label: "Chuyên gia", href: "/staff", icon: Users },
-  { label: "Lịch trực", href: "/schedule", icon: Calendar },
-  { label: "Bệnh nhân", href: "/patients", icon: Activity },
-  { label: "Báo cáo", href: "/reports", icon: FileText },
-  { label: "Đặt lịch (Khách)", href: "/booking", icon: CalendarCheck },
+  { label: "Tổng quan", href: "/admin", icon: LayoutGrid },
+  { label: "Chuyên gia", href: "/admin/staff", icon: Users },
+  { label: "Lịch trực", href: "/admin/schedule", icon: Calendar },
+  { label: "Bệnh nhân", href: "/admin/patients", icon: Activity },
+  { label: "Báo cáo", href: "/admin/reports", icon: FileText },
+  { label: "Tài khoản", href: "/admin/accounts", icon: ShieldCheck },
+  { label: "Đặt lịch (Khách)", href: "/", icon: CalendarCheck },
 ]
 
 export function Sidebar() {
@@ -83,9 +84,9 @@ export function Sidebar() {
         </div>
 
         <div className="space-y-1">
-          <Link href="/settings" className={cn(
+          <Link href="/admin/settings" className={cn(
             "flex items-center gap-4 px-4 py-3.5 rounded-[20px] font-bold text-[11px] uppercase tracking-[0.15em] transition-all",
-            pathname === "/settings" ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-on-surface-tertiary hover:bg-surface-secondary hover:text-foreground"
+            pathname === "/admin/settings" ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-on-surface-tertiary hover:bg-surface-secondary hover:text-foreground"
           )}>
             <Settings className="w-4.5 h-4.5" />
             Cài đặt

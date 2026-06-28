@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -467,7 +469,9 @@ function Doctor3DCarousel({
 }
 
 export default function BookingPage() {
-  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+  const { user, login, register, logout } = useAuth();
+  const router = useRouter();
+  const isLoggedIn = !!user;
   
   // Authentication Modal States
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
@@ -506,6 +510,19 @@ export default function BookingPage() {
     address: "Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM",
     summary: "Bệnh nhân có tiền sử cao huyết áp và tiểu đường type 2. Đang trong lộ trình phục hồi sau phẫu thuật thay khớp gối trái."
   });
+
+  React.useEffect(() => {
+    if (user) {
+      setProfile({
+        id: user.id,
+        name: user.fullName,
+        phone: user.phone || "Chưa cập nhật",
+        email: user.email,
+        address: "Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM",
+        summary: "Hồ sơ cá nhân tự động đồng bộ từ tài khoản SQL Server."
+      });
+    }
+  }, [user]);
 
   // Booking Form States
   const [bookingStaffId, setBookingStaffId] = React.useState("");
@@ -616,7 +633,7 @@ export default function BookingPage() {
   }, []);
 
   // Handle local registration
-  const handleLocalRegister = (e: React.FormEvent) => {
+  const handleLocalRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!regName.trim() || !regPhone.trim() || !regEmail.trim() || !regPassword || !regConfirmPassword) {
       addToast("Vui lòng điền đầy đủ thông tin đăng ký.", "error");
@@ -627,96 +644,60 @@ export default function BookingPage() {
       return;
     }
 
-    const stored = localStorage.getItem("mintcare_users");
-    const users = stored ? JSON.parse(stored) : [];
+    try {
+      const u = await register({
+        email: regEmail.trim(),
+        password: regPassword,
+        fullName: regName.trim(),
+        phone: regPhone.trim(),
+      });
+      addToast(`Đăng ký thành công! Chào mừng ${u.fullName}.`, "success");
+      setIsAuthModalOpen(false);
 
-    const emailExists = users.some((u: any) => u.email.toLowerCase() === regEmail.trim().toLowerCase());
-    if (emailExists) {
-      addToast("Email này đã được sử dụng bởi tài khoản khác.", "error");
-      return;
+      // Reset fields
+      setRegName("");
+      setRegPhone("");
+      setRegEmail("");
+      setRegPassword("");
+      setRegConfirmPassword("");
+
+      // Scroll to dashboard
+      setTimeout(() => {
+        document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
+      }, 150);
+    } catch (err: any) {
+      addToast(err.message || "Đăng ký thất bại", "error");
     }
-
-    const newUser = {
-      name: regName.trim(),
-      phone: regPhone.trim(),
-      email: regEmail.trim().toLowerCase(),
-      password: regPassword,
-      address: "",
-      summary: ""
-    };
-
-    const updatedUsers = [...users, newUser];
-    localStorage.setItem("mintcare_users", JSON.stringify(updatedUsers));
-
-    // Update logged in state & profile
-    setIsLoggedIn(true);
-    setProfile({
-      name: newUser.name,
-      phone: newUser.phone,
-      email: newUser.email,
-      address: "Chưa cập nhật",
-      summary: "Chưa cập nhật"
-    });
-
-    addToast(`Đăng ký thành công! Chào mừng ${newUser.name}.`, "success");
-    setIsAuthModalOpen(false);
-
-    // Reset fields
-    setRegName("");
-    setRegPhone("");
-    setRegEmail("");
-    setRegPassword("");
-    setRegConfirmPassword("");
-
-    // Scroll to dashboard
-    setTimeout(() => {
-      document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
-    }, 150);
   };
 
   // Handle local login
-  const handleLocalLogin = (e: React.FormEvent) => {
+  const handleLocalLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginEmail.trim() || !loginPassword) {
       addToast("Vui lòng điền đầy đủ email và mật khẩu.", "error");
       return;
     }
 
-    const stored = localStorage.getItem("mintcare_users");
-    const users = stored ? JSON.parse(stored) : [];
+    try {
+      const u = await login(loginEmail.trim(), loginPassword);
+      addToast(`Đăng nhập thành công! Chào mừng ${u.fullName}.`, "success");
+      setIsAuthModalOpen(false);
 
-    const user = users.find((u: any) => u.email.toLowerCase() === loginEmail.trim().toLowerCase());
-    if (!user) {
-      addToast("Email này chưa được đăng ký tài khoản.", "error");
-      return;
+      // Reset fields
+      setLoginEmail("");
+      setLoginPassword("");
+
+      if (u.role === "admin") {
+        router.push("/");
+      } else {
+        // Scroll to dashboard
+        setTimeout(() => {
+          document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
+        }, 150);
+      }
+    } catch (err: any) {
+      addToast(err.message || "Đăng nhập thất bại", "error");
     }
-
-    if (user.password !== loginPassword) {
-      addToast("Mật khẩu không chính xác.", "error");
-      return;
-    }
-
-    // Success
-    setIsLoggedIn(true);
-    setProfile({
-      name: user.name,
-      phone: user.phone || "Chưa cập nhật",
-      email: user.email,
-      address: user.address || "Chưa cập nhật",
-      summary: user.summary || "Chưa cập nhật"
-    });
-
-    addToast(`Đăng nhập thành công! Chào mừng ${user.name}.`, "success");
-    setIsAuthModalOpen(false);
-
-    // Reset fields
-    setLoginEmail("");
-    setLoginPassword("");
-
-    // Scroll to dashboard
-    setTimeout(() => {
-      document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
-    }, 150);
   };
 
   // Trigger login simulation
@@ -727,8 +708,8 @@ export default function BookingPage() {
 
   // Trigger logout
   const handleLogout = () => {
-    setIsLoggedIn(false);
-    addToast("Đã đăng xuất khỏi tài khoản khách hàng.", "info");
+    logout();
+    addToast("Đã đăng xuất khỏi tài khoản.", "info");
   };
 
   // Profile update
@@ -1850,20 +1831,32 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                       <div className="grid grid-cols-2 gap-3">
                         <button
                           type="button"
-                          onClick={() => {
-                            setIsLoggedIn(true);
-                            setProfile({
-                              name: "Evelyn Green",
-                              phone: "090 987 6543",
-                              email: "evelyn.green@gmail.com",
-                              address: "Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM",
-                              summary: "Bệnh nhân có tiền sử cao huyết áp và tiểu đường type 2. Đang trong lộ trình phục hồi sau phẫu thuật thay khớp gối trái."
-                            });
-                            addToast("Đã đăng nhập nhanh bằng Google!", "success");
-                            setIsAuthModalOpen(false);
-                            setTimeout(() => {
-                              document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
-                            }, 150);
+                          onClick={async () => {
+                            const emailStr = "evelyn.green@gmail.com";
+                            try {
+                              await login(emailStr, "123456");
+                              addToast("Đăng nhập nhanh Google thành công!", "success");
+                              setIsAuthModalOpen(false);
+                              setTimeout(() => {
+                                document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
+                              }, 150);
+                            } catch {
+                              try {
+                                await register({
+                                  email: emailStr,
+                                  password: "123456",
+                                  fullName: "Evelyn Green",
+                                  phone: "0909876543"
+                                });
+                                addToast("Đăng ký & Đăng nhập Google thành công!", "success");
+                                setIsAuthModalOpen(false);
+                                setTimeout(() => {
+                                  document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
+                                }, 150);
+                              } catch (err: any) {
+                                addToast("Không thể đăng nhập nhanh: " + err.message, "error");
+                              }
+                            }
                           }}
                           className="flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 transition-all rounded-xl py-2 text-[10px] font-bold text-slate-600"
                         >
@@ -1877,13 +1870,32 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            setIsLoggedIn(true);
-                            addToast("Đã đăng nhập nhanh bằng Facebook!", "success");
-                            setIsAuthModalOpen(false);
-                            setTimeout(() => {
-                              document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
-                            }, 150);
+                          onClick={async () => {
+                            const emailStr = "facebook.user@mintcare.vn";
+                            try {
+                              await login(emailStr, "123456");
+                              addToast("Đăng nhập nhanh Facebook thành công!", "success");
+                              setIsAuthModalOpen(false);
+                              setTimeout(() => {
+                                document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
+                              }, 150);
+                            } catch {
+                              try {
+                                await register({
+                                  email: emailStr,
+                                  password: "123456",
+                                  fullName: "Khách Hàng Facebook",
+                                  phone: "0901112222"
+                                });
+                                addToast("Đăng ký & Đăng nhập Facebook thành công!", "success");
+                                setIsAuthModalOpen(false);
+                                setTimeout(() => {
+                                  document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
+                                }, 150);
+                              } catch (err: any) {
+                                addToast("Không thể đăng nhập nhanh: " + err.message, "error");
+                              }
+                            }
                           }}
                           className="flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 transition-all rounded-xl py-2 text-[10px] font-bold text-slate-600"
                         >

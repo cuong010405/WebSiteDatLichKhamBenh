@@ -2,53 +2,95 @@ import { db } from "../db";
 import { staffSchema } from "../validations/schemas";
 import { z } from "zod";
 
+function mapStaffToUI(s: any) {
+  return {
+    id: s.Id,
+    name: s.Name,
+    role: s.Role,
+    status: s.Status,
+    department: s.Department,
+    phone: s.Phone,
+    email: s.Email,
+    location: s.Location,
+    avatar: s.Avatar ?? "",
+    available: s.Available,
+    isNew: s.IsNew,
+  };
+}
+
+function mapStaffToDb(s: any) {
+  return {
+    Id: s.id,
+    Name: s.name,
+    Role: s.role,
+    Status: s.status ?? "Sẵn sàng",
+    Department: s.department,
+    Phone: s.phone || "0000000000",
+    Email: s.email || "unknown@mintcare.com",
+    Location: s.location || "Van phong chinh",
+    Avatar: s.avatar || null,
+    Available: s.available ?? true,
+    IsNew: s.isNew ?? false,
+  };
+}
+
 export async function getStaffList() {
   const staff = await db.staff.findMany({
-    orderBy: { name: "asc" },
+    orderBy: { Name: "asc" },
   });
-  return staff.map((s) => ({
-    ...s,
-    avatar: s.avatar ?? "",
-  }));
+  return staff.map(mapStaffToUI);
 }
 
 export async function getStaffById(id: string) {
   const s = await db.staff.findUnique({
-    where: { id },
-    include: { patients: true },
+    where: { Id: id },
   });
   if (!s) return null;
-  return {
-    ...s,
-    avatar: s.avatar ?? "",
-  };
+  return mapStaffToUI(s);
 }
 
 export async function createStaff(data: z.infer<typeof staffSchema>) {
   const validated = staffSchema.parse(data);
   const created = await db.staff.create({
-    data: validated,
+    data: mapStaffToDb(validated),
   });
-  return {
-    ...created,
-    avatar: created.avatar ?? "",
-  };
+  return mapStaffToUI(created);
 }
 
 export async function updateStaff(id: string, data: Partial<z.infer<typeof staffSchema>>) {
   const { id: _id, ...rest } = data;
+  const dbData: any = {};
+  if (rest.name !== undefined) dbData.Name = rest.name;
+  if (rest.role !== undefined) dbData.Role = rest.role;
+  if (rest.status !== undefined) dbData.Status = rest.status;
+  if (rest.department !== undefined) dbData.Department = rest.department;
+  if (rest.phone !== undefined) dbData.Phone = rest.phone;
+  if (rest.email !== undefined) dbData.Email = rest.email;
+  if (rest.location !== undefined) dbData.Location = rest.location;
+  if (rest.avatar !== undefined) dbData.Avatar = rest.avatar || null;
+  if (rest.available !== undefined) dbData.Available = rest.available;
+  if (rest.isNew !== undefined) dbData.IsNew = rest.isNew;
+
   const updated = await db.staff.update({
-    where: { id },
-    data: rest,
+    where: { Id: id },
+    data: dbData,
   });
-  return {
-    ...updated,
-    avatar: updated.avatar ?? "",
-  };
+  return mapStaffToUI(updated);
 }
 
 export async function deleteStaff(id: string) {
-  return await db.staff.delete({
-    where: { id },
+  return await db.$transaction(async (tx) => {
+    // Delete patient-staff relations first
+    await tx.patientStaff.deleteMany({
+      where: { StaffId: id },
+    });
+    // Delete associated visits first
+    await tx.visit.deleteMany({
+      where: { StaffId: id },
+    });
+    // Delete staff member
+    return await tx.staff.delete({
+      where: { Id: id },
+    });
   });
 }

@@ -7,6 +7,8 @@ import patientsRouter from "./routes/patients";
 import visitsRouter from "./routes/visits";
 import logsRouter from "./routes/logs";
 import reportsRouter from "./routes/reports";
+import authRouter from "./routes/auth";
+import usersRouter from "./routes/users";
 
 dotenv.config();
 
@@ -22,7 +24,8 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Đăng ký API Routes
 app.use("/api/staff", staffRouter);
@@ -30,6 +33,8 @@ app.use("/api/patients", patientsRouter);
 app.use("/api/visits", visitsRouter);
 app.use("/api/logs", logsRouter);
 app.use("/api/reports", reportsRouter);
+app.use("/api/auth", authRouter);
+app.use("/api/users", usersRouter);
 
 // Endpoint kiểm tra trạng thái hoạt động
 app.get("/health", (req, res) => {
