@@ -688,7 +688,7 @@ export default function BookingPage() {
       setLoginPassword("");
 
       if (u.role === "admin") {
-        router.push("/");
+        router.push("/admin");
       } else {
         // Scroll to dashboard
         setTimeout(() => {
