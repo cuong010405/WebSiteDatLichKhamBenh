@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { 
-  Plus, 
-  ClipboardList, 
-  Stethoscope, 
-  History, 
-  ChevronLeft, 
+import * as React from "react";
+import {
+  Plus,
+  ClipboardList,
+  Stethoscope,
+  History,
+  ChevronLeft,
   ChevronRight,
   Search,
   Filter,
@@ -20,10 +20,10 @@ import {
   AlertTriangle,
   CheckCircle2,
   X,
-  Users
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+  Users,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -31,7 +31,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -40,46 +40,48 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 
-import { cn } from "@/lib/utils"
-import { Patient, Staff } from "@/lib/types"
-import { motion, AnimatePresence } from "framer-motion"
-import { API_URL } from "@/lib/api"
+import { cn } from "@/lib/utils";
+import { Patient, Staff } from "@/lib/types";
+import { motion, AnimatePresence } from "framer-motion";
+import { API_URL } from "@/lib/api";
 
 // Simple MultiSelect component for assigned staff
 function StaffMultiSelect({
   staff,
   selectedIds,
-  onChange
+  onChange,
 }: {
-  staff: Staff[]
-  selectedIds: string[]
-  onChange: (ids: string[]) => void
+  staff: Staff[];
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
 }) {
   const toggleSelect = (id: string) => {
     if (selectedIds.includes(id)) {
-      onChange(selectedIds.filter(x => x !== id))
+      onChange(selectedIds.filter((x) => x !== id));
     } else {
-      onChange([...selectedIds, id])
+      onChange([...selectedIds, id]);
     }
-  }
+  };
 
   return (
     <div className="space-y-2">
-      <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">Chuyên gia phụ trách</Label>
+      <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">
+        Chuyên gia phụ trách
+      </Label>
       <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2.5 border border-slate-200/80 rounded-2xl bg-slate-50/50">
         {staff.map((s) => {
-          const isSelected = selectedIds.includes(s.id)
+          const isSelected = selectedIds.includes(s.id);
           return (
             <button
               key={s.id}
@@ -89,21 +91,29 @@ function StaffMultiSelect({
                 "px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all border flex items-center gap-2",
                 isSelected
                   ? "bg-primary/10 border-primary text-primary-strong shadow-xs scale-[1.02]"
-                  : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                  : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50",
               )}
             >
-              <img src={s.avatar || `https://i.pravatar.cc/150?u=${s.id}`} alt="" className="w-5 h-5 rounded-full object-cover border border-white shadow-xs" />
+              <img
+                src={s.avatar || `https://i.pravatar.cc/150?u=${s.id}`}
+                alt=""
+                className="w-5 h-5 rounded-full object-cover border border-white shadow-xs"
+              />
               <span>{s.name}</span>
-              {isSelected && <X className="w-3.5 h-3.5 ml-0.5 text-primary shrink-0" />}
+              {isSelected && (
+                <X className="w-3.5 h-3.5 ml-0.5 text-primary shrink-0" />
+              )}
             </button>
-          )
+          );
         })}
         {staff.length === 0 && (
-          <span className="text-xs text-muted-foreground p-1">Không có nhân sự nào</span>
+          <span className="text-xs text-muted-foreground p-1">
+            Không có nhân sự nào
+          </span>
         )}
       </div>
     </div>
-  )
+  );
 }
 
 interface AddPatientDialogProps {
@@ -118,7 +128,7 @@ function AddPatientDialog({ onAdd, staff }: AddPatientDialogProps) {
   const [gender, setGender] = React.useState<"Nam" | "Nữ">("Nam");
   const [summary, setSummary] = React.useState("");
   const [assignedStaff, setAssignedStaff] = React.useState<string[]>([]);
-  const [success, setSuccess] = React.useState(false)
+  const [success, setSuccess] = React.useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,7 +139,11 @@ function AddPatientDialog({ onAdd, staff }: AddPatientDialogProps) {
     // Format current date as lastVisit (DD/MM/YYYY)
     const now = new Date();
     const lastVisit = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
-    const lastVisitTime = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    const lastVisitTime = now.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
 
     const newPatient: Patient = {
       id: `BN-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -144,27 +158,35 @@ function AddPatientDialog({ onAdd, staff }: AddPatientDialogProps) {
     };
 
     onAdd(newPatient);
-    setSuccess(true)
-    
+    setSuccess(true);
+
     setTimeout(() => {
-      setSuccess(false)
-      setOpen(false)
+      setSuccess(false);
+      setOpen(false);
       // Reset states
       setName("");
       setAgeStr("");
       setGender("Nam");
       setSummary("");
       setAssignedStaff([]);
-    }, 1500)
+    }, 1500);
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if(!v) setSuccess(false) }}>
-      <DialogTrigger render={
-        <Button className="bg-primary text-white rounded-[24px] px-8 h-14 text-xs font-black uppercase tracking-[0.15em] flex items-center gap-3 shadow-xl shadow-primary/20 hover:opacity-95 transition-all border-b-4 border-white/10 active:border-b-0 active:translate-y-0.5">
-          <Plus className="w-5 h-5" /> Thêm bệnh nhân
-        </Button>
-      } />
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (!v) setSuccess(false);
+      }}
+    >
+      <DialogTrigger
+        render={
+          <Button className="bg-primary text-white rounded-[24px] px-8 h-14 text-xs font-black uppercase tracking-[0.15em] flex items-center gap-3 shadow-xl shadow-primary/20 hover:opacity-95 transition-all border-b-4 border-white/10 active:border-b-0 active:translate-y-0.5">
+            <Plus className="w-5 h-5" /> Thêm bệnh nhân
+          </Button>
+        }
+      />
       <DialogContent className="sm:max-w-[500px] rounded-[32px] border-hairline shadow-2xl p-0 overflow-hidden bg-white">
         <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 to-green-500" />
         <AnimatePresence mode="wait">
@@ -180,68 +202,151 @@ function AddPatientDialog({ onAdd, staff }: AddPatientDialogProps) {
                 <CheckCircle2 className="w-10 h-10 text-green-500" />
               </div>
               <div>
-                <p className="text-base font-black text-slate-900 uppercase tracking-tight">Thêm hồ sơ thành công!</p>
-                <p className="text-xs text-slate-500 font-semibold mt-1">Hồ sơ bệnh nhân đã được lưu vào SQL Server.</p>
+                <p className="text-base font-black text-slate-900 uppercase tracking-tight">
+                  Thêm hồ sơ thành công!
+                </p>
+                <p className="text-xs text-slate-500 font-semibold mt-1">
+                  Hồ sơ bệnh nhân đã được lưu vào SQL Server.
+                </p>
               </div>
             </motion.div>
           ) : (
-            <motion.form key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} onSubmit={handleSubmit} className="p-8 space-y-4">
+            <motion.form
+              key="form"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              onSubmit={handleSubmit}
+              className="p-8 space-y-4"
+            >
               <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-4 border-b border-slate-100">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-600 text-white flex items-center justify-center shrink-0 shadow-md">
                   <User className="w-5 h-5" />
                 </div>
                 <div className="text-left flex-1">
-                  <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">Hồ sơ bệnh nhân mới</DialogTitle>
-                  <DialogDescription className="text-slate-500 mt-1 text-[10px] font-semibold leading-tight">Khởi tạo mã định danh và nhập thông tin lâm sàng ban đầu.</DialogDescription>
+                  <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">
+                    Hồ sơ bệnh nhân mới
+                  </DialogTitle>
+                  <DialogDescription className="text-slate-500 mt-1 text-[10px] font-semibold leading-tight">
+                    Khởi tạo mã định danh và nhập thông tin lâm sàng ban đầu.
+                  </DialogDescription>
                 </div>
               </DialogHeader>
 
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2 text-left">
-                    <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">Họ và tên bệnh nhân <span className="text-red-400">*</span></Label>
-                    <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Nguyễn Văn A" className="rounded-xl border-hairline h-10 bg-surface-secondary/20 focus:bg-white font-bold text-xs" />
+                    <Label
+                      htmlFor="name"
+                      className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary"
+                    >
+                      Họ và tên bệnh nhân{" "}
+                      <span className="text-red-400">*</span>
+                    </Label>
+                    <Input
+                      id="name"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Nguyễn Văn A"
+                      className="rounded-xl border-hairline h-10 bg-surface-secondary/20 focus:bg-white font-bold text-xs"
+                    />
                   </div>
                   <div className="space-y-2 text-left">
-                    <Label htmlFor="age" className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">Tuổi <span className="text-red-400">*</span></Label>
-                    <Input id="age" required type="number" min="0" max="150" value={ageStr} onChange={(e) => setAgeStr(e.target.value)} placeholder="VD: 45" className="rounded-xl border-hairline h-10 bg-surface-secondary/20 focus:bg-white font-bold text-xs" />
+                    <Label
+                      htmlFor="age"
+                      className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary"
+                    >
+                      Tuổi <span className="text-red-400">*</span>
+                    </Label>
+                    <Input
+                      id="age"
+                      required
+                      type="number"
+                      min="0"
+                      max="150"
+                      value={ageStr}
+                      onChange={(e) => setAgeStr(e.target.value)}
+                      placeholder="VD: 45"
+                      className="rounded-xl border-hairline h-10 bg-surface-secondary/20 focus:bg-white font-bold text-xs"
+                    />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">Giới tính</Label>
-                    <Select value={gender} onValueChange={(val) => setGender(val as "Nam" | "Nữ")}>
+                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">
+                      Giới tính
+                    </Label>
+                    <Select
+                      value={gender}
+                      onValueChange={(val) => setGender(val as "Nam" | "Nữ")}
+                    >
                       <SelectTrigger className="w-full rounded-xl border border-slate-200 h-10 bg-white font-bold text-xs shadow-none text-slate-800">
                         <SelectValue placeholder="Chọn giới tính..." />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                        <SelectItem value="Nam" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Nam</SelectItem>
-                        <SelectItem value="Nữ" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Nữ</SelectItem>
+                        <SelectItem
+                          value="Nam"
+                          className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"
+                        >
+                          Nam
+                        </SelectItem>
+                        <SelectItem
+                          value="Nữ"
+                          className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"
+                        >
+                          Nữ
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">Trạng thái lâm sàng</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">
+                      Trạng thái lâm sàng
+                    </Label>
                     <div className="flex items-center h-10 bg-slate-50 rounded-xl px-3 text-xs font-bold text-slate-500 border border-slate-200/80">
                       Đang điều trị
                     </div>
                   </div>
                 </div>
 
-                <StaffMultiSelect staff={staff} selectedIds={assignedStaff} onChange={setAssignedStaff} />
+                <StaffMultiSelect
+                  staff={staff}
+                  selectedIds={assignedStaff}
+                  onChange={setAssignedStaff}
+                />
 
                 <div className="space-y-2 text-left">
-                  <Label htmlFor="summary" className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">Tiền sử & Chẩn đoán sơ bộ</Label>
-                  <Textarea id="summary" value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Mô tả các tình trạng sức khỏe, dị ứng hoặc ghi chú đặc biệt..." className="rounded-xl border-hairline bg-surface-secondary/20 focus:bg-white min-h-[90px] text-xs font-semibold leading-relaxed" />
+                  <Label
+                    htmlFor="summary"
+                    className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary"
+                  >
+                    Tiền sử & Chẩn đoán sơ bộ
+                  </Label>
+                  <Textarea
+                    id="summary"
+                    value={summary}
+                    onChange={(e) => setSummary(e.target.value)}
+                    placeholder="Mô tả các tình trạng sức khỏe, dị ứng hoặc ghi chú đặc biệt..."
+                    className="rounded-xl border-hairline bg-surface-secondary/20 focus:bg-white min-h-[90px] text-xs font-semibold leading-relaxed"
+                  />
                 </div>
               </div>
 
               <DialogFooter className="pt-4 border-t border-slate-100 flex-col sm:flex-col gap-2">
-                <Button type="submit" disabled={!name || !ageStr} className="w-full bg-action text-white rounded-xl h-11 text-xs font-black uppercase tracking-[0.15em] hover:opacity-95 shadow-md border-b-2 border-white/10 active:border-b-0 active:translate-y-0.5 disabled:opacity-40">
+                <Button
+                  type="submit"
+                  disabled={!name || !ageStr}
+                  className="w-full bg-action text-white rounded-xl h-11 text-xs font-black uppercase tracking-[0.15em] hover:opacity-95 shadow-md border-b-2 border-white/10 active:border-b-0 active:translate-y-0.5 disabled:opacity-40"
+                >
                   Xác nhận tạo hồ sơ
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setOpen(false)} className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                  className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50"
+                >
                   Hủy bỏ
                 </Button>
               </DialogFooter>
@@ -250,7 +355,7 @@ function AddPatientDialog({ onAdd, staff }: AddPatientDialogProps) {
         </AnimatePresence>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 /* ─── Edit Patient Dialog ─── */
@@ -262,30 +367,38 @@ interface EditPatientDialogProps {
   onSave: (updated: Patient) => void;
 }
 
-function EditPatientDialog({ patient, staff, open, onOpenChange, onSave }: EditPatientDialogProps) {
-  const [name, setName] = React.useState("")
-  const [ageStr, setAgeStr] = React.useState("")
-  const [gender, setGender] = React.useState<"Nam" | "Nữ">("Nam")
-  const [status, setStatus] = React.useState<"Đang điều trị" | "Chờ tái khám" | "Đã xuất viện">("Đang điều trị")
-  const [summary, setSummary] = React.useState("")
-  const [assignedStaff, setAssignedStaff] = React.useState<string[]>([])
-  const [submitting, setSubmitting] = React.useState(false)
+function EditPatientDialog({
+  patient,
+  staff,
+  open,
+  onOpenChange,
+  onSave,
+}: EditPatientDialogProps) {
+  const [name, setName] = React.useState("");
+  const [ageStr, setAgeStr] = React.useState("");
+  const [gender, setGender] = React.useState<"Nam" | "Nữ">("Nam");
+  const [status, setStatus] = React.useState<
+    "Đang điều trị" | "Chờ tái khám" | "Đã xuất viện" | "Chờ duyệt"
+  >("Đang điều trị");
+  const [summary, setSummary] = React.useState("");
+  const [assignedStaff, setAssignedStaff] = React.useState<string[]>([]);
+  const [submitting, setSubmitting] = React.useState(false);
 
   React.useEffect(() => {
     if (open) {
-      setName(patient.name)
-      setAgeStr(String(patient.age))
-      setGender(patient.gender)
-      setStatus(patient.status as any || "Đang điều trị")
-      setSummary(patient.summary || "")
-      setAssignedStaff(patient.assignedStaff || [])
+      setName(patient.name);
+      setAgeStr(String(patient.age));
+      setGender(patient.gender);
+      setStatus((patient.status as any) || "Đang điều trị");
+      setSummary(patient.summary || "");
+      setAssignedStaff(patient.assignedStaff || []);
     }
-  }, [open, patient])
+  }, [open, patient]);
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!name || !ageStr) return
-    setSubmitting(true)
+    e.preventDefault();
+    if (!name || !ageStr) return;
+    setSubmitting(true);
 
     const updatedPatient: Patient = {
       ...patient,
@@ -295,12 +408,12 @@ function EditPatientDialog({ patient, staff, open, onOpenChange, onSave }: EditP
       status,
       summary,
       assignedStaff,
-    }
+    };
 
-    onSave(updatedPatient)
-    setSubmitting(false)
-    onOpenChange(false)
-  }
+    onSave(updatedPatient);
+    setSubmitting(false);
+    onOpenChange(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -312,81 +425,178 @@ function EditPatientDialog({ patient, staff, open, onOpenChange, onSave }: EditP
               <Pencil className="w-5 h-5" />
             </div>
             <div className="text-left flex-1">
-              <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">Chỉnh sửa hồ sơ bệnh nhân</DialogTitle>
-              <DialogDescription className="text-slate-500 mt-1 text-[10px] font-semibold leading-tight">Cập nhật thông tin hành chính & lâm sàng của bệnh nhân.</DialogDescription>
+              <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">
+                Chỉnh sửa hồ sơ bệnh nhân
+              </DialogTitle>
+              <DialogDescription className="text-slate-500 mt-1 text-[10px] font-semibold leading-tight">
+                Cập nhật thông tin hành chính & lâm sàng của bệnh nhân.
+              </DialogDescription>
             </div>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2 text-left">
-                <Label htmlFor="edit-name" className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">Họ và tên bệnh nhân <span className="text-red-400">*</span></Label>
-                <Input id="edit-name" required value={name} onChange={(e) => setName(e.target.value)} className="rounded-xl border-hairline h-10 bg-surface-secondary/20 focus:bg-white font-bold text-xs" />
+                <Label
+                  htmlFor="edit-name"
+                  className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary"
+                >
+                  Họ và tên bệnh nhân <span className="text-red-400">*</span>
+                </Label>
+                <Input
+                  id="edit-name"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="rounded-xl border-hairline h-10 bg-surface-secondary/20 focus:bg-white font-bold text-xs"
+                />
               </div>
               <div className="space-y-2 text-left">
-                <Label htmlFor="edit-age" className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">Tuổi <span className="text-red-400">*</span></Label>
-                <Input id="edit-age" required type="number" min="0" max="150" value={ageStr} onChange={(e) => setAgeStr(e.target.value)} className="rounded-xl border-hairline h-10 bg-surface-secondary/20 focus:bg-white font-bold text-xs" />
+                <Label
+                  htmlFor="edit-age"
+                  className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary"
+                >
+                  Tuổi <span className="text-red-400">*</span>
+                </Label>
+                <Input
+                  id="edit-age"
+                  required
+                  type="number"
+                  min="0"
+                  max="150"
+                  value={ageStr}
+                  onChange={(e) => setAgeStr(e.target.value)}
+                  className="rounded-xl border-hairline h-10 bg-surface-secondary/20 focus:bg-white font-bold text-xs"
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2 text-left">
-                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">Giới tính</Label>
-                <Select value={gender} onValueChange={(val) => setGender(val as "Nam" | "Nữ")}>
+                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">
+                  Giới tính
+                </Label>
+                <Select
+                  value={gender}
+                  onValueChange={(val) => setGender(val as "Nam" | "Nữ")}
+                >
                   <SelectTrigger className="w-full rounded-xl border border-slate-200 h-10 bg-white font-bold text-xs shadow-none text-slate-800">
                     <SelectValue placeholder="Chọn giới tính..." />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                    <SelectItem value="Nam" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Nam</SelectItem>
-                    <SelectItem value="Nữ" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Nữ</SelectItem>
+                    <SelectItem
+                      value="Nam"
+                      className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"
+                    >
+                      Nam
+                    </SelectItem>
+                    <SelectItem
+                      value="Nữ"
+                      className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"
+                    >
+                      Nữ
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2 text-left">
-                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">Trạng thái lâm sàng</Label>
-                <Select value={status} onValueChange={(val) => setStatus(val as any)}>
+                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">
+                  Trạng thái lâm sàng
+                </Label>
+                <Select
+                  value={status}
+                  onValueChange={(val) => setStatus(val as any)}
+                >
                   <SelectTrigger className="w-full rounded-xl border border-slate-200 h-10 bg-white font-bold text-xs shadow-none text-slate-800">
                     <SelectValue placeholder="Chọn trạng thái..." />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                    <SelectItem value="Đang điều trị" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Đang điều trị</SelectItem>
-                    <SelectItem value="Chờ tái khám" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Chờ tái khám</SelectItem>
-                    <SelectItem value="Đã xuất viện" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Đã xuất viện</SelectItem>
+                    <SelectItem
+                      value="Đang điều trị"
+                      className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"
+                    >
+                      Đang điều trị
+                    </SelectItem>
+                    <SelectItem
+                      value="Chờ tái khám"
+                      className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"
+                    >
+                      Chờ tái khám
+                    </SelectItem>
+                    <SelectItem
+                      value="Đã xuất viện"
+                      className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"
+                    >
+                      Đã xuất viện
+                    </SelectItem>
+                    <SelectItem
+                      value="Chờ duyệt"
+                      className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"
+                    >
+                      Chờ duyệt
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <StaffMultiSelect staff={staff} selectedIds={assignedStaff} onChange={setAssignedStaff} />
+            <StaffMultiSelect
+              staff={staff}
+              selectedIds={assignedStaff}
+              onChange={setAssignedStaff}
+            />
 
             <div className="space-y-2 text-left">
-              <Label htmlFor="edit-summary" className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">Tiền sử & Chẩn đoán sơ bộ</Label>
-              <Textarea id="edit-summary" value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Mô tả chẩn đoán lâm sàng..." className="rounded-xl border-hairline bg-surface-secondary/20 focus:bg-white min-h-[90px] text-xs font-semibold leading-relaxed" />
+              <Label
+                htmlFor="edit-summary"
+                className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary"
+              >
+                Tiền sử & Chẩn đoán sơ bộ
+              </Label>
+              <Textarea
+                id="edit-summary"
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                placeholder="Mô tả chẩn đoán lâm sàng..."
+                className="rounded-xl border-hairline bg-surface-secondary/20 focus:bg-white min-h-[90px] text-xs font-semibold leading-relaxed"
+              />
             </div>
           </div>
 
           <DialogFooter className="pt-4 border-t border-slate-100 flex-col sm:flex-col gap-2">
-            <Button type="submit" disabled={!name || !ageStr || submitting} className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl h-11 text-xs font-black uppercase tracking-[0.15em] hover:opacity-95 shadow-md border-b-2 border-white/10 active:border-b-0 active:translate-y-0.5">
+            <Button
+              type="submit"
+              disabled={!name || !ageStr || submitting}
+              className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl h-11 text-xs font-black uppercase tracking-[0.15em] hover:opacity-95 shadow-md border-b-2 border-white/10 active:border-b-0 active:translate-y-0.5"
+            >
               {submitting ? "Đang lưu..." : "Lưu thay đổi"}
             </Button>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50"
+            >
               Hủy bỏ
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 /* ─── Delete Patient Dialog ─── */
 function DeletePatientDialog({
-  patient, open, onOpenChange, onDelete,
+  patient,
+  open,
+  onOpenChange,
+  onDelete,
 }: {
-  patient: Patient
-  open: boolean
-  onOpenChange: (v: boolean) => void
-  onDelete: (id: string) => void
+  patient: Patient;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onDelete: (id: string) => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -398,100 +608,163 @@ function DeletePatientDialog({
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
-              <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">Xác nhận xóa</DialogTitle>
-              <DialogDescription className="text-slate-500 mt-1.5 text-[11px] font-semibold">Tất cả dữ liệu bệnh nhân và lịch hẹn liên quan sẽ bị xóa vĩnh viễn.</DialogDescription>
+              <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">
+                Xác nhận xóa
+              </DialogTitle>
+              <DialogDescription className="text-slate-500 mt-1.5 text-[11px] font-semibold">
+                Tất cả dữ liệu bệnh nhân và lịch hẹn liên quan sẽ bị xóa vĩnh
+                viễn.
+              </DialogDescription>
             </div>
           </DialogHeader>
           <div className="bg-red-50/80 border border-red-100 rounded-xl p-4 space-y-1.5 mb-6 text-left">
-            <p className="text-xs font-black text-slate-800 uppercase tracking-tight">{patient.name}</p>
-            <p className="text-[10px] font-bold text-slate-500">Mã bệnh nhân: <span className="text-slate-700">{patient.id}</span></p>
+            <p className="text-xs font-black text-slate-800 uppercase tracking-tight">
+              {patient.name}
+            </p>
+            <p className="text-[10px] font-bold text-slate-500">
+              Mã bệnh nhân: <span className="text-slate-700">{patient.id}</span>
+            </p>
           </div>
           <DialogFooter className="flex-col sm:flex-col gap-2 bg-white">
-            <Button onClick={() => { onDelete(patient.id); onOpenChange(false) }} className="w-full rounded-xl h-11 text-xs font-black uppercase tracking-[0.15em] bg-gradient-to-r from-red-500 to-rose-600 text-white hover:opacity-95 shadow-md shadow-red-200 border-b-2 border-white/10 active:border-b-0 active:translate-y-0.5">
+            <Button
+              onClick={() => {
+                onDelete(patient.id);
+                onOpenChange(false);
+              }}
+              className="w-full rounded-xl h-11 text-xs font-black uppercase tracking-[0.15em] bg-gradient-to-r from-red-500 to-rose-600 text-white hover:opacity-95 shadow-md shadow-red-200 border-b-2 border-white/10 active:border-b-0 active:translate-y-0.5"
+            >
               <Trash2 className="w-3.5 h-3.5 mr-2" /> Xóa vĩnh viễn
             </Button>
-            <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50"
+            >
               Hủy bỏ
             </Button>
           </DialogFooter>
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 function PatientRow({
   patient,
   staff,
   onEdit,
-  onDelete
+  onDelete,
+  onApprove,
 }: {
-  patient: Patient
-  staff: Staff[]
-  onEdit: (p: Patient) => void
-  onDelete: (id: string) => void
+  patient: Patient;
+  staff: Staff[];
+  onEdit: (p: Patient) => void;
+  onDelete: (id: string) => void;
+  onApprove: (id: string) => void;
 }) {
-  const [expanded, setExpanded] = React.useState(false)
-  const [editOpen, setEditOpen] = React.useState(false)
-  const [deleteOpen, setDeleteOpen] = React.useState(false)
-  const assignedStaffMembers = staff.filter(s => patient.assignedStaff.includes(s.id))
+  const [expanded, setExpanded] = React.useState(false);
+  const [editOpen, setEditOpen] = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
+  const assignedStaffMembers = staff.filter((s) =>
+    patient.assignedStaff.includes(s.id),
+  );
 
   return (
     <>
-      <TableRow 
+      <TableRow
         className={cn(
           "group transition-all cursor-pointer relative",
-          expanded ? "bg-surface-tinted/40 shadow-inner" : "hover:bg-surface-secondary/50"
+          expanded
+            ? "bg-surface-tinted/40 shadow-inner"
+            : "hover:bg-surface-secondary/50",
         )}
         onClick={() => setExpanded(!expanded)}
       >
         <TableCell className="px-8 py-6">
-           <span className="font-mono text-[10px] font-black text-primary-strong bg-surface-tinted px-2.5 py-1.5 rounded-xl border border-primary/20 shadow-xs">#{patient.id.replace('BN-', '')}</span>
+          <span className="font-mono text-[10px] font-black text-primary-strong bg-surface-tinted px-2.5 py-1.5 rounded-xl border border-primary/20 shadow-xs">
+            #{patient.id.replace("BN-", "")}
+          </span>
         </TableCell>
         <TableCell className="px-8 py-6">
           <div className="flex items-center gap-5">
-            <div className={cn(
-              "w-14 h-14 rounded-[20px] flex items-center justify-center font-black text-primary text-base shadow-sm border-2 border-white transition-all duration-500 group-hover:rotate-3 group-hover:scale-105",
-              expanded ? "bg-primary text-white rotate-0! scale-100!" : "bg-surface-secondary"
-            )}>
-              {patient.name.split(' ').map(n => n[0]).join('')}
+            <div
+              className={cn(
+                "w-14 h-14 rounded-[20px] flex items-center justify-center font-black text-primary text-base shadow-sm border-2 border-white transition-all duration-500 group-hover:rotate-3 group-hover:scale-105",
+                expanded
+                  ? "bg-primary text-white rotate-0! scale-100!"
+                  : "bg-surface-secondary",
+              )}
+            >
+              {patient.name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")}
             </div>
             <div className="text-left">
-              <p className="font-bold text-lg text-foreground group-hover:text-primary transition-colors duration-300 leading-tight">{patient.name}</p>
+              <p className="font-bold text-lg text-foreground group-hover:text-primary transition-colors duration-300 leading-tight">
+                {patient.name}
+              </p>
               <div className="flex items-center gap-2 mt-1.5">
-                <span className="text-[9px] font-black text-on-surface-tertiary uppercase tracking-[0.2em]">{patient.gender}</span>
+                <span className="text-[9px] font-black text-on-surface-tertiary uppercase tracking-[0.2em]">
+                  {patient.gender}
+                </span>
                 <div className="w-1 h-1 rounded-full bg-hairline" />
-                <span className="text-[9px] font-black text-on-surface-tertiary uppercase tracking-[0.2em]">{patient.age} TUỔI</span>
+                <span className="text-[9px] font-black text-on-surface-tertiary uppercase tracking-[0.2em]">
+                  {patient.age} TUỔI
+                </span>
               </div>
             </div>
           </div>
         </TableCell>
         <TableCell className="px-8 py-6 text-left">
           <div className="flex items-center gap-4">
-             <div className="w-10 h-10 rounded-2xl bg-surface-secondary flex items-center justify-center text-on-surface-tertiary group-hover:bg-white transition-all shadow-xs group-hover:text-primary">
-                <Calendar className="w-5 h-5" />
-             </div>
-             <div>
-                <p className="text-sm font-bold text-foreground leading-tight">{patient.lastVisit || "Chưa khám"}</p>
-                <p className="text-[10px] text-on-surface-tertiary font-black font-mono tracking-tighter uppercase mt-1 opacity-70">{patient.lastVisitTime || "--:--"}</p>
-             </div>
+            <div className="w-10 h-10 rounded-2xl bg-surface-secondary flex items-center justify-center text-on-surface-tertiary group-hover:bg-white transition-all shadow-xs group-hover:text-primary">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground leading-tight">
+                {patient.lastVisit || "Chưa khám"}
+              </p>
+              <p className="text-[10px] text-on-surface-tertiary font-black font-mono tracking-tighter uppercase mt-1 opacity-70">
+                {patient.lastVisitTime || "--:--"}
+              </p>
+            </div>
           </div>
         </TableCell>
         <TableCell className="px-8 py-6 text-left">
-          <span className={cn(
-            "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] border transition-all duration-300",
-            patient.status === "Đang điều trị" 
-              ? "bg-primary text-white border-primary shadow-lg shadow-primary/20" 
-              : patient.status === "Chờ tái khám"
-                ? "bg-amber-100 text-amber-800 border-amber-200"
-                : "bg-slate-100 text-slate-700 border-slate-200"
-          )}>
-            {patient.status === "Đang điều trị" && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+          <span
+            className={cn(
+              "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] border transition-all duration-300",
+              patient.status === "Đang điều trị"
+                ? "bg-primary text-white border-primary shadow-lg shadow-primary/20"
+                : patient.status === "Chờ duyệt"
+                  ? "bg-slate-100 text-slate-700 border-slate-200"
+                  : patient.status === "Chờ tái khám"
+                    ? "bg-amber-100 text-amber-800 border-amber-200"
+                    : "bg-slate-100 text-slate-700 border-slate-200",
+            )}
+          >
+            {patient.status === "Đang điều trị" && (
+              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            )}
             {patient.status}
           </span>
         </TableCell>
         <TableCell className="px-8 py-6 text-right">
-          <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="flex items-center justify-end gap-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {patient.status === "Chờ duyệt" && (
+              <Button
+                onClick={() => onApprove(patient.id)}
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 rounded-xl border-hairline bg-white hover:bg-emerald-50 hover:text-emerald-600 transition-all shadow-xs"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+              </Button>
+            )}
             <Button
               onClick={() => setEditOpen(true)}
               variant="outline"
@@ -511,12 +784,12 @@ function PatientRow({
           </div>
         </TableCell>
       </TableRow>
-      
+
       <AnimatePresence>
         {expanded && (
           <TableRow className="bg-surface-tinted/10 border-none! hover:bg-surface-tinted/10">
             <TableCell colSpan={5} className="px-8 py-0">
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -528,15 +801,19 @@ function PatientRow({
                       <div className="w-10 h-10 rounded-2xl bg-white shadow-md flex items-center justify-center text-primary">
                         <FileText className="w-5.5 h-5.5" />
                       </div>
-                      <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-primary-strong">Thông tin y khoa</h4>
+                      <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-primary-strong">
+                        Thông tin y khoa
+                      </h4>
                     </div>
                     <div className="bg-white p-8 rounded-[32px] border border-hairline shadow-xl shadow-black/[0.02] relative group/box overflow-hidden">
-                       <div className="absolute top-0 right-0 w-24 h-24 bg-surface-tinted/50 rounded-bl-[60px] -mr-12 -mt-12 transition-all group-hover/box:scale-110" />
-                       <div className="flex items-center gap-2 mb-4 relative z-10">
-                          <ClipboardList className="w-4 h-4 text-primary" />
-                          <span className="text-[10px] font-black text-on-surface-tertiary uppercase tracking-widest">Chẩn đoán hiện tại</span>
-                       </div>
-                       <p className="text-base text-foreground leading-relaxed font-medium relative z-10 antialiased whitespace-pre-wrap break-words">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-surface-tinted/50 rounded-bl-[60px] -mr-12 -mt-12 transition-all group-hover/box:scale-110" />
+                      <div className="flex items-center gap-2 mb-4 relative z-10">
+                        <ClipboardList className="w-4 h-4 text-primary" />
+                        <span className="text-[10px] font-black text-on-surface-tertiary uppercase tracking-widest">
+                          Chẩn đoán hiện tại
+                        </span>
+                      </div>
+                      <p className="text-base text-foreground leading-relaxed font-medium relative z-10 antialiased whitespace-pre-wrap break-words">
                         {patient.summary || "Chưa có chẩn đoán lâm sàng."}
                       </p>
                     </div>
@@ -547,22 +824,37 @@ function PatientRow({
                       <div className="w-10 h-10 rounded-2xl bg-white shadow-md flex items-center justify-center text-primary">
                         <Stethoscope className="w-5.5 h-5.5" />
                       </div>
-                      <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-primary-strong">Nhân sự phụ trách</h4>
+                      <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-primary-strong">
+                        Nhân sự phụ trách
+                      </h4>
                     </div>
                     <div className="space-y-4">
                       {assignedStaffMembers.length > 0 ? (
-                        assignedStaffMembers.map(s => (
-                          <div key={s.id} className="flex items-center gap-5 bg-white p-4.5 rounded-[24px] border border-hairline hover:border-primary/30 hover:shadow-lg transition-all group/member shadow-sm cursor-pointer">
-                            <img src={s.avatar || "https://i.pravatar.cc/150"} className="w-12 h-12 rounded-[18px] object-cover ring-2 ring-white shadow-md transition-transform group-hover/member:scale-110" alt={s.name} />
+                        assignedStaffMembers.map((s) => (
+                          <div
+                            key={s.id}
+                            className="flex items-center gap-5 bg-white p-4.5 rounded-[24px] border border-hairline hover:border-primary/30 hover:shadow-lg transition-all group/member shadow-sm cursor-pointer"
+                          >
+                            <img
+                              src={s.avatar || "https://i.pravatar.cc/150"}
+                              className="w-12 h-12 rounded-[18px] object-cover ring-2 ring-white shadow-md transition-transform group-hover/member:scale-110"
+                              alt={s.name}
+                            />
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-black text-foreground group-hover/member:text-primary transition-colors truncate">{s.name}</p>
-                              <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-[0.15em] mt-1 opacity-80">{s.role.split('•')[0]}</p>
+                              <p className="text-sm font-black text-foreground group-hover/member:text-primary transition-colors truncate">
+                                {s.name}
+                              </p>
+                              <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-[0.15em] mt-1 opacity-80">
+                                {s.role.split("•")[0]}
+                              </p>
                             </div>
                             <ChevronRight className="w-4 h-4 text-hairline group-hover/member:text-primary transition-colors" />
                           </div>
                         ))
                       ) : (
-                        <p className="text-xs text-on-surface-tertiary font-bold p-4 bg-white rounded-[24px] border border-hairline">Chưa có chuyên gia nào được chỉ định.</p>
+                        <p className="text-xs text-on-surface-tertiary font-bold p-4 bg-white rounded-[24px] border border-hairline">
+                          Chưa có chuyên gia nào được chỉ định.
+                        </p>
                       )}
                     </div>
                   </div>
@@ -573,7 +865,9 @@ function PatientRow({
                         <div className="w-10 h-10 rounded-2xl bg-white shadow-md flex items-center justify-center text-primary">
                           <History className="w-5.5 h-5.5" />
                         </div>
-                        <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-primary-strong">Nhật ký điều trị</h4>
+                        <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-primary-strong">
+                          Nhật ký điều trị
+                        </h4>
                       </div>
                       <button className="text-primary-strong text-[9px] font-black uppercase tracking-widest hover:underline flex items-center gap-2 bg-surface-tinted px-3 py-1.5 rounded-full border border-primary/10 transition-all hover:bg-primary hover:text-white">
                         LỊCH SỬ <ArrowUpRight className="w-3.5 h-3.5" />
@@ -581,14 +875,27 @@ function PatientRow({
                     </div>
                     <div className="bg-white rounded-[32px] border border-hairline overflow-hidden shadow-sm divide-y divide-hairline">
                       {[
-                        { title: 'Thăm khám định kỳ', date: 'Mới nhất', type: 'Clinical' },
+                        {
+                          title: "Thăm khám định kỳ",
+                          date: "Mới nhất",
+                          type: "Clinical",
+                        },
                       ].map((item, i) => (
-                        <div key={i} className="flex items-center justify-between p-5 hover:bg-surface-secondary/40 transition-all cursor-pointer group/item">
+                        <div
+                          key={i}
+                          className="flex items-center justify-between p-5 hover:bg-surface-secondary/40 transition-all cursor-pointer group/item"
+                        >
                           <div>
-                            <span className="text-xs font-black text-foreground group-hover/item:text-primary transition-colors">{item.title}</span>
-                            <p className="text-[8px] font-black text-on-surface-tertiary uppercase tracking-widest mt-1 opacity-60">{item.type}</p>
+                            <span className="text-xs font-black text-foreground group-hover/item:text-primary transition-colors">
+                              {item.title}
+                            </span>
+                            <p className="text-[8px] font-black text-on-surface-tertiary uppercase tracking-widest mt-1 opacity-60">
+                              {item.type}
+                            </p>
                           </div>
-                          <span className="font-mono text-[10px] font-black text-on-surface-tertiary uppercase bg-surface-secondary/50 px-2 py-1 rounded-lg border border-hairline">{item.date}</span>
+                          <span className="font-mono text-[10px] font-black text-on-surface-tertiary uppercase bg-surface-secondary/50 px-2 py-1 rounded-lg border border-hairline">
+                            {item.date}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -614,7 +921,7 @@ function PatientRow({
         onDelete={onDelete}
       />
     </>
-  )
+  );
 }
 
 export default function PatientsPage() {
@@ -639,7 +946,7 @@ export default function PatientsPage() {
       fetch(`${API_URL}/staff`).then((res) => {
         if (!res.ok) throw new Error("Staff fetch failed");
         return res.json();
-      })
+      }),
     ])
       .then(([patientsData, staffData]) => {
         setPatientList(patientsData);
@@ -685,12 +992,34 @@ export default function PatientsPage() {
         return res.json();
       })
       .then((saved) => {
-        setPatientList((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
+        setPatientList((prev) =>
+          prev.map((p) => (p.id === saved.id ? saved : p)),
+        );
       })
       .catch((err) => {
         console.error("Lỗi cập nhật bệnh nhân trong SQL Server:", err);
       });
-  }
+  };
+
+  const handleApprovePatient = (id: string) => {
+    fetch(`${API_URL}/patients/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "Đang điều trị" }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Approve patient failed");
+        return res.json();
+      })
+      .then((saved) => {
+        setPatientList((prev) =>
+          prev.map((p) => (p.id === saved.id ? saved : p)),
+        );
+      })
+      .catch((err) => {
+        console.error("Lỗi duyệt bệnh nhân trong SQL Server:", err);
+      });
+  };
 
   const handleDeletePatient = (id: string) => {
     fetch(`${API_URL}/patients/${id}`, {
@@ -709,22 +1038,38 @@ export default function PatientsPage() {
     const matchQuery =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.summary && p.summary.toLowerCase().includes(searchQuery.toLowerCase()));
-      
+      (p.summary &&
+        p.summary.toLowerCase().includes(searchQuery.toLowerCase()));
+
     const matchStatus = statusFilter === "Tất cả" || p.status === statusFilter;
-    
+
     return matchQuery && matchStatus;
   });
 
   const ITEMS_PER_PAGE = 5;
-  const totalPages = Math.max(1, Math.ceil(filteredPatients.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredPatients.length / ITEMS_PER_PAGE),
+  );
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, filteredPatients.length);
+  const endIndex = Math.min(
+    startIndex + ITEMS_PER_PAGE,
+    filteredPatients.length,
+  );
   const paginatedPatients = filteredPatients.slice(startIndex, endIndex);
 
   const exportToCSV = () => {
-    const headers = ["Mã bệnh nhân", "Họ và tên", "Tuổi", "Giới tính", "Ngày khám cuối", "Giờ khám cuối", "Trạng thái", "Tiền sử chẩn đoán"];
-    const rows = filteredPatients.map(p => [
+    const headers = [
+      "Mã bệnh nhân",
+      "Họ và tên",
+      "Tuổi",
+      "Giới tính",
+      "Ngày khám cuối",
+      "Giờ khám cuối",
+      "Trạng thái",
+      "Tiền sử chẩn đoán",
+    ];
+    const rows = filteredPatients.map((p) => [
       p.id,
       p.name,
       p.age,
@@ -732,9 +1077,16 @@ export default function PatientsPage() {
       p.lastVisit || "",
       p.lastVisitTime || "",
       p.status,
-      p.summary || ""
+      p.summary || "",
     ]);
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const csvContent =
+      "\uFEFF" +
+      [
+        headers.join(","),
+        ...rows.map((e) =>
+          e.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(","),
+        ),
+      ].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -755,88 +1107,130 @@ export default function PatientsPage() {
           transition={{ duration: 0.8 }}
         >
           <div className="flex items-center gap-3 mb-6">
-             <div className="flex items-center gap-2 bg-surface-tinted px-3 py-1.5 rounded-full border border-primary/10 shadow-sm">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                <span className="eyebrow text-[10px] font-black uppercase tracking-widest text-primary-strong">Hồ sơ bệnh án số hóa</span>
-             </div>
-             <div className="w-px h-4 bg-hairline" />
-             <span className="text-[10px] font-black text-on-surface-tertiary uppercase tracking-widest">{patientList.length} Bệnh nhân</span>
+            <div className="flex items-center gap-2 bg-surface-tinted px-3 py-1.5 rounded-full border border-primary/10 shadow-sm">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              <span className="eyebrow text-[10px] font-black uppercase tracking-widest text-primary-strong">
+                Hồ sơ bệnh án số hóa
+              </span>
+            </div>
+            <div className="w-px h-4 bg-hairline" />
+            <span className="text-[10px] font-black text-on-surface-tertiary uppercase tracking-widest">
+              {patientList.length} Bệnh nhân
+            </span>
           </div>
-          <h1 className="text-5xl md:text-6xl font-black tight-tracking text-foreground leading-[1.1] uppercase text-left">Quản lý <br />Bệnh nhân</h1>
+          <h1 className="text-5xl md:text-6xl font-black tight-tracking text-foreground leading-[1.1] uppercase text-left">
+            Quản lý <br />
+            Bệnh nhân
+          </h1>
           <p className="text-xl text-muted-foreground mt-4 max-w-2xl font-medium leading-relaxed antialiased text-left">
-            Hệ thống quản lý bệnh án số hóa theo tiêu chuẩn lâm sàng kết nối trực tiếp SQL Server. Theo dõi sát sao quá trình hồi phục và lịch trình thăm khám tại gia.
+            Hệ thống quản lý bệnh án số hóa theo tiêu chuẩn lâm sàng kết nối
+            trực tiếp SQL Server. Theo dõi sát sao quá trình hồi phục và lịch
+            trình thăm khám tại gia.
           </p>
         </motion.div>
         <div className="shrink-0 relative group">
-           <div className="absolute -inset-4 bg-primary/5 rounded-[40px] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
-           <AddPatientDialog onAdd={handleAddPatient} staff={staffList} />
+          <div className="absolute -inset-4 bg-primary/5 rounded-[40px] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+          <AddPatientDialog onAdd={handleAddPatient} staff={staffList} />
         </div>
       </div>
 
       {/* Enhanced Control Bar */}
       <div className="flex flex-col lg:flex-row items-center gap-6">
-         <div className="relative flex-1 w-full group">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-tertiary group-focus-within:text-primary transition-all duration-300" />
-            <Input 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm kiếm danh tính, mã hồ sơ hoặc liên lạc..." 
-              className="pl-14 h-16 rounded-[24px] bg-white border-hairline focus:ring-8 focus:ring-primary/5 transition-all text-base font-bold shadow-xl shadow-black/[0.02] border-b-2 border-b-hairline placeholder:text-on-surface-tertiary placeholder:font-medium"
-            />
-         </div>
-         <div className="flex items-center gap-4 w-full lg:w-auto">
-            {/* Status Filter Pills */}
-            <div className="flex bg-slate-100 rounded-[20px] p-1 border border-hairline/60">
-              {["Tất cả", "Đang điều trị", "Chờ tái khám", "Đã xuất viện"].map((status) => (
-                <button
-                  key={status}
-                  onClick={() => setStatusFilter(status)}
-                  className={cn(
-                    "px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all duration-200",
-                    statusFilter === status
-                      ? "bg-white text-slate-800 shadow-sm border border-slate-200/50"
-                      : "text-slate-400 hover:text-slate-600"
-                  )}
-                >
-                  {status}
-                </button>
-              ))}
-            </div>
-            <Button onClick={exportToCSV} variant="outline" className="h-16 px-8 rounded-[24px] border-hairline bg-white font-black text-[11px] uppercase tracking-[0.15em] flex items-center gap-3 shadow-lg shadow-black/[0.03] transition-all hover:bg-surface-secondary active:scale-95 group">
-               <Download className="w-4.5 h-4.5 text-primary group-hover:-translate-y-1 transition-transform" /> Xuất báo cáo
-            </Button>
-         </div>
+        <div className="relative flex-1 w-full group">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-tertiary group-focus-within:text-primary transition-all duration-300" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Tìm kiếm danh tính, mã hồ sơ hoặc liên lạc..."
+            className="pl-14 h-16 rounded-[24px] bg-white border-hairline focus:ring-8 focus:ring-primary/5 transition-all text-base font-bold shadow-xl shadow-black/[0.02] border-b-2 border-b-hairline placeholder:text-on-surface-tertiary placeholder:font-medium"
+          />
+        </div>
+        <div className="flex items-center gap-4 w-full lg:w-auto">
+          {/* Status Filter Pills */}
+          <div className="flex bg-slate-100 rounded-[20px] p-1 border border-hairline/60">
+            {[
+              "Tất cả",
+              "Chờ duyệt",
+              "Đang điều trị",
+              "Chờ tái khám",
+              "Đã xuất viện",
+            ].map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={cn(
+                  "px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all duration-200",
+                  statusFilter === status
+                    ? "bg-white text-slate-800 shadow-sm border border-slate-200/50"
+                    : "text-slate-400 hover:text-slate-600",
+                )}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
+          <Button
+            onClick={exportToCSV}
+            variant="outline"
+            className="h-16 px-8 rounded-[24px] border-hairline bg-white font-black text-[11px] uppercase tracking-[0.15em] flex items-center gap-3 shadow-lg shadow-black/[0.03] transition-all hover:bg-surface-secondary active:scale-95 group"
+          >
+            <Download className="w-4.5 h-4.5 text-primary group-hover:-translate-y-1 transition-transform" />{" "}
+            Xuất báo cáo
+          </Button>
+        </div>
       </div>
 
       {/* Main Table Section */}
       <div className="bg-white border border-hairline rounded-[48px] overflow-hidden shadow-2xl shadow-black/[0.04] relative">
         <div className="h-1.5 w-full bg-linear-to-r from-primary/10 via-primary to-primary/10 opacity-50" />
-        
+
         <div className="overflow-x-auto">
           {loading ? (
             <div className="py-24 flex flex-col items-center justify-center gap-4">
               <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs font-black uppercase tracking-widest text-slate-400">Đang đồng bộ dữ liệu SQL Server...</p>
+              <p className="text-xs font-black uppercase tracking-widest text-slate-400">
+                Đang đồng bộ dữ liệu SQL Server...
+              </p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="bg-surface-secondary/40 border-b border-hairline hover:bg-surface-secondary/40">
-                  <TableHead className="px-8 py-8 text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.25em]">Định danh</TableHead>
-                  <TableHead className="px-8 py-8 text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.25em]">Bệnh nhân & Thông tin cá nhân</TableHead>
-                  <TableHead className="px-8 py-8 text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.25em]">Phiên khám cuối</TableHead>
-                  <TableHead className="px-8 py-8 text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.25em]">Trạng thái lâm sàng</TableHead>
-                  <TableHead className="px-8 py-8 text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.25em] text-right">Thao tác</TableHead>
+                  <TableHead className="px-8 py-8 text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.25em]">
+                    Định danh
+                  </TableHead>
+                  <TableHead className="px-8 py-8 text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.25em]">
+                    Bệnh nhân & Thông tin cá nhân
+                  </TableHead>
+                  <TableHead className="px-8 py-8 text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.25em]">
+                    Phiên khám cuối
+                  </TableHead>
+                  <TableHead className="px-8 py-8 text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.25em]">
+                    Trạng thái lâm sàng
+                  </TableHead>
+                  <TableHead className="px-8 py-8 text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.25em] text-right">
+                    Thao tác
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-hairline/40">
                 {paginatedPatients.length > 0 ? (
                   paginatedPatients.map((patient) => (
-                    <PatientRow key={patient.id} patient={patient} staff={staffList} onEdit={handleEditPatient} onDelete={handleDeletePatient} />
+                    <PatientRow
+                      key={patient.id}
+                      patient={patient}
+                      staff={staffList}
+                      onEdit={handleEditPatient}
+                      onDelete={handleDeletePatient}
+                      onApprove={handleApprovePatient}
+                    />
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-20 text-center font-bold text-slate-400 uppercase text-xs tracking-widest">
+                    <TableCell
+                      colSpan={5}
+                      className="py-20 text-center font-bold text-slate-400 uppercase text-xs tracking-widest"
+                    >
                       Không tìm thấy hồ sơ bệnh nhân nào
                     </TableCell>
                   </TableRow>
@@ -845,15 +1239,23 @@ export default function PatientsPage() {
             </Table>
           )}
         </div>
-        
+
         <div className="px-10 py-8 border-t border-hairline flex flex-col md:flex-row items-center justify-between bg-surface-secondary/10 gap-6">
           <div className="flex items-center gap-4">
-             <div className="w-2 h-2 rounded-full bg-primary" />
-             <p className="text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.2em]">Hiển thị <span className="text-foreground">{filteredPatients.length > 0 ? startIndex + 1 : 0}-{endIndex}</span> trong số <span className="text-foreground">{filteredPatients.length}</span> hồ sơ hệ thống</p>
+            <div className="w-2 h-2 rounded-full bg-primary" />
+            <p className="text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.2em]">
+              Hiển thị{" "}
+              <span className="text-foreground">
+                {filteredPatients.length > 0 ? startIndex + 1 : 0}-{endIndex}
+              </span>{" "}
+              trong số{" "}
+              <span className="text-foreground">{filteredPatients.length}</span>{" "}
+              hồ sơ hệ thống
+            </p>
           </div>
           <div className="flex items-center gap-4">
             <Button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
               variant="outline"
               size="icon"
@@ -862,12 +1264,20 @@ export default function PatientsPage() {
               <ChevronLeft className="w-6 h-6" />
             </Button>
             <div className="flex items-center gap-3 bg-white border border-hairline px-6 h-12 rounded-2xl shadow-md group">
-               <span className="text-sm font-black text-primary group-hover:scale-110 transition-transform">{currentPage}</span>
-               <span className="text-xs font-bold text-muted-foreground opacity-30">/</span>
-               <span className="text-xs font-bold text-on-surface-tertiary uppercase tracking-widest">{totalPages}</span>
+              <span className="text-sm font-black text-primary group-hover:scale-110 transition-transform">
+                {currentPage}
+              </span>
+              <span className="text-xs font-bold text-muted-foreground opacity-30">
+                /
+              </span>
+              <span className="text-xs font-bold text-on-surface-tertiary uppercase tracking-widest">
+                {totalPages}
+              </span>
             </div>
             <Button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+              }
               disabled={currentPage === totalPages}
               variant="outline"
               size="icon"
@@ -879,5 +1289,5 @@ export default function PatientsPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

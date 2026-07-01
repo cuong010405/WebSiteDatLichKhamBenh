@@ -1,13 +1,28 @@
 import { Router } from "express";
-import { getVisitList, getVisitById, createVisit, updateVisit, deleteVisit } from "../services/visit";
+import {
+  getVisitList,
+  getVisitById,
+  createVisit,
+  updateVisit,
+  deleteVisit,
+} from "../services/visit";
 
 const router = Router();
 
 router.get("/", async (req, res) => {
   try {
-    const visits = await getVisitList();
+    const userId =
+      typeof req.query.userId === "string" ? req.query.userId : undefined;
+    const status =
+      typeof req.query.status === "string" ? req.query.status : undefined;
+    const paymentStatus =
+      typeof req.query.paymentStatus === "string"
+        ? req.query.paymentStatus
+        : undefined;
+    const visits = await getVisitList(userId, status, paymentStatus);
     res.json(visits);
   } catch (error: any) {
+    console.error("Visits route error:", error);
     res.status(500).json({ error: error.message || "Lỗi máy chủ nội bộ" });
   }
 });
@@ -17,7 +32,9 @@ router.post("/", async (req, res) => {
     const newVisit = await createVisit(req.body);
     res.status(201).json(newVisit);
   } catch (error: any) {
-    res.status(400).json({ error: error.message || "Yêu cầu không hợp lệ" });
+    console.error("Visits POST error:", error);
+    const status = error?.statusCode || 500;
+    res.status(status).json({ error: error.message || "Yêu cầu không hợp lệ" });
   }
 });
 

@@ -37,17 +37,23 @@ model Patient {
 }
 
 model Visit {
-  Id        String  @id(map: "PK__Visit__3214EC07DB2D450F") @db.NVarChar(50)
-  Type      String? @db.NVarChar(100)
-  PatientId String  @db.NVarChar(50)
-  StaffId   String  @db.NVarChar(50)
-  Time      String? @db.NVarChar(100)
-  StartTime String? @db.NVarChar(100)
-  EndTime   String? @db.NVarChar(100)
-  Duration  String? @db.NVarChar(100)
-  Status    String? @db.NVarChar(100)
-  Patient   Patient @relation(fields: [PatientId], references: [Id], onUpdate: NoAction, map: "FK_Visit_Patient")
-  Staff     Staff   @relation(fields: [StaffId], references: [Id], onUpdate: NoAction, map: "FK_Visit_Staff")
+  Id            String   @id(map: "PK__Visit__3214EC07DB2D450F") @db.NVarChar(50)
+  Type          String?  @db.NVarChar(100)
+  PatientId     String?  @db.NVarChar(50)
+  UserId        String?  @db.NVarChar(50)
+  StaffId       String   @db.NVarChar(50)
+  Time          String?  @db.NVarChar(100)
+  StartTime     String?  @db.NVarChar(100)
+  EndTime       String?  @db.NVarChar(100)
+  Duration      String?  @db.NVarChar(100)
+  Status        String?  @db.NVarChar(100)
+  PaymentMethod String?  @db.NVarChar(100)
+  PaymentAmount String?  @db.NVarChar(100)
+  PaymentNote   String?  @db.NVarChar(Max)
+  PaymentStatus String?  @db.NVarChar(100)
+  Patient       Patient? @relation(fields: [PatientId], references: [Id], onUpdate: NoAction, map: "FK_Visit_Patient")
+  User          User?    @relation(fields: [UserId], references: [Id], onUpdate: NoAction, map: "FK_Visit_User")
+  Staff         Staff    @relation(fields: [StaffId], references: [Id], onUpdate: NoAction, map: "FK_Visit_Staff")
 }
 
 model ActivityLog {
@@ -77,4 +83,5 @@ model User {
   Phone        String?  @db.NVarChar(30)
   Role         String   @default("customer") @db.NVarChar(20)
   CreatedAt    DateTime @default(now()) @db.DateTime
+  Visit        Visit[]
 }

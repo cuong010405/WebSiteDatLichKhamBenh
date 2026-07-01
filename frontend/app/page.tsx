@@ -36,7 +36,7 @@ import {
   Stethoscope,
   Clock3,
   Send,
-  FileText
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,30 +64,97 @@ import { API_URL } from "@/lib/api";
 
 // Service pricing mapping
 const SERVICES = [
-  { id: "s1", name: "Kiểm tra sức khỏe & Đo sinh hiệu", price: 200000, duration: "1h", type: "Clinical" },
-  { id: "s2", name: "Vật lý trị liệu & Phục hồi chức năng", price: 500000, duration: "1.5h", type: "Rehab" },
-  { id: "s3", name: "Truyền dịch y tế tại gia", price: 400000, duration: "1h", type: "Clinical" },
-  { id: "s4", name: "Tư vấn dinh dưỡng chuyên sâu", price: 300000, duration: "1h", type: "Nutrition" }
+  {
+    id: "s1",
+    name: "Kiểm tra sức khỏe & Đo sinh hiệu",
+    price: 200000,
+    duration: "1h",
+    type: "Clinical",
+  },
+  {
+    id: "s2",
+    name: "Vật lý trị liệu & Phục hồi chức năng",
+    price: 500000,
+    duration: "1.5h",
+    type: "Rehab",
+  },
+  {
+    id: "s3",
+    name: "Truyền dịch y tế tại gia",
+    price: 400000,
+    duration: "1h",
+    type: "Clinical",
+  },
+  {
+    id: "s4",
+    name: "Tư vấn dinh dưỡng chuyên sâu",
+    price: 300000,
+    duration: "1h",
+    type: "Nutrition",
+  },
 ];
 
 // Specialist Reviews Data
-const SPECIALIST_REVIEWS: Record<string, { rating: number; text: string; author: string; date: string }[]> = {
+const SPECIALIST_REVIEWS: Record<
+  string,
+  { rating: number; text: string; author: string; date: string }[]
+> = {
   "1": [
-    { rating: 5, text: "Sandra chăm sóc vết thương sau phẫu thuật rất nhẹ nhàng và chu đáo.", author: "Nguyễn Thị Hoa", date: "10/06/2026" },
-    { rating: 5, text: "Y tá có chuyên môn cao, hướng dẫn tận tình cách vệ sinh vết thương.", author: "Lê Văn Tám", date: "08/06/2026" }
+    {
+      rating: 5,
+      text: "Sandra chăm sóc vết thương sau phẫu thuật rất nhẹ nhàng và chu đáo.",
+      author: "Nguyễn Thị Hoa",
+      date: "10/06/2026",
+    },
+    {
+      rating: 5,
+      text: "Y tá có chuyên môn cao, hướng dẫn tận tình cách vệ sinh vết thương.",
+      author: "Lê Văn Tám",
+      date: "08/06/2026",
+    },
   ],
   "2": [
-    { rating: 5, text: "Bài tập phục hồi khớp gối rất hiệu quả, tôi đã có thể tự đi lại được sau 3 tuần.", author: "Trần Hữu Nghị", date: "11/06/2026" },
-    { rating: 4, text: "Bác sĩ Marcus làm việc chuyên nghiệp, đúng giờ và nhiệt tình.", author: "Phạm Minh Trí", date: "05/06/2026" }
+    {
+      rating: 5,
+      text: "Bài tập phục hồi khớp gối rất hiệu quả, tôi đã có thể tự đi lại được sau 3 tuần.",
+      author: "Trần Hữu Nghị",
+      date: "11/06/2026",
+    },
+    {
+      rating: 4,
+      text: "Bác sĩ Marcus làm việc chuyên nghiệp, đúng giờ và nhiệt tình.",
+      author: "Phạm Minh Trí",
+      date: "05/06/2026",
+    },
   ],
   "3": [
-    { rating: 5, text: "Tiêm truyền rất êm, nhẹ tay, không đau. Rất an tâm khi chọn y tá Lara.", author: "Nguyễn Thu Thủy", date: "12/06/2026" },
-    { rating: 5, text: "Rất sạch sẽ, tuân thủ đúng quy trình vô khuẩn. Đánh giá 5 sao.", author: "Vũ Hoàng Nam", date: "09/06/2026" }
+    {
+      rating: 5,
+      text: "Tiêm truyền rất êm, nhẹ tay, không đau. Rất an tâm khi chọn y tá Lara.",
+      author: "Nguyễn Thu Thủy",
+      date: "12/06/2026",
+    },
+    {
+      rating: 5,
+      text: "Rất sạch sẽ, tuân thủ đúng quy trình vô khuẩn. Đánh giá 5 sao.",
+      author: "Vũ Hoàng Nam",
+      date: "09/06/2026",
+    },
   ],
   "4": [
-    { rating: 5, text: "Chế độ dinh dưỡng của Peter giúp chỉ số đường huyết của tôi ổn định hẳn.", author: "Bùi Thị Mai", date: "11/06/2026" },
-    { rating: 4, text: "Tư vấn chi tiết, dễ thực hiện cho người cao tuổi.", author: "Đặng Quốc Anh", date: "07/06/2026" }
-  ]
+    {
+      rating: 5,
+      text: "Chế độ dinh dưỡng của Peter giúp chỉ số đường huyết của tôi ổn định hẳn.",
+      author: "Bùi Thị Mai",
+      date: "11/06/2026",
+    },
+    {
+      rating: 4,
+      text: "Tư vấn chi tiết, dễ thực hiện cho người cao tuổi.",
+      author: "Đặng Quốc Anh",
+      date: "07/06/2026",
+    },
+  ],
 };
 
 interface Toast {
@@ -115,7 +182,7 @@ function Doctor3DCarousel({
   selectSpecialistForBooking,
   reviewStaff,
   setReviewStaff,
-  handleLogin
+  handleLogin,
 }: {
   staff: any[];
   isLoggedIn: boolean;
@@ -170,7 +237,7 @@ function Doctor3DCarousel({
         </button>
 
         {/* 3D Cards Container */}
-        <motion.div 
+        <motion.div
           className="relative w-[360px] h-[460px] flex items-center justify-center select-none"
           style={{ transformStyle: "preserve-3d" }}
           drag="x"
@@ -186,7 +253,7 @@ function Doctor3DCarousel({
 
             const isActive = i === currentIndex;
             const absOffset = Math.abs(offset);
-            
+
             // Layout calculations for a clean 3D carousel effect
             const rotateY = offset * 35; // degrees of Y-axis rotation
             const z = -absOffset * 150; // push depth
@@ -196,7 +263,13 @@ function Doctor3DCarousel({
             const zIndex = 20 - absOffset;
 
             const reviews = SPECIALIST_REVIEWS[person.id] || [];
-            const avgRating = reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : "5.0";
+            const avgRating =
+              reviews.length > 0
+                ? (
+                    reviews.reduce((acc, r) => acc + r.rating, 0) /
+                    reviews.length
+                  ).toFixed(1)
+                : "5.0";
 
             // Premium dynamic hover gradient matching specialist department
             const getOverlayGradient = (dept: string) => {
@@ -255,40 +328,50 @@ function Doctor3DCarousel({
                 onMouseLeave={() => isActive && setIsHovered(null)}
                 className={cn(
                   "bg-white border rounded-[40px] p-8 flex flex-col justify-between items-center transition-all duration-500 relative overflow-hidden",
-                  isActive 
-                    ? "border-blue-200/80 shadow-[0_30px_70px_-15px_rgba(59,130,246,0.22),_0_0_35px_rgba(59,130,246,0.12)] ring-1 ring-blue-500/10" 
-                    : "border-slate-100 shadow-xl"
+                  isActive
+                    ? "border-blue-200/80 shadow-[0_30px_70px_-15px_rgba(59,130,246,0.22),_0_0_35px_rgba(59,130,246,0.12)] ring-1 ring-blue-500/10"
+                    : "border-slate-100 shadow-xl",
                 )}
               >
                 {/* Standard face card */}
                 <div className="flex flex-col items-center text-center space-y-6 w-full mt-6">
                   {/* Glowing Profile Avatar */}
                   <div className="relative">
-                    <div className={cn(
-                      "absolute -inset-1 rounded-[38px] blur-sm transition-all duration-700 opacity-0 bg-gradient-to-r",
-                      isActive && "opacity-100 animate-pulse",
-                      person.department === "Ngoại khoa" ? "from-purple-500 to-fuchsia-500" :
-                      person.department === "Phục hồi chức năng" ? "from-emerald-500 to-teal-500" :
-                      "from-blue-500 to-indigo-500"
-                    )} />
-                    <img 
-                      src={person.avatar} 
-                      className="relative z-10 w-32 h-32 rounded-[36px] border-4 border-white shadow-2xl object-cover" 
-                      alt={person.name} 
+                    <div
+                      className={cn(
+                        "absolute -inset-1 rounded-[38px] blur-sm transition-all duration-700 opacity-0 bg-gradient-to-r",
+                        isActive && "opacity-100 animate-pulse",
+                        person.department === "Ngoại khoa"
+                          ? "from-purple-500 to-fuchsia-500"
+                          : person.department === "Phục hồi chức năng"
+                            ? "from-emerald-500 to-teal-500"
+                            : "from-blue-500 to-indigo-500",
+                      )}
                     />
-                    <div className={cn(
-                      "absolute -bottom-1 -right-1 w-7 h-7 border-4 border-white rounded-full shadow-lg z-20",
-                      person.available ? "bg-blue-600" : "bg-orange-500"
-                    )} />
+                    <img
+                      src={person.avatar}
+                      className="relative z-10 w-32 h-32 rounded-[36px] border-4 border-white shadow-2xl object-cover"
+                      alt={person.name}
+                    />
+                    <div
+                      className={cn(
+                        "absolute -bottom-1 -right-1 w-7 h-7 border-4 border-white rounded-full shadow-lg z-20",
+                        person.available ? "bg-blue-600" : "bg-orange-500",
+                      )}
+                    />
                   </div>
 
                   <div className="space-y-3">
-                    <span className={cn(
-                      "text-[10px] font-black px-4 py-1.5 rounded-xl uppercase tracking-widest border",
-                      person.department === "Ngoại khoa" ? "bg-purple-50 text-purple-700 border-purple-100" :
-                      person.department === "Phục hồi chức năng" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
-                      "bg-blue-50 text-blue-700 border-blue-100"
-                    )}>
+                    <span
+                      className={cn(
+                        "text-[10px] font-black px-4 py-1.5 rounded-xl uppercase tracking-widest border",
+                        person.department === "Ngoại khoa"
+                          ? "bg-purple-50 text-purple-700 border-purple-100"
+                          : person.department === "Phục hồi chức năng"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                            : "bg-blue-50 text-blue-700 border-blue-100",
+                      )}
+                    >
                       {person.department}
                     </span>
                     <h3 className="font-black text-2xl text-blue-950 leading-tight uppercase tracking-tight pt-2">
@@ -304,7 +387,9 @@ function Doctor3DCarousel({
                 <div className="flex items-center gap-1.5 bg-yellow-50/70 text-yellow-700 px-3.5 py-1.5 rounded-2xl border border-yellow-200/60 mb-6">
                   <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
                   <span className="text-xs font-black">{avgRating}</span>
-                  <span className="text-[10px] font-bold text-yellow-600/80">({reviews.length} đánh giá)</span>
+                  <span className="text-[10px] font-bold text-yellow-600/80">
+                    ({reviews.length} đánh giá)
+                  </span>
                 </div>
 
                 {/* Hover Details Overlay */}
@@ -317,24 +402,31 @@ function Doctor3DCarousel({
                       transition={{ duration: 0.25 }}
                       className={cn(
                         "absolute inset-0 bg-gradient-to-b backdrop-blur-md rounded-[40px] p-8 flex flex-col justify-between text-white z-50 shadow-2xl border",
-                        getOverlayGradient(person.department)
+                        getOverlayGradient(person.department),
                       )}
                     >
                       <div className="space-y-4">
                         <div className="flex items-center gap-4">
-                          <img 
-                            src={person.avatar} 
-                            className="w-14 h-14 rounded-2xl border-2 border-white/20 object-cover" 
-                            alt={person.name} 
+                          <img
+                            src={person.avatar}
+                            className="w-14 h-14 rounded-2xl border-2 border-white/20 object-cover"
+                            alt={person.name}
                           />
                           <div>
-                            <h4 className="font-black text-lg text-white leading-tight uppercase tracking-wide">{person.name}</h4>
-                            <p className={cn("text-[10px] font-bold uppercase tracking-widest", getAccentColor(person.department))}>
+                            <h4 className="font-black text-lg text-white leading-tight uppercase tracking-wide">
+                              {person.name}
+                            </h4>
+                            <p
+                              className={cn(
+                                "text-[10px] font-bold uppercase tracking-widest",
+                                getAccentColor(person.department),
+                              )}
+                            >
                               {person.role.split("•")[0]}
                             </p>
                           </div>
                         </div>
-                        
+
                         <div className="h-px bg-white/10 my-4" />
 
                         <div className="space-y-3.5 text-xs font-semibold text-slate-200">
@@ -342,26 +434,46 @@ function Doctor3DCarousel({
                             <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
                               <Phone className="w-3.5 h-3.5 text-blue-400" />
                             </div>
-                            <span>SĐT: {isLoggedIn ? person.phone : "•••• ••• •••"}</span>
+                            <span>
+                              SĐT: {isLoggedIn ? person.phone : "•••• ••• •••"}
+                            </span>
                           </div>
                           <div className="flex items-center gap-3">
                             <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
                               <Mail className="w-3.5 h-3.5 text-blue-400" />
                             </div>
-                            <span className="truncate">Email: {isLoggedIn ? person.email : "••••••••@mintcare.com"}</span>
+                            <span className="truncate">
+                              Email:{" "}
+                              {isLoggedIn
+                                ? person.email
+                                : "••••••••@mintcare.com"}
+                            </span>
                           </div>
                           <div className="flex items-center gap-3">
                             <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
                               <MapPin className="w-3.5 h-3.5 text-blue-400" />
                             </div>
-                            <span>Khu vực: {isLoggedIn ? person.location : "Đăng nhập để xem"}</span>
+                            <span>
+                              Khu vực:{" "}
+                              {isLoggedIn
+                                ? person.location
+                                : "Đăng nhập để xem"}
+                            </span>
                           </div>
                           <div className="flex items-center gap-3">
                             <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
                               <Clock className="w-3.5 h-3.5 text-blue-400" />
                             </div>
-                            <span className={person.available ? "text-emerald-400 font-bold" : "text-orange-400 font-bold"}>
-                              {person.available ? "Sẵn sàng nhận lịch" : "Đang có ca"}
+                            <span
+                              className={
+                                person.available
+                                  ? "text-emerald-400 font-bold"
+                                  : "text-orange-400 font-bold"
+                              }
+                            >
+                              {person.available
+                                ? "Sẵn sàng nhận lịch"
+                                : "Đang có ca"}
                             </span>
                           </div>
                         </div>
@@ -369,17 +481,23 @@ function Doctor3DCarousel({
                         {!isLoggedIn && (
                           <div className="bg-white/10 backdrop-blur-xs rounded-xl p-3 flex items-center gap-2 border border-white/5 mt-2">
                             <ShieldCheck className="w-4 h-4 text-blue-400" />
-                            <span className="text-[9px] font-black uppercase tracking-wider text-slate-300">Đăng nhập để xem liên hệ</span>
+                            <span className="text-[9px] font-black uppercase tracking-wider text-slate-300">
+                              Đăng nhập để xem liên hệ
+                            </span>
                           </div>
                         )}
                       </div>
 
                       <div className="flex flex-col gap-2.5 mt-4">
                         <Dialog>
-                          <DialogTrigger 
+                          <DialogTrigger
                             render={
-                              <Button variant="outline" className="w-full h-11 rounded-xl font-black text-[9px] uppercase tracking-widest border-white/20 text-white hover:bg-white/10 hover:text-white bg-transparent">
-                                <Eye className="w-3.5 h-3.5 mr-2 text-blue-400" /> Nhận xét
+                              <Button
+                                variant="outline"
+                                className="w-full h-11 rounded-xl font-black text-[9px] uppercase tracking-widest border-white/20 text-white hover:bg-white/10 hover:text-white bg-transparent"
+                              >
+                                <Eye className="w-3.5 h-3.5 mr-2 text-blue-400" />{" "}
+                                Nhận xét
                               </Button>
                             }
                             onClick={() => setReviewStaff(person)}
@@ -391,54 +509,93 @@ function Doctor3DCarousel({
                                   Nhận xét về <br /> {reviewStaff.name}
                                 </DialogTitle>
                                 <DialogDescription className="text-slate-400 text-xs font-semibold mt-2">
-                                  Ý kiến đánh giá xác thực từ những bệnh nhân trước đó.
+                                  Ý kiến đánh giá xác thực từ những bệnh nhân
+                                  trước đó.
                                 </DialogDescription>
                               </DialogHeader>
 
                               <div className="space-y-6 py-6 max-h-[350px] overflow-y-auto pr-1">
                                 {isLoggedIn ? (
-                                  (SPECIALIST_REVIEWS[reviewStaff.id] || []).length > 0 ? (
-                                    (SPECIALIST_REVIEWS[reviewStaff.id] || []).map((rev, idx) => (
-                                      <div key={idx} className="bg-blue-50/30 p-5 rounded-2xl border border-blue-100/50 relative text-left">
+                                  (SPECIALIST_REVIEWS[reviewStaff.id] || [])
+                                    .length > 0 ? (
+                                    (
+                                      SPECIALIST_REVIEWS[reviewStaff.id] || []
+                                    ).map((rev, idx) => (
+                                      <div
+                                        key={idx}
+                                        className="bg-blue-50/30 p-5 rounded-2xl border border-blue-100/50 relative text-left"
+                                      >
                                         <div className="flex items-center justify-between mb-3">
-                                          <span className="text-xs font-black text-blue-950">{rev.author}</span>
+                                          <span className="text-xs font-black text-blue-950">
+                                            {rev.author}
+                                          </span>
                                           <div className="flex items-center gap-1">
-                                            {Array.from({ length: 5 }).map((_, i) => (
-                                              <Star key={i} className={cn("w-3.5 h-3.5", i < rev.rating ? "fill-yellow-500 text-yellow-500" : "text-blue-100")} />
-                                            ))}
+                                            {Array.from({ length: 5 }).map(
+                                              (_, i) => (
+                                                <Star
+                                                  key={i}
+                                                  className={cn(
+                                                    "w-3.5 h-3.5",
+                                                    i < rev.rating
+                                                      ? "fill-yellow-500 text-yellow-500"
+                                                      : "text-blue-100",
+                                                  )}
+                                                />
+                                              ),
+                                            )}
                                           </div>
                                         </div>
-                                        <p className="text-xs font-semibold text-slate-600 leading-relaxed">"{rev.text}"</p>
-                                        <p className="text-[9px] text-slate-400 font-black text-right mt-2">{rev.date}</p>
+                                        <p className="text-xs font-semibold text-slate-600 leading-relaxed">
+                                          "{rev.text}"
+                                        </p>
+                                        <p className="text-[9px] text-slate-400 font-black text-right mt-2">
+                                          {rev.date}
+                                        </p>
                                       </div>
                                     ))
                                   ) : (
-                                    <p className="text-xs text-muted-foreground text-center py-6">Chưa có phản hồi nào.</p>
+                                    <p className="text-xs text-muted-foreground text-center py-6">
+                                      Chưa có phản hồi nào.
+                                    </p>
                                   )
                                 ) : (
                                   <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100 flex flex-col items-center gap-4 text-center">
                                     <ShieldCheck className="w-10 h-10 text-blue-600 animate-pulse" />
                                     <div>
-                                      <p className="text-xs font-black text-blue-950 uppercase tracking-wider">Đánh giá bị ẩn</p>
-                                      <p className="text-[11px] font-bold text-slate-500 mt-1">Bạn cần đăng nhập để xem thông tin phản hồi chi tiết.</p>
+                                      <p className="text-xs font-black text-blue-950 uppercase tracking-wider">
+                                        Đánh giá bị ẩn
+                                      </p>
+                                      <p className="text-[11px] font-bold text-slate-500 mt-1">
+                                        Bạn cần đăng nhập để xem thông tin phản
+                                        hồi chi tiết.
+                                      </p>
                                     </div>
-                                    <Button size="sm" onClick={handleLogin} className="bg-blue-600 text-white text-[9px] font-black uppercase tracking-wider px-6 py-2.5 rounded-xl">Đăng nhập</Button>
+                                    <Button
+                                      size="sm"
+                                      onClick={handleLogin}
+                                      className="bg-blue-600 text-white text-[9px] font-black uppercase tracking-wider px-6 py-2.5 rounded-xl"
+                                    >
+                                      Đăng nhập
+                                    </Button>
                                   </div>
                                 )}
                               </div>
-                              
+
                               <DialogFooter>
-                                <Button className="w-full rounded-full h-12 bg-slate-100 text-slate-800 hover:bg-slate-200 text-xs font-black uppercase tracking-widest shadow-none">Đóng</Button>
+                                <Button className="w-full rounded-full h-12 bg-slate-100 text-slate-800 hover:bg-slate-200 text-xs font-black uppercase tracking-widest shadow-none">
+                                  Đóng
+                                </Button>
                               </DialogFooter>
                             </DialogContent>
                           )}
                         </Dialog>
 
-                        <Button 
+                        <Button
                           onClick={() => selectSpecialistForBooking(person.id)}
                           className="w-full bg-linear-to-r from-blue-500 to-sky-500 text-white rounded-xl h-11 font-black text-[9px] uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:brightness-110 border-none"
                         >
-                          <CalendarPlus className="w-3.5 h-3.5 mr-2" /> Đặt lịch hẹn
+                          <CalendarPlus className="w-3.5 h-3.5 mr-2" /> Đặt lịch
+                          hẹn
                         </Button>
                       </div>
                     </motion.div>
@@ -458,7 +615,9 @@ function Doctor3DCarousel({
             onClick={() => setCurrentIndex(i)}
             className={cn(
               "h-2.5 rounded-full transition-all duration-300 cursor-pointer",
-              i === currentIndex ? "w-8 bg-blue-600" : "w-2.5 bg-blue-200 hover:bg-blue-300"
+              i === currentIndex
+                ? "w-8 bg-blue-600"
+                : "w-2.5 bg-blue-200 hover:bg-blue-300",
             )}
             aria-label={`Go to slide ${i + 1}`}
           />
@@ -472,23 +631,23 @@ export default function BookingPage() {
   const { user, login, register, logout } = useAuth();
   const router = useRouter();
   const isLoggedIn = !!user;
-  
+
   // Authentication Modal States
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
   const [authView, setAuthView] = React.useState<"login" | "register">("login");
   const [showPassword, setShowPassword] = React.useState(false);
-  
+
   // Login Form States
   const [loginEmail, setLoginEmail] = React.useState("");
   const [loginPassword, setLoginPassword] = React.useState("");
-  
+
   // Register Form States
   const [regName, setRegName] = React.useState("");
   const [regPhone, setRegPhone] = React.useState("");
   const [regEmail, setRegEmail] = React.useState("");
   const [regPassword, setRegPassword] = React.useState("");
   const [regConfirmPassword, setRegConfirmPassword] = React.useState("");
-  
+
   const [staff, setStaff] = React.useState<any[]>(mockStaff);
 
   // Specialist selection for reviews modal
@@ -508,7 +667,8 @@ export default function BookingPage() {
     phone: "090 987 6543",
     email: "evelyn.green@gmail.com",
     address: "Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM",
-    summary: "Bệnh nhân có tiền sử cao huyết áp và tiểu đường type 2. Đang trong lộ trình phục hồi sau phẫu thuật thay khớp gối trái."
+    summary:
+      "Bệnh nhân có tiền sử cao huyết áp và tiểu đường type 2. Đang trong lộ trình phục hồi sau phẫu thuật thay khớp gối trái.",
   });
 
   React.useEffect(() => {
@@ -519,7 +679,7 @@ export default function BookingPage() {
         phone: user.phone || "Chưa cập nhật",
         email: user.email,
         address: "Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM",
-        summary: "Hồ sơ cá nhân tự động đồng bộ từ tài khoản SQL Server."
+        summary: "Hồ sơ cá nhân tự động đồng bộ từ tài khoản SQL Server.",
       });
     }
   }, [user]);
@@ -534,6 +694,11 @@ export default function BookingPage() {
 
   // Customer Bookings List State (Stored/Shared via LocalStorage)
   const [myBookings, setMyBookings] = React.useState<StoredVisit[]>([]);
+
+  const getVisitStorageKey = (userId?: string) =>
+    `mintcare_visits_${userId ? userId : "guest"}`;
+
+  const isBackendUser = !!user?.id && !user.id.startsWith("CU-");
 
   // Alert system state
   const [toasts, setToasts] = React.useState<Toast[]>([]);
@@ -551,62 +716,96 @@ export default function BookingPage() {
         return res.json();
       })
       .then((data) => {
-        setStaff(data);
+        if (Array.isArray(data) && data.length > 0) {
+          setStaff(data);
+        } else {
+          setStaff(mockStaff);
+        }
       })
       .catch((err) => {
         console.warn("Lỗi fetch staff, sử dụng dữ liệu mẫu:", err);
+        setStaff(mockStaff);
       });
   }, []);
 
   // Load and synchronize visits state with backend API
-  React.useEffect(() => {
-    fetch(`${API_URL}/visits`)
-      .then((res) => {
-        if (!res.ok) throw new Error("API error");
+  const fetchMyVisits = React.useCallback(() => {
+    const storageKey = getVisitStorageKey(user?.id);
+    if (!isBackendUser) {
+      const stored =
+        typeof window !== "undefined" ? localStorage.getItem(storageKey) : null;
+      if (stored) {
+        setMyBookings(JSON.parse(stored));
+      }
+      return;
+    }
+
+    const queryParam = `?userId=${encodeURIComponent(user.id)}`;
+    fetch(`${API_URL}/visits${queryParam}`)
+      .then(async (res) => {
+        if (!res.ok) {
+          const text = await res.text();
+          console.error("Visits API non-ok response:", res.status, text);
+          throw new Error(`API error (${res.status}): ${text}`);
+        }
         return res.json();
       })
       .then((data) => {
-        const formatted = data.map((v: any) => ({
-          id: v.id,
-          staffId: v.staffId,
-          staffName: v.staffName || staff.find((s) => s.id === v.staffId)?.name || "Chuyên gia y tế",
-          type: v.type,
-          date: v.date || "2026-06-24",
-          time: v.time,
-          status: v.status,
-          price: v.type.includes("Vật lý") ? "500.000 VNĐ" : v.type.includes("Truyền") ? "400.000 VNĐ" : "200.000 VNĐ",
-          paymentMethod: "Tiền mặt"
-        }));
+        const formatted = Array.isArray(data)
+          ? data.map((v: any) => ({
+              id: v.id,
+              staffId: v.staffId,
+              staffName:
+                v.staffName ||
+                staff.find((s) => s.id === v.staffId)?.name ||
+                "Chuyên gia y tế",
+              type: v.type,
+              date: v.date || "2026-06-24",
+              time: v.time,
+              status: v.status,
+              price: v.type.includes("Vật lý")
+                ? "500.000 VNĐ"
+                : v.type.includes("Truyền")
+                  ? "400.000 VNĐ"
+                  : "200.000 VNĐ",
+              paymentMethod: "Tiền mặt",
+            }))
+          : [];
         setMyBookings(formatted);
       })
       .catch((err) => {
         console.warn("Lỗi fetch visits, dùng localStorage fallback:", err);
-        const stored = localStorage.getItem("mintcare_visits");
+        const stored =
+          typeof window !== "undefined"
+            ? localStorage.getItem(storageKey)
+            : null;
         if (stored) {
           setMyBookings(JSON.parse(stored));
-        } else {
-          const formatted = mockVisits.map(v => ({
-            id: v.id,
-            staffId: v.staffId,
-            staffName: mockStaff.find(s => s.id === v.staffId)?.name || "Chuyên gia y tế",
-            type: v.type,
-            date: "2026-06-22",
-            time: v.time,
-            status: v.status,
-            price: v.type.includes("Vật lý") ? "500.000 VNĐ" : v.type.includes("Truyền") ? "400.000 VNĐ" : "200.000 VNĐ",
-            paymentMethod: "Tiền mặt"
-          }));
-          setMyBookings(formatted);
         }
       });
-  }, [staff]);
+  }, [staff, user]);
+
+  React.useEffect(() => {
+    fetchMyVisits();
+  }, [fetchMyVisits]);
+
+  React.useEffect(() => {
+    if (!isBackendUser) return;
+    const interval = window.setInterval(() => {
+      fetchMyVisits();
+    }, 15000);
+    return () => window.clearInterval(interval);
+  }, [fetchMyVisits, isBackendUser]);
 
   const saveBookingsToStorage = (updated: StoredVisit[]) => {
     setMyBookings(updated);
-    localStorage.setItem("mintcare_visits", JSON.stringify(updated));
+    localStorage.setItem(getVisitStorageKey(user?.id), JSON.stringify(updated));
   };
 
-  const addToast = (message: string, type: "success" | "error" | "info" = "success") => {
+  const addToast = (
+    message: string,
+    type: "success" | "error" | "info" = "success",
+  ) => {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
@@ -625,8 +824,9 @@ export default function BookingPage() {
           email: "evelyn.green@gmail.com",
           password: "123456",
           address: "Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM",
-          summary: "Bệnh nhân có tiền sử cao huyết áp và tiểu đường type 2. Đang trong lộ trình phục hồi sau phẫu thuật thay khớp gối trái."
-        }
+          summary:
+            "Bệnh nhân có tiền sử cao huyết áp và tiểu đường type 2. Đang trong lộ trình phục hồi sau phẫu thuật thay khớp gối trái.",
+        },
       ];
       localStorage.setItem("mintcare_users", JSON.stringify(defaultUsers));
     }
@@ -635,7 +835,13 @@ export default function BookingPage() {
   // Handle local registration
   const handleLocalRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regName.trim() || !regPhone.trim() || !regEmail.trim() || !regPassword || !regConfirmPassword) {
+    if (
+      !regName.trim() ||
+      !regPhone.trim() ||
+      !regEmail.trim() ||
+      !regPassword ||
+      !regConfirmPassword
+    ) {
       addToast("Vui lòng điền đầy đủ thông tin đăng ký.", "error");
       return;
     }
@@ -663,7 +869,9 @@ export default function BookingPage() {
 
       // Scroll to dashboard
       setTimeout(() => {
-        document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
+        document
+          .getElementById("booking-workspace")
+          ?.scrollIntoView({ behavior: "smooth" });
       }, 150);
     } catch (err: any) {
       addToast(err.message || "Đăng ký thất bại", "error");
@@ -692,7 +900,9 @@ export default function BookingPage() {
       } else {
         // Scroll to dashboard
         setTimeout(() => {
-          document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
+          document
+            .getElementById("booking-workspace")
+            ?.scrollIntoView({ behavior: "smooth" });
         }, 150);
       }
     } catch (err: any) {
@@ -727,7 +937,7 @@ export default function BookingPage() {
       return;
     }
     setBookingStaffId(staffId);
-    
+
     // Auto-select first matching service
     const staffMember = staff.find((s) => s.id === staffId);
     if (staffMember) {
@@ -741,10 +951,15 @@ export default function BookingPage() {
         setBookingServiceId("s1");
       }
     }
-    
+
     // Scroll to form
-    document.getElementById("booking-form-section")?.scrollIntoView({ behavior: "smooth" });
-    addToast(`Đã chọn chuyên gia ${staffMember?.name || ""}. Vui lòng nhập thông tin khám.`, "info");
+    document
+      .getElementById("booking-form-section")
+      ?.scrollIntoView({ behavior: "smooth" });
+    addToast(
+      `Đã chọn chuyên gia ${staffMember?.name || ""}. Vui lòng nhập thông tin khám.`,
+      "info",
+    );
   };
 
   // Booking submit handler
@@ -764,62 +979,87 @@ export default function BookingPage() {
     const duration = selectedService.duration;
     const endTime = calculateEndTime(bookingSlot, duration);
 
+    const visitUserId =
+      user?.id && !user.id.startsWith("CU-") ? user.id : undefined;
+    const visitPatientId =
+      !isBackendUser && profile.id && profile.id.startsWith("BN-")
+        ? profile.id
+        : undefined;
+
     const newVisitObj = {
       id: newId,
       type: selectedService.name,
-      patientId: profile.id || "BN-0842",
+      date: bookingDate,
+      patientId: visitPatientId,
+      userId: visitUserId,
       staffId: bookingStaffId,
       time: `${bookingSlot} - ${endTime}`,
       startTime: bookingSlot,
       endTime: endTime,
       duration: duration,
-      status: "Chờ duyệt"
+      status: "Chờ duyệt",
     };
 
-    fetch(`${API_URL}/visits`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newVisitObj)
-    })
-    .then((res) => {
-      if (!res.ok) throw new Error("API post error");
-      return res.json();
-    })
-    .then((createdVisit) => {
-      const uiBooking = {
-        id: createdVisit.id,
-        staffId: createdVisit.staffId,
-        staffName: selectedStaff.name,
-        type: createdVisit.type,
-        date: bookingDate,
-        time: createdVisit.time,
-        status: createdVisit.status,
-        price: selectedService.price.toLocaleString("vi-VN") + " VNĐ",
-        paymentMethod: bookingPayment
-      };
-      
-      const updated = [uiBooking, ...myBookings];
-      saveBookingsToStorage(updated);
-      addToast("Gửi yêu cầu thành công! Lịch hẹn đang chờ Admin phê duyệt.", "success");
-    })
-    .catch((err) => {
-      console.warn("Lỗi API, lưu tạm vào bộ nhớ offline:", err);
-      const fallbackBooking = {
-        id: newId,
-        staffId: bookingStaffId,
-        staffName: selectedStaff.name,
-        type: selectedService.name,
-        date: bookingDate,
-        time: `${bookingSlot} - ${endTime}`,
-        status: "Chờ duyệt",
-        price: selectedService.price.toLocaleString("vi-VN") + " VNĐ",
-        paymentMethod: bookingPayment
-      };
-      const updated = [fallbackBooking, ...myBookings];
-      saveBookingsToStorage(updated);
-      addToast("Đã lưu lịch hẹn tạm thời (Offline).", "success");
-    });
-    
+    const postVisit = isBackendUser
+      ? fetch(`${API_URL}/visits`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newVisitObj),
+        })
+      : Promise.reject(new Error("Offline or local fallback user"));
+
+    postVisit
+      .then(async (res) => {
+        if (!isBackendUser) {
+          throw new Error("Offline or local fallback user");
+        }
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`API post error ${res.status}: ${text}`);
+        }
+        return res.json();
+      })
+      .then((createdVisit) => {
+        const uiBooking = {
+          id: createdVisit.id,
+          staffId: createdVisit.staffId,
+          staffName: selectedStaff.name,
+          type: createdVisit.type,
+          date: bookingDate,
+          time: createdVisit.time,
+          status: createdVisit.status,
+          price: selectedService.price.toLocaleString("vi-VN") + " VNĐ",
+          paymentMethod: bookingPayment,
+        };
+
+        const updated = [uiBooking, ...myBookings];
+        saveBookingsToStorage(updated);
+        if (isBackendUser) {
+          fetchMyVisits();
+        }
+        addToast(
+          "Gửi yêu cầu thành công! Lịch hẹn đang chờ Admin phê duyệt.",
+          "success",
+        );
+      })
+      .catch((err) => {
+        console.warn("Lỗi API, lưu tạm vào bộ nhớ offline:", err);
+        const fallbackBooking = {
+          id: newId,
+          staffId: bookingStaffId,
+          staffName: selectedStaff.name,
+          type: selectedService.name,
+          date: bookingDate,
+          time: `${bookingSlot} - ${endTime}`,
+          status: "Chờ duyệt",
+          price: selectedService.price.toLocaleString("vi-VN") + " VNĐ",
+          paymentMethod: bookingPayment,
+        };
+        const updated = [fallbackBooking, ...myBookings];
+        saveBookingsToStorage(updated);
+        addToast("Đã lưu lịch hẹn tạm thời (Offline).", "success");
+      });
+
     // Reset Form
     setBookingDate("");
     setBookingSlot("");
@@ -827,7 +1067,9 @@ export default function BookingPage() {
 
     // Scroll to history list
     setTimeout(() => {
-      document.getElementById("my-appointments-section")?.scrollIntoView({ behavior: "smooth" });
+      document
+        .getElementById("my-appointments-section")
+        ?.scrollIntoView({ behavior: "smooth" });
     }, 200);
   };
 
@@ -893,7 +1135,10 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
       addToast("Vui lòng nhập đầy đủ thông tin liên hệ.", "error");
       return;
     }
-    addToast("Gửi lời nhắn thành công! Đội ngũ tư vấn sẽ phản hồi lại sớm nhất.", "success");
+    addToast(
+      "Gửi lời nhắn thành công! Đội ngũ tư vấn sẽ phản hồi lại sớm nhất.",
+      "success",
+    );
     setContactName("");
     setContactEmail("");
     setContactMsg("");
@@ -901,7 +1146,6 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-600 selection:text-white relative">
-      
       {/* Toast Notification Container */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm pointer-events-none">
         <AnimatePresence>
@@ -913,11 +1157,11 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
               exit={{ opacity: 0, y: -20, scale: 0.9 }}
               className={cn(
                 "p-4 rounded-2xl shadow-2xl border flex items-center gap-3 backdrop-blur-md pointer-events-auto",
-                toast.type === "success" 
-                  ? "bg-white border-blue-200 text-blue-900 shadow-blue-50" 
-                  : toast.type === "error" 
-                    ? "bg-orange-50 border-orange-200 text-orange-700 shadow-orange-50" 
-                    : "bg-white border-blue-100 text-slate-800"
+                toast.type === "success"
+                  ? "bg-white border-blue-200 text-blue-900 shadow-blue-50"
+                  : toast.type === "error"
+                    ? "bg-orange-50 border-orange-200 text-orange-700 shadow-orange-50"
+                    : "bg-white border-blue-100 text-slate-800",
               )}
             >
               {toast.type === "success" ? (
@@ -927,57 +1171,110 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
               ) : (
                 <Sparkles className="w-5 h-5 text-blue-500 shrink-0 animate-pulse" />
               )}
-              <span className="text-xs font-black tracking-tight">{toast.message}</span>
+              <span className="text-xs font-black tracking-tight">
+                {toast.message}
+              </span>
             </motion.div>
           ))}
         </AnimatePresence>
       </div>
 
       {/* Customer Header/Navbar */}
-      <header id="booking-navbar" className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-blue-100 shadow-xs">
+      <header
+        id="booking-navbar"
+        className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-blue-100 shadow-xs"
+      >
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3.5 group cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+          <div
+            className="flex items-center gap-3.5 group cursor-pointer"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          >
             <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/20 transform -rotate-3 transition-transform group-hover:rotate-0">
-              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-6 h-6"
+              >
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
               </svg>
             </div>
             <div>
-              <span className="text-lg font-black tracking-tighter text-blue-950 uppercase">MintCare Portal</span>
-              <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest leading-none mt-0.5">Đặt lịch trực tuyến</p>
+              <span className="text-lg font-black tracking-tighter text-blue-950 uppercase">
+                MintCare Portal
+              </span>
+              <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest leading-none mt-0.5">
+                Đặt lịch trực tuyến
+              </p>
             </div>
           </div>
 
           <nav className="hidden md:flex items-center gap-8 text-xs font-black uppercase tracking-wider text-slate-500">
-            <a href="#booking-navbar" className="text-blue-600 hover:text-blue-700 transition-colors">Trang chủ</a>
-            <a href="#specialists-section" className="hover:text-blue-600 transition-colors">Đội ngũ chuyên gia</a>
+            <a
+              href="#booking-navbar"
+              className="text-blue-600 hover:text-blue-700 transition-colors"
+            >
+              Trang chủ
+            </a>
+            <a
+              href="#specialists-section"
+              className="hover:text-blue-600 transition-colors"
+            >
+              Đội ngũ chuyên gia
+            </a>
             {isLoggedIn && (
               <>
-                <a href="#booking-form-section" className="hover:text-blue-600 transition-colors">Đặt lịch khám</a>
-                <a href="#my-appointments-section" className="hover:text-blue-600 transition-colors">Hồ sơ & Lịch hẹn</a>
+                <a
+                  href="#booking-form-section"
+                  className="hover:text-blue-600 transition-colors"
+                >
+                  Đặt lịch khám
+                </a>
+                <a
+                  href="#my-appointments-section"
+                  className="hover:text-blue-600 transition-colors"
+                >
+                  Hồ sơ & Lịch hẹn
+                </a>
               </>
             )}
-            <a href="#contact-section" className="hover:text-blue-600 transition-colors">Liên hệ</a>
+            <a
+              href="#contact-section"
+              className="hover:text-blue-600 transition-colors"
+            >
+              Liên hệ
+            </a>
           </nav>
 
           <div className="flex items-center gap-4">
             {isLoggedIn ? (
               <div className="flex items-center gap-3 bg-blue-50/50 p-1.5 pl-4 rounded-full border border-blue-100 shadow-xs">
-                <span className="text-xs font-black text-blue-950 uppercase">{profile.name}</span>
+                <span className="text-xs font-black text-blue-950 uppercase">
+                  {profile.name}
+                </span>
                 <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-black flex items-center justify-center text-xs uppercase">
-                  {profile.name ? profile.name.split(" ").map(n => n[0]).join("").substring(0, 2) : "EG"}
+                  {profile.name
+                    ? profile.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .substring(0, 2)
+                    : "EG"}
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={handleLogout} 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleLogout}
                   className="text-orange-500 hover:bg-orange-50 hover:text-orange-600 rounded-full h-8 w-8"
                 >
                   <LogOut className="w-4.5 h-4.5" />
                 </Button>
               </div>
             ) : (
-              <Button 
+              <Button
                 onClick={handleLogin}
                 className="bg-blue-600 text-white rounded-full px-6 h-12 text-xs font-black uppercase tracking-widest hover:bg-blue-700 shadow-lg shadow-blue-600/15"
               >
@@ -1004,16 +1301,23 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
           >
             <div className="inline-flex items-center gap-2 bg-blue-600/10 px-4 py-2 rounded-full border border-blue-200">
               <Sparkles className="w-4 h-4 text-blue-600 animate-pulse" />
-              <span className="text-[10px] font-black text-blue-800 uppercase tracking-widest">Y tế thông minh tại gia</span>
+              <span className="text-[10px] font-black text-blue-800 uppercase tracking-widest">
+                Y tế thông minh tại gia
+              </span>
             </div>
-            
+
             <h1 className="text-5xl md:text-7xl font-black text-blue-950 leading-[1.05] tracking-tight">
               Chăm sóc y tế <br />
-              <span className="text-blue-600 bg-linear-to-r from-blue-600 to-sky-500 bg-clip-text text-transparent">Tận tâm tại nhà.</span>
+              <span className="text-blue-600 bg-linear-to-r from-blue-600 to-sky-500 bg-clip-text text-transparent">
+                Tận tâm tại nhà.
+              </span>
             </h1>
 
             <p className="text-lg text-slate-600 leading-relaxed font-medium">
-              MintCare Portal mang đến giải pháp kết nối trực tiếp khách hàng với đội ngũ điều dưỡng và chuyên gia phục hồi chức năng có trình độ chuyên môn cao. Xem lý lịch công khai và đăng ký lịch hẹn chăm sóc ngay tức thì.
+              MintCare Portal mang đến giải pháp kết nối trực tiếp khách hàng
+              với đội ngũ điều dưỡng và chuyên gia phục hồi chức năng có trình
+              độ chuyên môn cao. Xem lý lịch công khai và đăng ký lịch hẹn chăm
+              sóc ngay tức thì.
             </p>
 
             <div className="flex flex-wrap gap-4">
@@ -1023,9 +1327,9 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                 </Button>
               </a>
               {!isLoggedIn && (
-                <Button 
+                <Button
                   onClick={handleLogin}
-                  variant="outline" 
+                  variant="outline"
                   className="rounded-full px-8 h-14 font-black text-xs uppercase tracking-widest border-blue-200 text-blue-900 bg-white hover:bg-blue-50 transition-all shadow-sm"
                 >
                   Đăng nhập & Đặt lịch
@@ -1050,25 +1354,45 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                       <Stethoscope className="w-5.5 h-5.5" />
                     </div>
                     <div>
-                      <p className="text-xs font-black uppercase text-blue-950 leading-none">Dịch vụ ưu việt</p>
-                      <p className="text-[8px] font-black text-blue-600 uppercase tracking-widest mt-1">Chuẩn y khoa</p>
+                      <p className="text-xs font-black uppercase text-blue-950 leading-none">
+                        Dịch vụ ưu việt
+                      </p>
+                      <p className="text-[8px] font-black text-blue-600 uppercase tracking-widest mt-1">
+                        Chuẩn y khoa
+                      </p>
                     </div>
                   </div>
-                  <span className="text-[10px] font-black bg-blue-600/10 text-blue-700 px-3 py-1 rounded-full border border-blue-200">ISO 9001</span>
+                  <span className="text-[10px] font-black bg-blue-600/10 text-blue-700 px-3 py-1 rounded-full border border-blue-200">
+                    ISO 9001
+                  </span>
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-blue-100">
                   <div className="flex gap-4">
-                    <div className="w-5 h-5 rounded-full bg-blue-600/10 text-blue-600 flex items-center justify-center shrink-0">✓</div>
-                    <p className="text-xs text-slate-600 font-bold">100% Chuyên gia được cấp chứng chỉ hành nghề chính thức.</p>
+                    <div className="w-5 h-5 rounded-full bg-blue-600/10 text-blue-600 flex items-center justify-center shrink-0">
+                      ✓
+                    </div>
+                    <p className="text-xs text-slate-600 font-bold">
+                      100% Chuyên gia được cấp chứng chỉ hành nghề chính thức.
+                    </p>
                   </div>
                   <div className="flex gap-4">
-                    <div className="w-5 h-5 rounded-full bg-blue-600/10 text-blue-600 flex items-center justify-center shrink-0">✓</div>
-                    <p className="text-xs text-slate-600 font-bold">Quy trình vô khuẩn, chuẩn đoán bệnh án kỹ thuật số an toàn.</p>
+                    <div className="w-5 h-5 rounded-full bg-blue-600/10 text-blue-600 flex items-center justify-center shrink-0">
+                      ✓
+                    </div>
+                    <p className="text-xs text-slate-600 font-bold">
+                      Quy trình vô khuẩn, chuẩn đoán bệnh án kỹ thuật số an
+                      toàn.
+                    </p>
                   </div>
                   <div className="flex gap-4">
-                    <div className="w-5 h-5 rounded-full bg-blue-600/10 text-blue-600 flex items-center justify-center shrink-0">✓</div>
-                    <p className="text-xs text-slate-600 font-bold">Lộ trình theo dõi, cập nhật tiến trình điều trị thời gian thực.</p>
+                    <div className="w-5 h-5 rounded-full bg-blue-600/10 text-blue-600 flex items-center justify-center shrink-0">
+                      ✓
+                    </div>
+                    <p className="text-xs text-slate-600 font-bold">
+                      Lộ trình theo dõi, cập nhật tiến trình điều trị thời gian
+                      thực.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1078,7 +1402,10 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
       </section>
 
       {/* --- Specialists Carousel Section (3D Rotate Showcase) --- */}
-      <section id="specialists-section" className="py-24 bg-white relative overflow-visible border-t border-slate-100">
+      <section
+        id="specialists-section"
+        className="py-24 bg-white relative overflow-visible border-t border-slate-100"
+      >
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-[20%] right-[-10%] w-[40%] h-[40%] bg-blue-100/30 rounded-full blur-[120px]" />
           <div className="absolute bottom-[10%] left-[-5%] w-[35%] h-[35%] bg-blue-50/40 rounded-full blur-[100px]" />
@@ -1086,10 +1413,15 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
 
         <div className="max-w-7xl mx-auto px-6 relative z-10">
           <div className="text-center max-w-2xl mx-auto mb-12 space-y-4">
-            <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.25em]">Đội ngũ lâm sàng</span>
-            <h2 className="text-4xl font-black text-blue-950 uppercase tracking-tight">Giới thiệu bác sĩ của tôi</h2>
+            <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.25em]">
+              Đội ngũ lâm sàng
+            </span>
+            <h2 className="text-4xl font-black text-blue-950 uppercase tracking-tight">
+              Giới thiệu bác sĩ của tôi
+            </h2>
             <p className="text-xs text-slate-500 font-bold leading-relaxed">
-              Những chuyên gia y tá, bác sĩ điều trị và chăm sóc sức khỏe hàng đầu luôn sẵn sàng hỗ trợ bạn.
+              Những chuyên gia y tá, bác sĩ điều trị và chăm sóc sức khỏe hàng
+              đầu luôn sẵn sàng hỗ trợ bạn.
             </p>
           </div>
 
@@ -1114,8 +1446,12 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
             transition={{ duration: 0.8 }}
             className="text-center max-w-4xl mx-auto mb-16 space-y-4"
           >
-            <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.25em]">Vì sao chọn MintCare?</span>
-            <h2 className="text-4xl font-black text-blue-950 uppercase tracking-tight md:whitespace-nowrap">Quy trình khám bệnh tại gia tối ưu</h2>
+            <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.25em]">
+              Vì sao chọn MintCare?
+            </span>
+            <h2 className="text-4xl font-black text-blue-950 uppercase tracking-tight md:whitespace-nowrap">
+              Quy trình khám bệnh tại gia tối ưu
+            </h2>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
@@ -1123,18 +1459,18 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
               {
                 icon: Heart,
                 title: "Đặt lịch nhanh chóng",
-                desc: "Tìm kiếm bác sĩ, y tá điều dưỡng phù hợp theo đúng nhu cầu chuyên môn chỉ với vài lượt click đơn giản."
+                desc: "Tìm kiếm bác sĩ, y tá điều dưỡng phù hợp theo đúng nhu cầu chuyên môn chỉ với vài lượt click đơn giản.",
               },
               {
                 icon: Clock3,
                 title: "Khung giờ linh hoạt",
-                desc: "Đặt lịch khám theo khung giờ nhàn rỗi của gia đình. Nhân sự y khoa cam kết đến nhà đúng giờ hẹn."
+                desc: "Đặt lịch khám theo khung giờ nhàn rỗi của gia đình. Nhân sự y khoa cam kết đến nhà đúng giờ hẹn.",
               },
               {
                 icon: ShieldCheck,
                 title: "Bảo mật HIPAA",
-                desc: "Toàn bộ thông tin hồ sơ y tế bệnh án được mã hóa AES-256 đầu cuối, tuân thủ nghiêm ngặt chuẩn bảo mật HIPAA."
-              }
+                desc: "Toàn bộ thông tin hồ sơ y tế bệnh án được mã hóa AES-256 đầu cuối, tuân thủ nghiêm ngặt chuẩn bảo mật HIPAA.",
+              },
             ].map((card, i) => (
               <motion.div
                 key={i}
@@ -1147,47 +1483,79 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                 <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-md border border-blue-50 mx-auto">
                   <card.icon className="w-7 h-7" />
                 </div>
-                <h3 className="text-lg font-black text-blue-950 uppercase tracking-tight">{card.title}</h3>
-                <p className="text-xs text-slate-600 font-bold leading-relaxed">{card.desc}</p>
+                <h3 className="text-lg font-black text-blue-950 uppercase tracking-tight">
+                  {card.title}
+                </h3>
+                <p className="text-xs text-slate-600 font-bold leading-relaxed">
+                  {card.desc}
+                </p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-
       {/* --- View 2: Logged-in Customer Booking Workspace & History --- */}
       {isLoggedIn && (
-        <section id="booking-workspace" className="py-24 bg-white border-t border-blue-100 relative">
+        <section
+          id="booking-workspace"
+          className="py-24 bg-white border-t border-blue-100 relative"
+        >
           <div className="max-w-7xl mx-auto px-6 space-y-24">
-            
             {/* Header section */}
             <div className="text-center max-w-2xl mx-auto space-y-4">
-              <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.25em]">Thủ tục đặt lịch</span>
-              <h2 className="text-4xl font-black text-blue-950 uppercase tracking-tight">Khai báo thông tin khám</h2>
-              <p className="text-xs text-slate-500 font-bold leading-relaxed">Sau khi đặt lịch, thông tin sẽ được gửi đến Admin để điều phối lịch trực chính thức.</p>
+              <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.25em]">
+                Thủ tục đặt lịch
+              </span>
+              <h2 className="text-4xl font-black text-blue-950 uppercase tracking-tight">
+                Khai báo thông tin khám
+              </h2>
+              <p className="text-xs text-slate-500 font-bold leading-relaxed">
+                Sau khi đặt lịch, thông tin sẽ được gửi đến Admin để điều phối
+                lịch trực chính thức.
+              </p>
             </div>
 
             {/* Booking Form section */}
-            <div id="booking-form-section" className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start scroll-mt-24">
-              <form onSubmit={handleCreateBooking} className="lg:col-span-8 bg-white border border-blue-100 rounded-[36px] p-10 shadow-2xl shadow-blue-950/[0.02] space-y-8 relative overflow-hidden">
+            <div
+              id="booking-form-section"
+              className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start scroll-mt-24"
+            >
+              <form
+                onSubmit={handleCreateBooking}
+                className="lg:col-span-8 bg-white border border-blue-100 rounded-[36px] p-10 shadow-2xl shadow-blue-950/[0.02] space-y-8 relative overflow-hidden"
+              >
                 <div className="absolute top-0 right-0 w-36 h-36 bg-blue-50/60 rounded-bl-[120px] -mr-8 -mt-8 pointer-events-none" />
-                
+
                 <div>
-                  <h3 className="text-2xl font-black text-blue-950 uppercase">Phiếu thông tin khám</h3>
-                  <p className="text-xs text-slate-400 mt-1 font-semibold">Vui lòng điền đủ chi tiết ngày, giờ và tình trạng vết thương.</p>
+                  <h3 className="text-2xl font-black text-blue-950 uppercase">
+                    Phiếu thông tin khám
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1 font-semibold">
+                    Vui lòng điền đủ chi tiết ngày, giờ và tình trạng vết
+                    thương.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Chuyên gia y khoa</Label>
-                    <Select value={bookingStaffId} onValueChange={(val) => setBookingStaffId(val || "")}>
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                      Chuyên gia y khoa
+                    </Label>
+                    <Select
+                      value={bookingStaffId}
+                      onValueChange={(val) => setBookingStaffId(val || "")}
+                    >
                       <SelectTrigger className="w-full rounded-2xl border-blue-100 h-14 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950">
                         <SelectValue placeholder="Chọn chuyên gia" />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border-blue-100 shadow-2xl p-2 bg-white">
                         {staff.map((s) => (
-                          <SelectItem key={s.id} value={s.id} className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest">
+                          <SelectItem
+                            key={s.id}
+                            value={s.id}
+                            className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest"
+                          >
                             {s.name} ({s.department})
                           </SelectItem>
                         ))}
@@ -1196,14 +1564,23 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Dịch vụ chăm sóc</Label>
-                    <Select value={bookingServiceId} onValueChange={(val) => setBookingServiceId(val || "")}>
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                      Dịch vụ chăm sóc
+                    </Label>
+                    <Select
+                      value={bookingServiceId}
+                      onValueChange={(val) => setBookingServiceId(val || "")}
+                    >
                       <SelectTrigger className="w-full rounded-2xl border-blue-100 h-14 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950">
                         <SelectValue placeholder="Chọn loại dịch vụ" />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border-blue-100 shadow-2xl p-2 bg-white">
                         {SERVICES.map((serv) => (
-                          <SelectItem key={serv.id} value={serv.id} className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest">
+                          <SelectItem
+                            key={serv.id}
+                            value={serv.id}
+                            className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest"
+                          >
                             {serv.name}
                           </SelectItem>
                         ))}
@@ -1214,104 +1591,156 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Chọn ngày khám</Label>
-                    <Input 
-                      type="date" 
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                      Chọn ngày khám
+                    </Label>
+                    <Input
+                      type="date"
                       value={bookingDate}
                       onChange={(e) => setBookingDate(e.target.value)}
-                      className="rounded-2xl border-blue-100 h-14 bg-slate-50 focus:bg-white transition-all font-bold text-sm uppercase shadow-none text-blue-950" 
+                      className="rounded-2xl border-blue-100 h-14 bg-slate-50 focus:bg-white transition-all font-bold text-sm uppercase shadow-none text-blue-950"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Khung giờ rảnh rỗi</Label>
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                      Khung giờ rảnh rỗi
+                    </Label>
                     <div className="grid grid-cols-3 gap-2">
-                      {["08:00", "10:00", "14:00", "16:00", "18:00"].map((time) => (
-                        <button
-                          key={time}
-                          type="button"
-                          onClick={() => setBookingSlot(time)}
-                          className={cn(
-                            "py-3 border text-xs font-black rounded-xl transition-all",
-                            bookingSlot === time 
-                              ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-600/20 scale-105" 
-                              : "bg-slate-50 border-blue-100 hover:bg-white hover:border-blue-300 text-slate-800"
-                          )}
-                        >
-                          {time}
-                        </button>
-                      ))}
+                      {["08:00", "10:00", "14:00", "16:00", "18:00"].map(
+                        (time) => (
+                          <button
+                            key={time}
+                            type="button"
+                            onClick={() => setBookingSlot(time)}
+                            className={cn(
+                              "py-3 border text-xs font-black rounded-xl transition-all",
+                              bookingSlot === time
+                                ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-600/20 scale-105"
+                                : "bg-slate-50 border-blue-100 hover:bg-white hover:border-blue-300 text-slate-800",
+                            )}
+                          >
+                            {time}
+                          </button>
+                        ),
+                      )}
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Địa chỉ khám bệnh tại nhà</Label>
-                    <Input 
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                      Địa chỉ khám bệnh tại nhà
+                    </Label>
+                    <Input
                       value={profile.address}
-                      onChange={(e) => setProfile(prev => ({ ...prev, address: e.target.value }))}
-                      className="rounded-2xl border-blue-100 h-14 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950" 
+                      onChange={(e) =>
+                        setProfile((prev) => ({
+                          ...prev,
+                          address: e.target.value,
+                        }))
+                      }
+                      className="rounded-2xl border-blue-100 h-14 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Thanh toán</Label>
-                    <Select value={bookingPayment} onValueChange={(val) => setBookingPayment(val || "Tiền mặt")}>
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                      Thanh toán
+                    </Label>
+                    <Select
+                      value={bookingPayment}
+                      onValueChange={(val) =>
+                        setBookingPayment(val || "Tiền mặt")
+                      }
+                    >
                       <SelectTrigger className="w-full rounded-2xl border-blue-100 h-14 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950">
                         <SelectValue placeholder="Hình thức" />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border-blue-100 shadow-2xl p-2 bg-white">
-                        <SelectItem value="Tiền mặt" className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest">Tiền mặt tại gia</SelectItem>
-                        <SelectItem value="Chuyển khoản" className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest">Chuyển khoản ngân hàng</SelectItem>
-                        <SelectItem value="Ví điện tử" className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest">Ví điện tử MoMo/ZaloPay</SelectItem>
+                        <SelectItem
+                          value="Tiền mặt"
+                          className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest"
+                        >
+                          Tiền mặt tại gia
+                        </SelectItem>
+                        <SelectItem
+                          value="Chuyển khoản"
+                          className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest"
+                        >
+                          Chuyển khoản ngân hàng
+                        </SelectItem>
+                        <SelectItem
+                          value="Ví điện tử"
+                          className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest"
+                        >
+                          Ví điện tử MoMo/ZaloPay
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Mô tả triệu chứng lâm sàng</Label>
-                  <Textarea 
+                  <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                    Mô tả triệu chứng lâm sàng
+                  </Label>
+                  <Textarea
                     value={bookingNotes}
                     onChange={(e) => setBookingNotes(e.target.value)}
-                    placeholder="Mô tả cụ thể triệu chứng, lịch sử dùng thuốc hoặc các vấn đề cần lưu ý..." 
-                    className="rounded-2xl border-blue-100 bg-slate-50 focus:bg-white transition-all min-h-[100px] shadow-none font-semibold leading-relaxed text-sm text-blue-950" 
+                    placeholder="Mô tả cụ thể triệu chứng, lịch sử dùng thuốc hoặc các vấn đề cần lưu ý..."
+                    className="rounded-2xl border-blue-100 bg-slate-50 focus:bg-white transition-all min-h-[100px] shadow-none font-semibold leading-relaxed text-sm text-blue-950"
                   />
                 </div>
 
                 <div className="pt-4">
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     className="w-full bg-blue-600 text-white rounded-full py-9 h-14 text-base font-black uppercase tracking-[0.2em] hover:bg-blue-700 shadow-2xl shadow-blue-600/10 transition-all border-b-4 border-white/10 active:border-b-0 active:translate-y-1 group"
                   >
-                    Gửi yêu cầu đặt lịch hẹn <Sparkles className="w-5 h-5 ml-2 group-hover:rotate-180 transition-transform duration-500" />
+                    Gửi yêu cầu đặt lịch hẹn{" "}
+                    <Sparkles className="w-5 h-5 ml-2 group-hover:rotate-180 transition-transform duration-500" />
                   </Button>
                 </div>
               </form>
 
               {/* Hóa đơn xem trước */}
               <div className="lg:col-span-4 bg-slate-50 border border-blue-100 rounded-[36px] p-8 flex flex-col h-full relative overflow-hidden">
-                <h4 className="text-base font-black uppercase tracking-wider text-blue-950 mb-6">Chi tiết thanh toán</h4>
-                
+                <h4 className="text-base font-black uppercase tracking-wider text-blue-950 mb-6">
+                  Chi tiết thanh toán
+                </h4>
+
                 {bookingServiceId ? (
                   <div className="flex-1 flex flex-col justify-between space-y-6">
                     <div className="space-y-4">
                       <div className="flex justify-between items-start">
-                        <span className="text-xs text-slate-500 font-bold">Dịch vụ:</span>
+                        <span className="text-xs text-slate-500 font-bold">
+                          Dịch vụ:
+                        </span>
                         <span className="text-xs font-black text-right max-w-[180px] leading-tight text-blue-950">
-                          {SERVICES.find((s) => s.id === bookingServiceId)?.name}
+                          {
+                            SERVICES.find((s) => s.id === bookingServiceId)
+                              ?.name
+                          }
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-slate-500 font-bold">Thời lượng phiên:</span>
+                        <span className="text-xs text-slate-500 font-bold">
+                          Thời lượng phiên:
+                        </span>
                         <span className="text-xs font-black text-blue-950">
-                          {SERVICES.find((s) => s.id === bookingServiceId)?.duration}
+                          {
+                            SERVICES.find((s) => s.id === bookingServiceId)
+                              ?.duration
+                          }
                         </span>
                       </div>
                       {bookingStaffId && (
                         <div className="flex justify-between items-center">
-                          <span className="text-xs text-slate-500 font-bold">Chuyên gia:</span>
+                          <span className="text-xs text-slate-500 font-bold">
+                            Chuyên gia:
+                          </span>
                           <span className="text-xs font-black text-blue-950">
                             {staff.find((s) => s.id === bookingStaffId)?.name}
                           </span>
@@ -1319,14 +1748,22 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                       )}
                       {bookingDate && (
                         <div className="flex justify-between items-center">
-                          <span className="text-xs text-slate-500 font-bold">Ngày khám:</span>
-                          <span className="text-xs font-black text-blue-950 uppercase">{bookingDate}</span>
+                          <span className="text-xs text-slate-500 font-bold">
+                            Ngày khám:
+                          </span>
+                          <span className="text-xs font-black text-blue-950 uppercase">
+                            {bookingDate}
+                          </span>
                         </div>
                       )}
                       {bookingSlot && (
                         <div className="flex justify-between items-center">
-                          <span className="text-xs text-slate-500 font-bold">Bắt đầu:</span>
-                          <span className="text-xs font-black text-blue-950">{bookingSlot}</span>
+                          <span className="text-xs text-slate-500 font-bold">
+                            Bắt đầu:
+                          </span>
+                          <span className="text-xs font-black text-blue-950">
+                            {bookingSlot}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -1334,10 +1771,17 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                     <div className="border-t border-blue-100 pt-6 space-y-4 mt-auto">
                       <div className="flex justify-between items-end">
                         <div>
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Chi phí tạm tính</p>
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                            Chi phí tạm tính
+                          </p>
                           <p className="text-3xl font-black text-blue-950 tracking-tighter mt-1">
-                            {(SERVICES.find((s) => s.id === bookingServiceId)?.price || 0).toLocaleString("vi-VN")}
-                            <span className="text-xs text-slate-400 ml-1">đ</span>
+                            {(
+                              SERVICES.find((s) => s.id === bookingServiceId)
+                                ?.price || 0
+                            ).toLocaleString("vi-VN")}
+                            <span className="text-xs text-slate-400 ml-1">
+                              đ
+                            </span>
                           </p>
                         </div>
                         <div className="bg-blue-50 text-blue-700 text-[9px] font-black px-3 py-1 rounded-xl uppercase border border-blue-200">
@@ -1346,14 +1790,17 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                       </div>
 
                       <p className="text-[10px] text-slate-500 leading-relaxed font-semibold">
-                        * Chi phí đã bao gồm các trang thiết bị y tế đi kèm và chi phí di chuyển đến nhà.
+                        * Chi phí đã bao gồm các trang thiết bị y tế đi kèm và
+                        chi phí di chuyển đến nhà.
                       </p>
                     </div>
                   </div>
                 ) : (
                   <div className="flex-1 flex flex-col items-center justify-center text-center py-16 space-y-4">
                     <CreditCard className="w-12 h-12 text-slate-300 opacity-60" />
-                    <p className="text-xs font-bold text-slate-400">Vui lòng chọn Dịch vụ để bắt đầu tính toán chi phí.</p>
+                    <p className="text-xs font-bold text-slate-400">
+                      Vui lòng chọn Dịch vụ để bắt đầu tính toán chi phí.
+                    </p>
                   </div>
                 )}
               </div>
@@ -1361,12 +1808,19 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
 
             {/* Appointments list and profile */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-12 items-start pt-16 border-t border-blue-100">
-              
               {/* Lịch sử đặt lịch */}
-              <div id="my-appointments-section" className="xl:col-span-8 space-y-10 scroll-mt-24">
+              <div
+                id="my-appointments-section"
+                className="xl:col-span-8 space-y-10 scroll-mt-24"
+              >
                 <div>
-                  <h3 className="text-2xl font-black text-blue-950 uppercase">Lịch hẹn của bạn</h3>
-                  <p className="text-xs text-slate-400 mt-1 font-semibold">Theo dõi tiến trình phê duyệt của Admin và trạng thái di chuyển của nhân sự.</p>
+                  <h3 className="text-2xl font-black text-blue-950 uppercase">
+                    Lịch hẹn của bạn
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1 font-semibold">
+                    Theo dõi tiến trình phê duyệt của Admin và trạng thái di
+                    chuyển của nhân sự.
+                  </p>
                 </div>
 
                 <div className="space-y-8">
@@ -1375,9 +1829,9 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                       const isPending = booking.status === "Chờ duyệt";
                       const isOngoing = booking.status === "Đang thực hiện";
                       const isConfirmed = booking.status === "Đã xác nhận";
-                      
+
                       return (
-                        <motion.div 
+                        <motion.div
                           key={booking.id}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -1389,71 +1843,114 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
 
                           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div className="flex items-center gap-4">
-                              <span className={cn(
-                                "font-mono text-[9px] font-black px-2.5 py-1.5 rounded-xl border shadow-xs",
-                                isPending 
-                                  ? "bg-slate-100 text-slate-700 border-slate-200" 
-                                  : "bg-blue-50 text-blue-700 border-blue-200"
-                              )}>
+                              <span
+                                className={cn(
+                                  "font-mono text-[9px] font-black px-2.5 py-1.5 rounded-xl border shadow-xs",
+                                  isPending
+                                    ? "bg-slate-100 text-slate-700 border-slate-200"
+                                    : "bg-blue-50 text-blue-700 border-blue-200",
+                                )}
+                              >
                                 #LH-{booking.id}
                               </span>
                               <div>
-                                <h4 className="text-sm font-black uppercase text-blue-950 leading-none">{booking.type}</h4>
-                                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-2">{booking.staffName}</p>
+                                <h4 className="text-sm font-black uppercase text-blue-950 leading-none">
+                                  {booking.type}
+                                </h4>
+                                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-2">
+                                  {booking.staffName}
+                                </p>
                               </div>
                             </div>
 
                             <div className="flex items-center gap-3 w-full sm:w-auto">
-                              <Button 
-                                variant="outline" 
+                              <Button
+                                variant="outline"
                                 onClick={() => handleDownloadSlip(booking)}
                                 className="h-11 px-4 rounded-xl border-blue-100 bg-white font-black text-[9px] uppercase tracking-widest flex items-center gap-2 shadow-xs"
                               >
-                                <Download className="w-3.5 h-3.5 text-blue-600" /> Xuất phiếu
+                                <Download className="w-3.5 h-3.5 text-blue-600" />{" "}
+                                Xuất phiếu
                               </Button>
-                              <Button 
-                                variant="outline" 
+                              <Button
+                                variant="outline"
                                 onClick={() => handleCancelBooking(booking.id)}
                                 className="h-11 px-4 rounded-xl border-blue-100 bg-white hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 font-black text-[9px] uppercase tracking-widest flex items-center gap-2 shadow-xs text-slate-500"
                               >
-                                <Trash2 className="w-3.5 h-3.5 text-orange-500" /> Hủy lịch
+                                <Trash2 className="w-3.5 h-3.5 text-orange-500" />{" "}
+                                Hủy lịch
                               </Button>
                             </div>
                           </div>
 
                           {/* Progress Stepper Timeline */}
                           <div className="pt-4 border-t border-blue-50">
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Trạng thái điều phối</p>
-                            
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">
+                              Trạng thái điều phối
+                            </p>
+
                             <div className="grid grid-cols-4 gap-2 relative">
                               {/* Horizontal Line background */}
                               <div className="absolute top-4 left-[12.5%] right-[12.5%] h-1 bg-slate-100 -z-10" />
-                              <div className={cn(
-                                "absolute top-4 left-[12.5%] h-1 bg-blue-600 -z-10 transition-all duration-1000",
-                                isOngoing ? "w-[75%]" : isConfirmed ? "w-[37.5%]" : isPending ? "w-[0%]" : "w-[0%]"
-                              )} />
+                              <div
+                                className={cn(
+                                  "absolute top-4 left-[12.5%] h-1 bg-blue-600 -z-10 transition-all duration-1000",
+                                  isOngoing
+                                    ? "w-[75%]"
+                                    : isConfirmed
+                                      ? "w-[37.5%]"
+                                      : isPending
+                                        ? "w-[0%]"
+                                        : "w-[0%]",
+                                )}
+                              />
 
                               {[
-                                { label: "Gửi yêu cầu", done: true, pulse: false },
-                                { label: "Phê duyệt", done: !isPending, pulse: isPending },
-                                { label: "Đang di chuyển", done: isOngoing, pulse: isConfirmed },
-                                { label: "Hoàn tất", done: false, pulse: isOngoing }
+                                {
+                                  label: "Gửi yêu cầu",
+                                  done: true,
+                                  pulse: false,
+                                },
+                                {
+                                  label: "Phê duyệt",
+                                  done: !isPending,
+                                  pulse: isPending,
+                                },
+                                {
+                                  label: "Đang di chuyển",
+                                  done: isOngoing,
+                                  pulse: isConfirmed,
+                                },
+                                {
+                                  label: "Hoàn tất",
+                                  done: false,
+                                  pulse: isOngoing,
+                                },
                               ].map((step, idx) => (
-                                <div key={idx} className="flex flex-col items-center text-center">
-                                  <div className={cn(
-                                    "w-9 h-9 rounded-full flex items-center justify-center border-4 border-white shadow-md text-xs font-black transition-colors duration-500",
-                                    step.done 
-                                      ? "bg-blue-600 text-white" 
-                                      : step.pulse 
-                                        ? "bg-blue-600 animate-pulse text-white" 
-                                        : "bg-slate-100 text-slate-400"
-                                  )}>
+                                <div
+                                  key={idx}
+                                  className="flex flex-col items-center text-center"
+                                >
+                                  <div
+                                    className={cn(
+                                      "w-9 h-9 rounded-full flex items-center justify-center border-4 border-white shadow-md text-xs font-black transition-colors duration-500",
+                                      step.done
+                                        ? "bg-blue-600 text-white"
+                                        : step.pulse
+                                          ? "bg-blue-600 animate-pulse text-white"
+                                          : "bg-slate-100 text-slate-400",
+                                    )}
+                                  >
                                     {idx + 1}
                                   </div>
-                                  <span className={cn(
-                                    "text-[8px] font-black uppercase tracking-widest mt-2 block",
-                                    step.done || step.pulse ? "text-blue-950" : "text-slate-400 opacity-70"
-                                  )}>
+                                  <span
+                                    className={cn(
+                                      "text-[8px] font-black uppercase tracking-widest mt-2 block",
+                                      step.done || step.pulse
+                                        ? "text-blue-950"
+                                        : "text-slate-400 opacity-70",
+                                    )}
+                                  >
                                     {step.label}
                                   </span>
                                 </div>
@@ -1472,17 +1969,22 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                             </div>
                             <div className="flex items-center gap-2">
                               <CreditCard className="w-4 h-4 text-blue-600" />
-                              <span>Chi phí: {booking.price} ({booking.paymentMethod})</span>
+                              <span>
+                                Chi phí: {booking.price} (
+                                {booking.paymentMethod})
+                              </span>
                             </div>
                             <div>
-                              <span className={cn(
-                                "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border",
-                                isPending 
-                                  ? "bg-slate-50 text-slate-600 border-slate-200 animate-pulse" 
-                                  : isOngoing 
-                                    ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20" 
-                                    : "bg-blue-50 text-blue-700 border-blue-200"
-                              )}>
+                              <span
+                                className={cn(
+                                  "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border",
+                                  isPending
+                                    ? "bg-slate-50 text-slate-600 border-slate-200 animate-pulse"
+                                    : isOngoing
+                                      ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20"
+                                      : "bg-blue-50 text-blue-700 border-blue-200",
+                                )}
+                              >
                                 {booking.status}
                               </span>
                             </div>
@@ -1492,7 +1994,9 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                     })
                   ) : (
                     <div className="bg-slate-50 rounded-[32px] border border-blue-100 p-16 text-center">
-                      <p className="text-xs font-bold text-slate-400">Bạn chưa có lịch hẹn nào sắp tới.</p>
+                      <p className="text-xs font-bold text-slate-400">
+                        Bạn chưa có lịch hẹn nào sắp tới.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -1501,62 +2005,102 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
               {/* Hồ sơ bệnh nhân - Health Profile Editor */}
               <div className="xl:col-span-4 space-y-10">
                 <div>
-                  <h3 className="text-2xl font-black text-blue-950 uppercase">Hồ sơ y khoa</h3>
-                  <p className="text-xs text-slate-400 mt-1 font-semibold">Vui lòng cập nhật tiền sử bệnh án để hỗ trợ y tá chuẩn đoán lâm sàng chính xác.</p>
+                  <h3 className="text-2xl font-black text-blue-950 uppercase">
+                    Hồ sơ y khoa
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1 font-semibold">
+                    Vui lòng cập nhật tiền sử bệnh án để hỗ trợ y tá chuẩn đoán
+                    lâm sàng chính xác.
+                  </p>
                 </div>
 
-                <form onSubmit={handleUpdateProfile} className="bg-white border border-blue-100 rounded-[36px] p-8 shadow-2xl shadow-blue-950/[0.01] space-y-6">
+                <form
+                  onSubmit={handleUpdateProfile}
+                  className="bg-white border border-blue-100 rounded-[36px] p-8 shadow-2xl shadow-blue-950/[0.01] space-y-6"
+                >
                   <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Họ tên bệnh nhân</Label>
-                    <Input 
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                      Họ tên bệnh nhân
+                    </Label>
+                    <Input
                       value={profile.name}
-                      onChange={(e) => setProfile(prev => ({ ...prev, name: e.target.value }))}
-                      className="rounded-2xl border-blue-100 h-12 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950" 
+                      onChange={(e) =>
+                        setProfile((prev) => ({
+                          ...prev,
+                          name: e.target.value,
+                        }))
+                      }
+                      className="rounded-2xl border-blue-100 h-12 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Số điện thoại liên hệ</Label>
-                    <Input 
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                      Số điện thoại liên hệ
+                    </Label>
+                    <Input
                       value={profile.phone}
-                      onChange={(e) => setProfile(prev => ({ ...prev, phone: e.target.value }))}
-                      className="rounded-2xl border-blue-100 h-12 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950" 
+                      onChange={(e) =>
+                        setProfile((prev) => ({
+                          ...prev,
+                          phone: e.target.value,
+                        }))
+                      }
+                      className="rounded-2xl border-blue-100 h-12 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Địa chỉ phục vụ</Label>
-                    <Input 
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                      Địa chỉ phục vụ
+                    </Label>
+                    <Input
                       value={profile.address}
-                      onChange={(e) => setProfile(prev => ({ ...prev, address: e.target.value }))}
-                      className="rounded-2xl border-blue-100 h-12 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950" 
+                      onChange={(e) =>
+                        setProfile((prev) => ({
+                          ...prev,
+                          address: e.target.value,
+                        }))
+                      }
+                      className="rounded-2xl border-blue-100 h-12 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Ghi chú lâm sàng / Tiền sử bệnh án</Label>
-                    <Textarea 
+                    <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                      Ghi chú lâm sàng / Tiền sử bệnh án
+                    </Label>
+                    <Textarea
                       value={profile.summary}
-                      onChange={(e) => setProfile(prev => ({ ...prev, summary: e.target.value }))}
-                      className="rounded-2xl border-blue-100 bg-slate-50 focus:bg-white transition-all min-h-[140px] shadow-none font-semibold leading-relaxed text-xs text-blue-950" 
+                      onChange={(e) =>
+                        setProfile((prev) => ({
+                          ...prev,
+                          summary: e.target.value,
+                        }))
+                      }
+                      className="rounded-2xl border-blue-100 bg-slate-50 focus:bg-white transition-all min-h-[140px] shadow-none font-semibold leading-relaxed text-xs text-blue-950"
                     />
                   </div>
 
-                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-6 h-12 text-xs font-black uppercase tracking-widest shadow-md shadow-blue-600/10">
+                  <Button
+                    type="submit"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-6 h-12 text-xs font-black uppercase tracking-widest shadow-md shadow-blue-600/10"
+                  >
                     Lưu hồ sơ bệnh nhân
                   </Button>
                 </form>
               </div>
-
             </div>
           </div>
         </section>
       )}
 
       {/* --- View 3: Contact & Support (Scroll Reveal Animation) --- */}
-      <section id="contact-section" className="py-24 bg-slate-50 border-t border-blue-100">
+      <section
+        id="contact-section"
+        className="py-24 bg-slate-50 border-t border-blue-100"
+      >
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
-          
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -1565,10 +2109,15 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
             className="lg:col-span-5 space-y-8"
           >
             <div className="space-y-4">
-              <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.25em]">Hỗ trợ khẩn cấp</span>
-              <h2 className="text-4xl font-black text-blue-950 uppercase tracking-tight">Kênh tư vấn trực tuyến</h2>
+              <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.25em]">
+                Hỗ trợ khẩn cấp
+              </span>
+              <h2 className="text-4xl font-black text-blue-950 uppercase tracking-tight">
+                Kênh tư vấn trực tuyến
+              </h2>
               <p className="text-xs text-slate-500 font-bold leading-relaxed">
-                Đội ngũ điều hành của MintCare luôn túc trực 24/7 để tiếp nhận các yêu cầu khẩn cấp của bệnh nhân.
+                Đội ngũ điều hành của MintCare luôn túc trực 24/7 để tiếp nhận
+                các yêu cầu khẩn cấp của bệnh nhân.
               </p>
             </div>
 
@@ -1577,8 +2126,12 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                 <Phone className="w-7 h-7 text-blue-600" />
               </div>
               <div>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Hotline khẩn cấp</p>
-                <p className="text-2xl font-black text-blue-600 tracking-tighter mt-1">1900 8198</p>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                  Hotline khẩn cấp
+                </p>
+                <p className="text-2xl font-black text-blue-600 tracking-tighter mt-1">
+                  1900 8198
+                </p>
               </div>
             </div>
 
@@ -1589,7 +2142,10 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
               </div>
               <div className="flex gap-4 text-xs font-semibold text-slate-600">
                 <MapPin className="w-5 h-5 text-blue-600 shrink-0" />
-                <span>Trung tâm điều phối: 42 Cống Quỳnh, Phạm Ngũ Lão, Quận 1, TP. HCM</span>
+                <span>
+                  Trung tâm điều phối: 42 Cống Quỳnh, Phạm Ngũ Lão, Quận 1, TP.
+                  HCM
+                </span>
               </div>
             </div>
           </motion.div>
@@ -1602,45 +2158,55 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
             transition={{ duration: 0.8, delay: 0.2 }}
             className="lg:col-span-7 bg-white border border-blue-100 rounded-[36px] p-10 shadow-xs space-y-6"
           >
-            <h3 className="text-xl font-black text-blue-950 uppercase tracking-tight">Gửi tin nhắn phản hồi</h3>
-            
+            <h3 className="text-xl font-black text-blue-950 uppercase tracking-tight">
+              Gửi tin nhắn phản hồi
+            </h3>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Họ tên của bạn</Label>
-                <Input 
+                <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                  Họ tên của bạn
+                </Label>
+                <Input
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
                   placeholder="VD: Nguyễn Văn A"
-                  className="rounded-2xl border-blue-100 h-12 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950" 
+                  className="rounded-2xl border-blue-100 h-12 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Địa chỉ Email liên hệ</Label>
-                <Input 
+                <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                  Địa chỉ Email liên hệ
+                </Label>
+                <Input
                   value={contactEmail}
                   type="email"
                   onChange={(e) => setContactEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="rounded-2xl border-blue-100 h-12 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950" 
+                  className="rounded-2xl border-blue-100 h-12 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Lời nhắn hỗ trợ</Label>
-              <Textarea 
+              <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                Lời nhắn hỗ trợ
+              </Label>
+              <Textarea
                 value={contactMsg}
                 onChange={(e) => setContactMsg(e.target.value)}
-                placeholder="Nhập câu hỏi hoặc yêu cầu tư vấn cụ thể của bạn..." 
-                className="rounded-2xl border-blue-100 bg-slate-50 focus:bg-white transition-all min-h-[140px] shadow-none font-semibold leading-relaxed text-sm text-blue-950" 
+                placeholder="Nhập câu hỏi hoặc yêu cầu tư vấn cụ thể của bạn..."
+                className="rounded-2xl border-blue-100 bg-slate-50 focus:bg-white transition-all min-h-[140px] shadow-none font-semibold leading-relaxed text-sm text-blue-950"
               />
             </div>
 
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-6 h-12 text-xs font-black uppercase tracking-widest shadow-md shadow-blue-600/10 flex items-center justify-center gap-2">
+            <Button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-6 h-12 text-xs font-black uppercase tracking-widest shadow-md shadow-blue-600/10 flex items-center justify-center gap-2"
+            >
               <Send className="w-4 h-4" /> Gửi lời nhắn hỗ trợ
             </Button>
           </motion.form>
-          
         </div>
       </section>
 
@@ -1649,20 +2215,38 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
         <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-3.5">
             <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shadow-md">
-              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-5 h-5"
+              >
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
               </svg>
             </div>
             <div>
-              <span className="text-base font-black tracking-tight text-blue-950 uppercase">MintCare Portal</span>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Hệ thống cốt lõi &copy; 2026</p>
+              <span className="text-base font-black tracking-tight text-blue-950 uppercase">
+                MintCare Portal
+              </span>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                Hệ thống cốt lõi &copy; 2026
+              </p>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-8 text-xs font-bold text-slate-500">
-            <a href="#" className="hover:text-blue-600 transition-colors">Điều khoản dịch vụ</a>
-            <a href="#" className="hover:text-blue-600 transition-colors">Chính sách bảo mật</a>
-            <a href="#" className="hover:text-blue-600 transition-colors">Hỗ trợ kỹ thuật</a>
+            <a href="#" className="hover:text-blue-600 transition-colors">
+              Điều khoản dịch vụ
+            </a>
+            <a href="#" className="hover:text-blue-600 transition-colors">
+              Chính sách bảo mật
+            </a>
+            <a href="#" className="hover:text-blue-600 transition-colors">
+              Hỗ trợ kỹ thuật
+            </a>
           </div>
         </div>
       </footer>
@@ -1731,7 +2315,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                     }}
                     className={cn(
                       "relative z-10 w-1/2 text-center py-2.5 text-xs font-black uppercase tracking-wider transition-colors duration-200",
-                      authView === "login" ? "text-blue-600" : "text-slate-500"
+                      authView === "login" ? "text-blue-600" : "text-slate-500",
                     )}
                   >
                     Đăng nhập
@@ -1744,7 +2328,9 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                     }}
                     className={cn(
                       "relative z-10 w-1/2 text-center py-2.5 text-xs font-black uppercase tracking-wider transition-colors duration-200",
-                      authView === "register" ? "text-blue-600" : "text-slate-500"
+                      authView === "register"
+                        ? "text-blue-600"
+                        : "text-slate-500",
                     )}
                   >
                     Đăng ký
@@ -1760,11 +2346,16 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                   transition={{ type: "spring", stiffness: 260, damping: 28 }}
                 >
                   {/* Left Form: Login */}
-                  <form onSubmit={handleLocalLogin} className="w-1/2 px-8 pb-8 pt-2 space-y-5 flex flex-col justify-between">
+                  <form
+                    onSubmit={handleLocalLogin}
+                    className="w-1/2 px-8 pb-8 pt-2 space-y-5 flex flex-col justify-between"
+                  >
                     <div className="space-y-4">
                       {/* Email Input */}
                       <div className="space-y-2">
-                        <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Địa chỉ Email</Label>
+                        <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                          Địa chỉ Email
+                        </Label>
                         <div className="relative">
                           <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <Input
@@ -1780,7 +2371,9 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
 
                       {/* Password Input */}
                       <div className="space-y-2">
-                        <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Mật khẩu</Label>
+                        <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                          Mật khẩu
+                        </Label>
                         <div className="relative">
                           <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <Input
@@ -1796,7 +2389,11 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                           >
-                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            {showPassword ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
                           </button>
                         </div>
                       </div>
@@ -1804,7 +2401,12 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                       <div className="text-right">
                         <button
                           type="button"
-                          onClick={() => addToast("Mẹo: Mật khẩu mặc định của Evelyn Green là '123456'", "info")}
+                          onClick={() =>
+                            addToast(
+                              "Mẹo: Mật khẩu mặc định của Evelyn Green là '123456'",
+                              "info",
+                            )
+                          }
                           className="text-[10px] font-bold text-blue-600 hover:text-blue-700 hover:underline"
                         >
                           Quên mật khẩu?
@@ -1823,7 +2425,9 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                       {/* Social Login Divider */}
                       <div className="relative flex py-1 items-center">
                         <div className="flex-grow border-t border-slate-100"></div>
-                        <span className="flex-shrink mx-4 text-[9px] text-slate-400 font-bold uppercase tracking-widest">Hoặc</span>
+                        <span className="flex-shrink mx-4 text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                          Hoặc
+                        </span>
                         <div className="flex-grow border-t border-slate-100"></div>
                       </div>
 
@@ -1835,10 +2439,15 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                             const emailStr = "evelyn.green@gmail.com";
                             try {
                               await login(emailStr, "123456");
-                              addToast("Đăng nhập nhanh Google thành công!", "success");
+                              addToast(
+                                "Đăng nhập nhanh Google thành công!",
+                                "success",
+                              );
                               setIsAuthModalOpen(false);
                               setTimeout(() => {
-                                document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
+                                document
+                                  .getElementById("booking-workspace")
+                                  ?.scrollIntoView({ behavior: "smooth" });
                               }, 150);
                             } catch {
                               try {
@@ -1846,25 +2455,45 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                                   email: emailStr,
                                   password: "123456",
                                   fullName: "Evelyn Green",
-                                  phone: "0909876543"
+                                  phone: "0909876543",
                                 });
-                                addToast("Đăng ký & Đăng nhập Google thành công!", "success");
+                                addToast(
+                                  "Đăng ký & Đăng nhập Google thành công!",
+                                  "success",
+                                );
                                 setIsAuthModalOpen(false);
                                 setTimeout(() => {
-                                  document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
+                                  document
+                                    .getElementById("booking-workspace")
+                                    ?.scrollIntoView({ behavior: "smooth" });
                                 }, 150);
                               } catch (err: any) {
-                                addToast("Không thể đăng nhập nhanh: " + err.message, "error");
+                                addToast(
+                                  "Không thể đăng nhập nhanh: " + err.message,
+                                  "error",
+                                );
                               }
                             }
                           }}
                           className="flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 transition-all rounded-xl py-2 text-[10px] font-bold text-slate-600"
                         >
                           <svg className="w-4 h-4" viewBox="0 0 24 24">
-                            <path fill="#EA4335" d="M12 5.04c1.62 0 3.08.56 4.22 1.65l3.15-3.15C17.45 1.76 14.93 1 12 1 7.35 1 3.4 3.65 1.48 7.5l3.8 2.95C6.18 7.28 8.87 5.04 12 5.04z"/>
-                            <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.47h6.44c-.28 1.47-1.11 2.71-2.36 3.55l3.65 2.84c2.14-1.97 3.38-4.87 3.38-8.5z"/>
-                            <path fill="#FBBC05" d="M5.28 10.45A7.19 7.19 0 0112 7.15c1.11 0 2.16.26 3.1.72l3.65-2.84C16.92 3.66 14.59 3.04 12 3.04 8.21 3.04 4.88 5.16 3.08 8.3l2.2 2.15z"/>
-                            <path fill="#34A853" d="M12 18.96c-3.13 0-5.82-2.24-6.72-5.41L1.48 16.5C3.4 20.35 7.35 23 12 23c2.93 0 5.39-.97 7.18-2.64l-3.65-2.84c-1 .67-2.28 1.44-3.53 1.44z"/>
+                            <path
+                              fill="#EA4335"
+                              d="M12 5.04c1.62 0 3.08.56 4.22 1.65l3.15-3.15C17.45 1.76 14.93 1 12 1 7.35 1 3.4 3.65 1.48 7.5l3.8 2.95C6.18 7.28 8.87 5.04 12 5.04z"
+                            />
+                            <path
+                              fill="#4285F4"
+                              d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.47h6.44c-.28 1.47-1.11 2.71-2.36 3.55l3.65 2.84c2.14-1.97 3.38-4.87 3.38-8.5z"
+                            />
+                            <path
+                              fill="#FBBC05"
+                              d="M5.28 10.45A7.19 7.19 0 0112 7.15c1.11 0 2.16.26 3.1.72l3.65-2.84C16.92 3.66 14.59 3.04 12 3.04 8.21 3.04 4.88 5.16 3.08 8.3l2.2 2.15z"
+                            />
+                            <path
+                              fill="#34A853"
+                              d="M12 18.96c-3.13 0-5.82-2.24-6.72-5.41L1.48 16.5C3.4 20.35 7.35 23 12 23c2.93 0 5.39-.97 7.18-2.64l-3.65-2.84c-1 .67-2.28 1.44-3.53 1.44z"
+                            />
                           </svg>
                           Google
                         </button>
@@ -1874,10 +2503,15 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                             const emailStr = "facebook.user@mintcare.vn";
                             try {
                               await login(emailStr, "123456");
-                              addToast("Đăng nhập nhanh Facebook thành công!", "success");
+                              addToast(
+                                "Đăng nhập nhanh Facebook thành công!",
+                                "success",
+                              );
                               setIsAuthModalOpen(false);
                               setTimeout(() => {
-                                document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
+                                document
+                                  .getElementById("booking-workspace")
+                                  ?.scrollIntoView({ behavior: "smooth" });
                               }, 150);
                             } catch {
                               try {
@@ -1885,22 +2519,33 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                                   email: emailStr,
                                   password: "123456",
                                   fullName: "Khách Hàng Facebook",
-                                  phone: "0901112222"
+                                  phone: "0901112222",
                                 });
-                                addToast("Đăng ký & Đăng nhập Facebook thành công!", "success");
+                                addToast(
+                                  "Đăng ký & Đăng nhập Facebook thành công!",
+                                  "success",
+                                );
                                 setIsAuthModalOpen(false);
                                 setTimeout(() => {
-                                  document.getElementById("booking-workspace")?.scrollIntoView({ behavior: "smooth" });
+                                  document
+                                    .getElementById("booking-workspace")
+                                    ?.scrollIntoView({ behavior: "smooth" });
                                 }, 150);
                               } catch (err: any) {
-                                addToast("Không thể đăng nhập nhanh: " + err.message, "error");
+                                addToast(
+                                  "Không thể đăng nhập nhanh: " + err.message,
+                                  "error",
+                                );
                               }
                             }
                           }}
                           className="flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 transition-all rounded-xl py-2 text-[10px] font-bold text-slate-600"
                         >
-                          <svg className="w-4 h-4 fill-blue-600" viewBox="0 0 24 24">
-                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                          <svg
+                            className="w-4 h-4 fill-blue-600"
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                           </svg>
                           Facebook
                         </button>
@@ -1909,11 +2554,16 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                   </form>
 
                   {/* Right Form: Register */}
-                  <form onSubmit={handleLocalRegister} className="w-1/2 px-8 pb-8 pt-2 space-y-4 flex flex-col justify-between">
+                  <form
+                    onSubmit={handleLocalRegister}
+                    className="w-1/2 px-8 pb-8 pt-2 space-y-4 flex flex-col justify-between"
+                  >
                     <div className="space-y-3.5">
                       {/* Name Input */}
                       <div className="space-y-1.5">
-                        <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Họ và tên</Label>
+                        <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                          Họ và tên
+                        </Label>
                         <div className="relative">
                           <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <Input
@@ -1929,7 +2579,9 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
 
                       {/* Phone Input */}
                       <div className="space-y-1.5">
-                        <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Số điện thoại</Label>
+                        <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                          Số điện thoại
+                        </Label>
                         <div className="relative">
                           <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <Input
@@ -1945,7 +2597,9 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
 
                       {/* Email Input */}
                       <div className="space-y-1.5">
-                        <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Địa chỉ Email</Label>
+                        <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                          Địa chỉ Email
+                        </Label>
                         <div className="relative">
                           <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <Input
@@ -1962,7 +2616,9 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                       {/* Password Input */}
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
-                          <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Mật khẩu</Label>
+                          <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                            Mật khẩu
+                          </Label>
                           <div className="relative">
                             <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                             <Input
@@ -1976,7 +2632,9 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                           </div>
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Xác nhận</Label>
+                          <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                            Xác nhận
+                          </Label>
                           <div className="relative">
                             <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                             <Input
@@ -1984,7 +2642,9 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                               required
                               placeholder="••••••"
                               value={regConfirmPassword}
-                              onChange={(e) => setRegConfirmPassword(e.target.value)}
+                              onChange={(e) =>
+                                setRegConfirmPassword(e.target.value)
+                              }
                               className="rounded-2xl border-blue-100 pl-9.5 h-11 bg-slate-50 focus:bg-white transition-all font-semibold text-sm shadow-none text-blue-950"
                             />
                           </div>
@@ -1999,7 +2659,10 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                           defaultChecked
                           className="w-3.5 h-3.5 rounded text-blue-600 border-blue-200 focus:ring-blue-500 cursor-pointer"
                         />
-                        <label htmlFor="terms" className="text-[10px] text-slate-400 font-bold select-none cursor-pointer">
+                        <label
+                          htmlFor="terms"
+                          className="text-[10px] text-slate-400 font-bold select-none cursor-pointer"
+                        >
                           Tôi đồng ý với các điều khoản dịch vụ y tế.
                         </label>
                       </div>

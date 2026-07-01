@@ -18,10 +18,10 @@ const PORT = process.env.PORT || 5000;
 // Cấu hình CORS để cho phép frontend Next.js gọi API
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
-  })
+  }),
 );
 
 app.use(express.json({ limit: "10mb" }));
@@ -42,9 +42,24 @@ app.get("/health", (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  res.send("<h1>MintCare API Server đang chạy!</h1><p>Hãy sử dụng các API endpoints như <code>/health</code> hoặc <code>/api/staff</code> để lấy dữ liệu.</p>");
+  res.send(
+    "<h1>MintCare API Server đang chạy!</h1><p>Hãy sử dụng các API endpoints như <code>/health</code> hoặc <code>/api/staff</code> để lấy dữ liệu.</p>",
+  );
+});
+
+// Global error handler để trả JSON khi có lỗi không mong muốn
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error("Unhandled backend error:", err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  res
+    .status(err?.status || 500)
+    .json({ error: err?.message || "Lỗi máy chủ nội bộ" });
 });
 
 app.listen(PORT, () => {
-  console.log(`Express Backend Server đang chạy trên cổng: http://localhost:${PORT}`);
+  console.log(
+    `Express Backend Server đang chạy trên cổng: http://localhost:${PORT}`,
+  );
 });
