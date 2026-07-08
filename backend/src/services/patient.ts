@@ -139,11 +139,14 @@ export async function updatePatient(id: string, data: Partial<z.infer<typeof pat
 
 export async function deletePatient(id: string) {
   return await db.$transaction(async (tx) => {
+    // Remove staff assignments first
     await tx.patientStaff.deleteMany({
       where: { PatientId: id },
     });
-    await tx.visit.deleteMany({
+    // Unlink visits instead of deleting them — preserves appointment/payment history
+    await tx.visit.updateMany({
       where: { PatientId: id },
+      data: { PatientId: null },
     });
     return await tx.patient.delete({
       where: { Id: id },

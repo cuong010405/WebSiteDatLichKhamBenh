@@ -2,8 +2,17 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { db } from "../db";
 
-const JWT_SECRET = process.env.JWT_SECRET || "mintcare_secret_key_2024";
+const JWT_SECRET = process.env.JWT_SECRET!;
 const JWT_EXPIRES_IN = "7d";
+
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is not set. Aborting server startup.");
+}
+
+/** Simple email format validation */
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 
 export async function registerUser(data: {
   email: string;
@@ -12,7 +21,19 @@ export async function registerUser(data: {
   phone?: string;
   role?: string;
 }) {
-  const existing = await db.user.findUnique({ where: { Email: data.email } });
+  const email = data.email.toLowerCase().trim();
+
+  if (!isValidEmail(email)) {
+    throw new Error("Địa chỉ email không hợp lệ");
+  }
+  if (!data.password || data.password.length < 6) {
+    throw new Error("Mật khẩu phải có ít nhất 6 ký tự");
+  }
+  if (!data.fullName || data.fullName.trim().length < 2) {
+    throw new Error("Họ tên phải có ít nhất 2 ký tự");
+  }
+
+  const existing = await db.user.findUnique({ where: { Email: email } });
   if (existing) {
     throw new Error("Email đã được đăng ký");
   }
@@ -22,17 +43,19 @@ export async function registerUser(data: {
 
   const user = await db.user.create({
     data: {
-      Email: data.email,
+      Email: email,
       PasswordHash: hash,
-      FullName: data.fullName,
-      Phone: data.phone || null,
+      FullName: data.fullName.trim(),
+      Phone: data.phone?.trim() || null,
       Role: role,
     },
   });
 
-  const token = jwt.sign({ id: user.Id, email: user.Email, role: user.Role }, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
-  });
+  const token = jwt.sign(
+    { id: user.Id, email: user.Email, role: user.Role },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN },
+  );
 
   return {
     token,
@@ -42,13 +65,25 @@ export async function registerUser(data: {
       fullName: user.FullName,
       phone: user.Phone,
       role: user.Role,
+      age: user.Age,
+      gender: user.Gender,
     },
   };
 }
 
 export async function loginUser(data: { email: string; password: string }) {
-  const user = await db.user.findUnique({ where: { Email: data.email } });
+  const email = data.email.toLowerCase().trim();
+
+  if (!isValidEmail(email)) {
+    throw new Error("Email hoặc mật khẩu không chính xác");
+  }
+  if (!data.password) {
+    throw new Error("Email hoặc mật khẩu không chính xác");
+  }
+
+  const user = await db.user.findUnique({ where: { Email: email } });
   if (!user) {
+    // Use generic message to avoid email enumeration attacks
     throw new Error("Email hoặc mật khẩu không chính xác");
   }
 
@@ -57,9 +92,11 @@ export async function loginUser(data: { email: string; password: string }) {
     throw new Error("Email hoặc mật khẩu không chính xác");
   }
 
-  const token = jwt.sign({ id: user.Id, email: user.Email, role: user.Role }, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
-  });
+  const token = jwt.sign(
+    { id: user.Id, email: user.Email, role: user.Role },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN },
+  );
 
   return {
     token,
@@ -69,6 +106,8 @@ export async function loginUser(data: { email: string; password: string }) {
       fullName: user.FullName,
       phone: user.Phone,
       role: user.Role,
+      age: user.Age,
+      gender: user.Gender,
     },
   };
 }

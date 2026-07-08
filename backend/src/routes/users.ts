@@ -4,36 +4,65 @@ import bcrypt from "bcryptjs";
 
 const router = Router();
 
+/** Simple email format validation */
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 // GET /api/users - Lấy danh sách tất cả tài khoản
-router.get("/", async (req: Request, res: Response) => {
+router.get("/", async (_req: Request, res: Response) => {
   try {
     const users = await db.user.findMany({
       orderBy: { CreatedAt: "desc" },
+      select: {
+        Id: true,
+        Email: true,
+        FullName: true,
+        Phone: true,
+        Role: true,
+        Age: true,
+        Gender: true,
+        CreatedAt: true,
+        // Không select PasswordHash để bảo mật
+      },
     });
-    // Không trả về password hash để bảo mật
     const safeUsers = users.map((u) => ({
       id: u.Id,
       email: u.Email,
       fullName: u.FullName,
       phone: u.Phone,
       role: u.Role,
+      age: u.Age,
+      gender: u.Gender,
       createdAt: u.CreatedAt,
     }));
     return res.json(safeUsers);
   } catch (err: any) {
-    return res.status(500).json({ error: "Lỗi lấy danh sách tài khoản: " + err.message });
+    console.error("GET /api/users error:", err);
+    return res.status(500).json({ error: "Lỗi lấy danh sách tài khoản" });
   }
 });
 
 // POST /api/users - Admin thêm tài khoản mới
 router.post("/", async (req: Request, res: Response) => {
-  const { email, password, fullName, phone, role } = req.body;
+  const { email, password, fullName, phone, role, age, gender } = req.body;
+
+  // Input validation
   if (!email || !password || !fullName) {
     return res.status(400).json({ error: "Vui lòng điền đầy đủ email, mật khẩu và họ tên" });
   }
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ error: "Địa chỉ email không hợp lệ" });
+  }
+  if (typeof password !== "string" || password.length < 6) {
+    return res.status(400).json({ error: "Mật khẩu phải có ít nhất 6 ký tự" });
+  }
+  if (typeof fullName !== "string" || fullName.trim().length < 2) {
+    return res.status(400).json({ error: "Họ tên phải có ít nhất 2 ký tự" });
+  }
 
   try {
-    const existing = await db.user.findUnique({ where: { Email: email } });
+    const existing = await db.user.findUnique({ where: { Email: email.toLowerCase().trim() } });
     if (existing) {
       return res.status(400).json({ error: "Email này đã được sử dụng" });
     }
@@ -41,11 +70,13 @@ router.post("/", async (req: Request, res: Response) => {
     const hash = await bcrypt.hash(password, 10);
     const user = await db.user.create({
       data: {
-        Email: email,
+        Email: email.toLowerCase().trim(),
         PasswordHash: hash,
-        FullName: fullName,
-        Phone: phone || null,
+        FullName: fullName.trim(),
+        Phone: phone?.trim() || null,
         Role: role === "admin" ? "admin" : "customer",
+        Age: age ? parseInt(age) : null,
+        Gender: gender || null,
       },
     });
 
@@ -55,17 +86,28 @@ router.post("/", async (req: Request, res: Response) => {
       fullName: user.FullName,
       phone: user.Phone,
       role: user.Role,
+      age: user.Age,
+      gender: user.Gender,
       createdAt: user.CreatedAt,
     });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    console.error("POST /api/users error:", err);
+    return res.status(500).json({ error: "Lỗi tạo tài khoản" });
   }
 });
 
 // PUT /api/users/:id - Admin sửa tài khoản (bao gồm đổi mật khẩu nếu cần và phân quyền role)
 router.put("/:id", async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { email, fullName, phone, role, password } = req.body;
+  const { email, fullName, phone, role, password, age, gender } = req.body;
+
+  // Input validation
+  if (email && !isValidEmail(email)) {
+    return res.status(400).json({ error: "Địa chỉ email không hợp lệ" });
+  }
+  if (password && (typeof password !== "string" || password.length < 6)) {
+    return res.status(400).json({ error: "Mật khẩu mới phải có ít nhất 6 ký tự" });
+  }
 
   try {
     const existing = await db.user.findUnique({ where: { Id: id } });
@@ -73,11 +115,21 @@ router.put("/:id", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Không tìm thấy tài khoản" });
     }
 
+    // Check for email uniqueness if changing email
+    if (email && email.toLowerCase().trim() !== existing.Email) {
+      const emailTaken = await db.user.findUnique({ where: { Email: email.toLowerCase().trim() } });
+      if (emailTaken) {
+        return res.status(400).json({ error: "Email này đã được sử dụng bởi tài khoản khác" });
+      }
+    }
+
     const updateData: any = {
-      Email: email ?? existing.Email,
-      FullName: fullName ?? existing.FullName,
-      Phone: phone !== undefined ? phone : existing.Phone,
+      Email: email ? email.toLowerCase().trim() : existing.Email,
+      FullName: fullName ? fullName.trim() : existing.FullName,
+      Phone: phone !== undefined ? (phone?.trim() || null) : existing.Phone,
       Role: role ?? existing.Role,
+      Age: age !== undefined ? (age ? parseInt(age) : null) : existing.Age,
+      Gender: gender !== undefined ? gender : existing.Gender,
     };
 
     if (password) {
@@ -95,10 +147,13 @@ router.put("/:id", async (req: Request, res: Response) => {
       fullName: updated.FullName,
       phone: updated.Phone,
       role: updated.Role,
+      age: updated.Age,
+      gender: updated.Gender,
       createdAt: updated.CreatedAt,
     });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    console.error("PUT /api/users/:id error:", err);
+    return res.status(500).json({ error: "Lỗi cập nhật tài khoản" });
   }
 });
 
@@ -106,10 +161,15 @@ router.put("/:id", async (req: Request, res: Response) => {
 router.delete("/:id", async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
+    const existing = await db.user.findUnique({ where: { Id: id } });
+    if (!existing) {
+      return res.status(404).json({ error: "Không tìm thấy tài khoản" });
+    }
     await db.user.delete({ where: { Id: id } });
     return res.json({ success: true, message: "Xóa tài khoản thành công" });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    console.error("DELETE /api/users/:id error:", err);
+    return res.status(500).json({ error: "Lỗi xóa tài khoản" });
   }
 });
 

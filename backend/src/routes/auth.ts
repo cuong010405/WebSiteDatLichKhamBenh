@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { registerUser, loginUser, verifyToken } from "../services/auth";
+import { db } from "../db";
 
 const router = Router();
 
@@ -39,7 +40,7 @@ router.post("/login", async (req: Request, res: Response) => {
 });
 
 // GET /api/auth/me — verify token & get current user
-router.get("/me", (req: Request, res: Response) => {
+router.get("/me", async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Không có token xác thực" });
@@ -52,7 +53,23 @@ router.get("/me", (req: Request, res: Response) => {
     return res.status(401).json({ error: "Token không hợp lệ hoặc đã hết hạn" });
   }
 
-  return res.json(payload);
+  try {
+    const user = await db.user.findUnique({ where: { Id: payload.id } });
+    if (!user) {
+      return res.status(404).json({ error: "Không tìm thấy người dùng" });
+    }
+    return res.json({
+      id: user.Id,
+      email: user.Email,
+      fullName: user.FullName,
+      phone: user.Phone,
+      role: user.Role,
+      age: user.Age,
+      gender: user.Gender,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;

@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/dialog"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
-import { Staff } from "@/lib/types"
+import { Staff, StaffStatus } from "@/lib/types"
 import { API_URL } from "@/lib/api"
 
 const ROLES = ["Bác sĩ Chuyên khoa", "Y tá Điều dưỡng", "Chuyên gia VLTL", "Chuyên gia Dinh dưỡng"]
@@ -115,10 +115,13 @@ function AddStaffDialog({ onAdd }: { onAdd: (s: Staff) => void }) {
   const [avatar, setAvatar] = React.useState("")
   const [success, setSuccess] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
+  const [status, setStatus] = React.useState<StaffStatus>("Sẵn sàng")
+  const [available, setAvailable] = React.useState(true)
 
   const reset = () => {
     setName(""); setRole(""); setDepartment(""); setPhone("")
     setEmail(""); setLocation(""); setAvatar("")
+    setStatus("Sẵn sàng"); setAvailable(true)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -130,13 +133,13 @@ function AddStaffDialog({ onAdd }: { onAdd: (s: Staff) => void }) {
       id: `S-${Date.now()}`,
       name,
       role,
-      status: "Sẵn sàng",
+      status,
       department,
       phone: phone && phone.length >= 10 ? phone : "0000000000",
       email: email || `${slug}@mintcare.com`,
       location: location || "Van phong chinh",
       avatar: avatar || `https://i.pravatar.cc/150?u=${Date.now()}`,
-      available: true,
+      available,
       isNew: true,
     }
     onAdd(newStaff)
@@ -161,7 +164,7 @@ function AddStaffDialog({ onAdd }: { onAdd: (s: Staff) => void }) {
       </Button>
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { reset(); setSuccess(false) } }}>
-        <DialogContent className="sm:max-w-[520px] rounded-[32px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
+        <DialogContent className="sm:max-w-[740px] rounded-[32px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
           <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 to-green-500" />
 
           <AnimatePresence mode="wait">
@@ -178,7 +181,7 @@ function AddStaffDialog({ onAdd }: { onAdd: (s: Staff) => void }) {
                 </div>
                 <div>
                   <p className="text-base font-black text-slate-900 uppercase tracking-tight">Thêm thành công!</p>
-                  <p className="text-xs text-slate-500 font-semibold mt-1">Hồ sơ chuyên gia đã được lưu vào SQL Server.</p>
+                  <p className="text-xs text-slate-500 font-semibold mt-1">Hồ sơ chuyên gia đã được lưu thành công vào hệ thống.</p>
                 </div>
               </motion.div>
             ) : (
@@ -195,74 +198,97 @@ function AddStaffDialog({ onAdd }: { onAdd: (s: Staff) => void }) {
                   </div>
                   <div className="text-left flex-1">
                     <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">Đăng ký chuyên gia</DialogTitle>
-                    <DialogDescription className="text-slate-500 mt-1.5 text-[11px] font-semibold leading-tight">Tạo hồ sơ nhân sự mới trong cơ sở dữ liệu SQL Server.</DialogDescription>
+                    <DialogDescription className="text-slate-500 mt-1.5 text-[11px] font-semibold leading-tight">Khởi tạo và quản lý hồ sơ nhân sự mới trên hệ thống.</DialogDescription>
                   </div>
                 </DialogHeader>
 
-                {/* Avatar upload */}
-                <AvatarUpload value={avatar} onChange={setAvatar} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Left Column: Avatar & Basic Info */}
+                  <div className="space-y-4">
+                    {/* Avatar upload */}
+                    <AvatarUpload value={avatar} onChange={setAvatar} />
 
-                {/* Name */}
-                <div className="space-y-2 text-left">
-                  <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Họ và tên đầy đủ <span className="text-red-400">*</span></label>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder="VD: Nguyễn Văn A" className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                    {/* Name */}
+                    <div className="space-y-2 text-left">
+                      <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Họ và tên đầy đủ <span className="text-red-400">*</span></label>
+                      <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder="VD: Nguyễn Văn A" className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                    </div>
+
+                    {/* Role + Department */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2 text-left">
+                        <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Chức vụ <span className="text-red-400">*</span></label>
+                        <Select value={role} onValueChange={(v) => setRole(v ?? "")}>
+                          <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-11 bg-white font-bold text-xs shadow-none text-slate-800">
+                            <SelectValue placeholder="Chọn chức vụ..." />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
+                            {ROLES.map((r) => <SelectItem key={r} value={r} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{r}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2 text-left">
+                        <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Phòng ban <span className="text-red-400">*</span></label>
+                        <Select value={department} onValueChange={(v) => setDepartment(v ?? "")}>
+                          <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-11 bg-white font-bold text-xs shadow-none text-slate-800">
+                            <SelectValue placeholder="Chọn phòng ban..." />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
+                            {DEPARTMENTS.map((d) => <SelectItem key={d} value={d} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{d}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Contact & Location */}
+                  <div className="space-y-4">
+                    {/* Phone + Email */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2 text-left">
+                        <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Số điện thoại</label>
+                        <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="090 123 4567" className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                      </div>
+                      <div className="space-y-2 text-left">
+                        <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Email công vụ</label>
+                        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ten@mintcare.com" className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                      </div>
+                    </div>
+
+                    {/* Location + Status */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2 text-left">
+                        <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Trạng thái hoạt động</label>
+                        <Select value={status} onValueChange={(v) => { setStatus(v ?? "Sẵn sàng"); setAvailable(v === "Sẵn sàng") }}>
+                          <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-11 bg-white font-bold text-xs shadow-none text-slate-800">
+                            <SelectValue placeholder="Chọn trạng thái..." />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
+                            <SelectItem value="Sẵn sàng" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Sẵn sàng (Được đặt lịch)</SelectItem>
+                            <SelectItem value="Đang bận" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Đang bận (Khóa đặt lịch)</SelectItem>
+                            <SelectItem value="Nghỉ phép" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Nghỉ phép (Khóa đặt lịch)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2 text-left">
+                        <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Địa điểm / Vị trí</label>
+                        <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="VD: Quận 1, TP.HCM" className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Role + Department */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2 text-left">
-                    <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Chức vụ <span className="text-red-400">*</span></label>
-                    <Select value={role} onValueChange={(v) => setRole(v ?? "")}>
-                      <SelectTrigger className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none text-slate-800">
-                        <SelectValue placeholder="Chọn chức vụ..." />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                        {ROLES.map((r) => <SelectItem key={r} value={r} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{r}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2 text-left">
-                    <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Phòng ban <span className="text-red-400">*</span></label>
-                    <Select value={department} onValueChange={(v) => setDepartment(v ?? "")}>
-                      <SelectTrigger className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none text-slate-800">
-                        <SelectValue placeholder="Chọn phòng ban..." />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                        {DEPARTMENTS.map((d) => <SelectItem key={d} value={d} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{d}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Phone + Email */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2 text-left">
-                    <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Số điện thoại</label>
-                    <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="090 123 4567" className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
-                  </div>
-                  <div className="space-y-2 text-left">
-                    <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Email công vụ</label>
-                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ten@mintcare.com" className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
-                  </div>
-                </div>
-
-                {/* Location */}
-                <div className="space-y-2 text-left">
-                  <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Địa điểm / Vị trí làm việc</label>
-                  <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="VD: Quận 1, TP.HCM" className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
-                </div>
-
-                <DialogFooter className="pt-4 border-t border-slate-100 flex-col sm:flex-col gap-3 bg-white">
+                <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3 bg-white">
+                  <Button type="button" variant="outline" onClick={() => setOpen(false)} className="rounded-xl h-10 px-5 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">
+                    Hủy bỏ
+                  </Button>
                   <Button
                     type="submit"
                     disabled={!name || !role || !department || submitting}
-                    className="w-full rounded-xl h-11 text-xs font-black uppercase tracking-[0.15em] bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-95 transition-all shadow-md border-b-2 border-white/10 active:border-b-0 active:translate-y-0.5 disabled:opacity-40 group"
+                    className="rounded-xl h-10 px-6 text-xs font-black uppercase tracking-[0.15em] bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-95 transition-all shadow-md border-b-2 border-white/10 active:border-b-0 active:translate-y-0.5 disabled:opacity-40 group"
                   >
                     {submitting ? "Đang lưu..." : "Tạo hồ sơ"}
                     <Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" />
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => setOpen(false)} className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">
-                    Hủy bỏ
                   </Button>
                 </DialogFooter>
               </motion.form>
@@ -290,6 +316,8 @@ function EditStaffDialog({
   const [email, setEmail] = React.useState(person.email || "")
   const [location, setLocation] = React.useState(person.location || "")
   const [avatar, setAvatar] = React.useState(person.avatar || "")
+  const [status, setStatus] = React.useState<StaffStatus>(person.status || "Sẵn sàng")
+  const [available, setAvailable] = React.useState(person.available ?? true)
 
   React.useEffect(() => {
     if (open) {
@@ -298,18 +326,20 @@ function EditStaffDialog({
       setEmail(person.email || "")
       setLocation(person.location || "")
       setAvatar(person.avatar || "")
+      setStatus(person.status || "Sẵn sàng")
+      setAvailable(person.available ?? true)
     }
   }, [open, person])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSave({ ...person, name, role, department, phone, email, location, avatar })
+    onSave({ ...person, name, role, department, phone, email, location, avatar, status, available })
     onOpenChange(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] rounded-[28px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
+      <DialogContent className="sm:max-w-[740px] rounded-[32px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
         <div className="h-1.5 w-full bg-gradient-to-r from-blue-400 to-indigo-500" />
         <form onSubmit={handleSubmit} className="p-8 space-y-5">
           <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-5 border-b border-slate-100">
@@ -322,57 +352,83 @@ function EditStaffDialog({
             </div>
           </DialogHeader>
 
-          <AvatarUpload value={avatar} onChange={setAvatar} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left Column */}
+            <div className="space-y-4">
+              <AvatarUpload value={avatar} onChange={setAvatar} />
 
-          <div className="space-y-2 text-left">
-            <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Họ và tên</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} required className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2 text-left">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Chức vụ</label>
-              <Select value={role} onValueChange={(v) => setRole(v ?? "")}>
-                <SelectTrigger className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none text-slate-800">
-                  <SelectValue placeholder="Chọn chức vụ..." />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                  {ROLES.map((r) => <SelectItem key={r} value={r} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{r}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="space-y-2 text-left">
+                <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Họ và tên</label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} required className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 text-left">
+                  <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Chức vụ</label>
+                  <Select value={role} onValueChange={(v) => setRole(v ?? "")}>
+                    <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-11 bg-white font-bold text-xs shadow-none text-slate-800">
+                      <SelectValue placeholder="Chọn chức vụ..." />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
+                      {ROLES.map((r) => <SelectItem key={r} value={r} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{r}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 text-left">
+                  <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Phòng ban</label>
+                  <Select value={department} onValueChange={(v) => setDepartment(v ?? "")}>
+                    <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-11 bg-white font-bold text-xs shadow-none text-slate-800">
+                      <SelectValue placeholder="Chọn phòng ban..." />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
+                      {DEPARTMENTS.map((d) => <SelectItem key={d} value={d} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{d}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
-            <div className="space-y-2 text-left">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Phòng ban</label>
-              <Select value={department} onValueChange={(v) => setDepartment(v ?? "")}>
-                <SelectTrigger className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none text-slate-800">
-                  <SelectValue placeholder="Chọn phòng ban..." />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                  {DEPARTMENTS.map((d) => <SelectItem key={d} value={d} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{d}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="space-y-2 text-left">
-            <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Số điện thoại</label>
-            <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2 text-left">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Email công vụ</label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ten@mintcare.com" className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
-            </div>
-            <div className="space-y-2 text-left">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Địa điểm</label>
-              <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="VD: Quận 1, TP.HCM" className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+
+            {/* Right Column */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 text-left">
+                  <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Số điện thoại</label>
+                  <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                </div>
+                <div className="space-y-2 text-left">
+                  <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Email công vụ</label>
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ten@mintcare.com" className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 text-left">
+                  <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Trạng thái hoạt động</label>
+                  <Select value={status} onValueChange={(v) => { setStatus(v ?? "Sẵn sàng"); setAvailable(v === "Sẵn sàng") }}>
+                    <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-11 bg-white font-bold text-xs shadow-none text-slate-800">
+                      <SelectValue placeholder="Chọn trạng thái..." />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
+                      <SelectItem value="Sẵn sàng" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Sẵn sàng (Được đặt lịch)</SelectItem>
+                      <SelectItem value="Đang bận" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Đang bận (Khóa đặt lịch)</SelectItem>
+                      <SelectItem value="Nghỉ phép" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Nghỉ phép (Khóa đặt lịch)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 text-left">
+                  <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Địa điểm</label>
+                  <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="VD: Quận 1, TP.HCM" className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                </div>
+              </div>
             </div>
           </div>
 
-          <DialogFooter className="pt-4 border-t border-slate-100 flex-col sm:flex-col gap-3 bg-white">
-            <Button type="submit" className="w-full rounded-xl h-11 text-xs font-black uppercase tracking-[0.15em] bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:opacity-95 transition-all shadow-md border-b-2 border-white/10 active:border-b-0 active:translate-y-0.5 group">
-              Lưu thay đổi <Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" />
-            </Button>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">
+          <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3 bg-white">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl h-10 px-5 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">
               Hủy bỏ
+            </Button>
+            <Button type="submit" className="rounded-xl h-10 px-6 text-xs font-black uppercase tracking-[0.15em] bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:opacity-95 transition-all shadow-md border-b-2 border-white/10 active:border-b-0 active:translate-y-0.5 group">
+              Lưu thay đổi <Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" />
             </Button>
           </DialogFooter>
         </form>
@@ -462,7 +518,7 @@ function StaffCard({
             </div>
           </div>
 
-          <div className="mt-10 grid grid-cols-2 gap-4 relative z-10">
+          <div className="mt-6 grid grid-cols-2 gap-4 relative z-10">
             <div className="bg-surface-secondary/40 p-5 rounded-[24px] border border-hairline/40 transition-all group-hover:bg-white group-hover:shadow-sm text-left">
               <p className="text-[9px] font-black text-on-surface-tertiary uppercase tracking-widest mb-2 flex items-center gap-2">
                 <Star className="w-3.5 h-3.5 fill-primary text-primary" /> Xếp hạng
@@ -590,7 +646,7 @@ export default function StaffPage() {
           </div>
           <h1 className="text-6xl font-black tight-tracking text-foreground leading-[1] uppercase text-left">Quản lý <br />Chuyên gia</h1>
           <p className="text-xl text-muted-foreground mt-5 max-w-2xl font-medium leading-relaxed antialiased text-left">
-            Điều phối và nâng cao hiệu suất làm việc cho đội ngũ y tế lưu động kết nối SQL Server.
+            Điều phối và nâng cao hiệu suất làm việc cho đội ngũ chuyên gia y tế lưu động của phòng khám.
           </p>
         </motion.div>
         <div className="flex items-center gap-4 shrink-0">

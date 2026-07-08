@@ -1,0 +1,202 @@
+---
+name: "[Legacy SG] mintlify-inspiration"
+slug: legacy-style-guide-style_14a23447f614
+modes: [light]
+color:
+  palette:
+    canvas: "#ffffff"
+    ink: "#1a1a1a"
+    ink-2: "#555555"
+    ink-3: "#8a8a8a"
+    line: "#e2e2e2"
+    primary: "#18BE66"
+    on-primary: "#FFFFFF"
+    primary-strong: "#16A34A"
+    action: "#18181B"
+    on-action: "#FFFFFF"
+    surface: "#FFFFFF"
+    surface-secondary: "#F5F6F7"
+    surface-tinted: "#ECFBF2"
+    on-surface: "#0A0A0A"
+    on-surface-secondary: "#52525B"
+    on-surface-tertiary: "#A1A1AA"
+    hairline: "#E4E4E7"
+    success: "#18BE66"
+  semantic:
+    background.canvas: "{color.palette.canvas}"
+    surface.default: "{color.palette.canvas}"
+    surface.raised: "{color.palette.canvas}"
+    text.primary: "{color.palette.ink}"
+    text.secondary: "{color.palette.ink-2}"
+    text.tertiary: "{color.palette.ink-3}"
+    text.link: "{color.palette.primary}"
+    border.default: "{color.palette.line}"
+    border.focus: "{color.palette.primary}"
+    primary.bg: "{color.palette.primary}"
+    primary.fg: "{color.palette.on-primary}"
+typography:
+  family: { primary: "Inter, \"Inter Fallback\", system-ui, -apple-system, sans-serif" }
+  textStyle:
+    heading-lg: { fontFamily: "Inter, \"Inter Fallback\", system-ui, -apple-system, sans-serif", fontSize: "24px", fontWeight: 600, lineHeight: 1.2 }
+    body-md: { fontFamily: "Inter, \"Inter Fallback\", system-ui, -apple-system, sans-serif", fontSize: "15px", fontWeight: 400, lineHeight: 1.5 }
+spacing:
+  xxs: "4px"
+  xs: "8px"
+  sm: "12px"
+  md: "16px"
+  lg: "24px"
+  xl: "32px"
+  xxl: "48px"
+  xxxl: "80px"
+radius:
+  sm: "8px"
+  md: "12px"
+  lg: "16px"
+  full: "9999px"
+---
+
+> Migrated from a legacy style guide.
+> The palette above is mapped from the original tokens, which are also preserved below.
+
+## Legacy style-guide tokens
+
+### Colors
+
+- `primary`: `#18BE66`
+- `primary-strong`: `#16A34A`
+- `on-primary`: `#FFFFFF`
+- `action`: `#18181B`
+- `on-action`: `#FFFFFF`
+- `surface`: `#FFFFFF`
+- `surface-secondary`: `#F5F6F7`
+- `surface-tinted`: `#ECFBF2`
+- `on-surface`: `#0A0A0A`
+- `on-surface-secondary`: `#52525B`
+- `on-surface-tertiary`: `#A1A1AA`
+- `hairline`: `#E4E4E7`
+- `success`: `#18BE66`
+
+### Typography
+
+- `display`: `{"family":"Inter, \"Inter Fallback\", system-ui, -apple-system, sans-serif","size":"48px","url":""}`
+- `headline-lg`: `{"family":"Inter, \"Inter Fallback\", sans-serif","size":"42px","url":""}`
+- `headline-md`: `{"family":"Inter, \"Inter Fallback\", sans-serif","size":"24px","url":""}`
+- `body-lg`: `{"family":"Inter, \"Inter Fallback\", sans-serif","size":"18px","url":""}`
+- `body-md`: `{"family":"Inter, \"Inter Fallback\", sans-serif","size":"15px","url":""}`
+- `label`: `{"family":"Inter, \"Inter Fallback\", sans-serif","size":"15px","url":""}`
+- `eyebrow-mono`: `{"family":"\"Geist Mono\", \"JetBrains Mono\", ui-monospace, monospace","size":"13px","url":""}`
+
+### Spacing
+
+- `xxs`: `4px`
+- `xs`: `8px`
+- `sm`: `12px`
+- `md`: `16px`
+- `lg`: `24px`
+- `xl`: `32px`
+- `xxl`: `48px`
+- `xxxl`: `80px`
+
+### Radius
+
+- `sm`: `8px`
+- `md`: `12px`
+- `lg`: `16px`
+- `full`: `9999px`
+
+## Design instructions
+
+## Token Instructions
+
+- `surface` (#FFFFFF) -> always-white canvas; Mintlify is light-only, never a dark marketing variant
+- `primary` (#18BE66 mint) -> reserved for logo, links, mono eyebrows, NEW badge, illustration fills, and status dot; never body text, borders, or buttons
+- `primary-strong` (#16A34A) -> green text on white that needs contrast (links, feature-card eyebrows)
+- `action` (#18181B) -> primary CTA black pill carries all primary interaction, not green; secondary is white with hairline
+- `surface-secondary` (#F5F6F7) -> alternating section wells; `surface-tinted` (#ECFBF2) -> behind illustrations and icon chips
+- `hairline` (#E4E4E7) -> card borders, footer rules, dividers; cards use hairline not shadows
+- `eyebrow-mono` -> uppercase green monospace section eyebrows (the signature twist)
+- `display`/`headline-lg` -> Inter 600 with tight ~-0.02em negative tracking
+- `radius.full` -> CTA pills, NEW badge, search bar, status pill
+- `success` reuses brand mint (#18BE66); do not introduce a second green or accent hue
+- spacing -> 8px base with generous 80px section gaps
+
+# Mintlify
+
+> Design spec — version alpha. Surfaces studied via Playwright: homepage (logged-out) — computed styles + representative element probes. Note: live computed colors resolved through `lab()`/`oklch`; brand hexes below are reconciled from rendered screenshots and Mintlify's known mint identity.
+
+## Overview
+
+Mintlify is an **always-white** documentation platform (`{colors.surface}` `#FFFFFF`) with calm, developer-friendly polish. The system runs on a single brand voltage — a fresh **mint green** `{colors.primary}` `#18BE66` — paired with a strict **black/white action system**: every primary CTA is a solid black pill `{colors.action}` `#18181B`, every secondary is white with a hairline. Mint is rationed with discipline: it appears in the **leaf logo**, **links**, the uppercase **monospace eyebrow labels** (`LLMS.TXT & MCP`, `AGENT`, `ASSISTANT`), the **"NEW" badge**, illustration accents, and the "All systems normal" status dot — and essentially nowhere else.
+
+Typography is **Inter** throughout. Headlines are heavy and tightly tracked (600 weight with ~ -0.02em negative letter-spacing), giving big statements like "Built for the intelligence age" a confident, modern density. The deliberate twist is the **monospace eyebrow**: small uppercase green mono labels above each section, a quiet nod to code, terminals, and the docs Mintlify exists to publish. The hero uses a soft **blue→teal→green gradient** behind a hand-painted cloud, the one place the palette warms up. Shapes are friendly: 8–16px cards, fully-pill CTAs and badges.
+
+## Colors
+
+**Brand.** Mint `{colors.primary}` `#18BE66` is the identity. For green text on white that needs more contrast, step to `{colors.primary-strong}` `#16A34A` (used on links and feature-card eyebrows). Scarcity rule: mint is reserved for logo, links, mono eyebrows, the NEW badge, illustration fills, and the status dot — never for body text, borders, or primary buttons.
+
+**Action system.** The primary CTA is a near-black pill `{colors.action}` `#18181B` with white label; the secondary is white with a 1px `{colors.hairline}` outline. This black/white pairing — not green buttons — carries all primary interaction, which keeps the mint precious.
+
+**Surfaces.** Canvas `{colors.surface}` `#FFFFFF`; alternating section wells `{colors.surface-secondary}` `#F5F6F7`; a faint `{colors.surface-tinted}` `#ECFBF2` sits behind illustrations and icon chips.
+
+**Text.** Headings/ink `{colors.on-surface}` `#0A0A0A`; body `{colors.on-surface-secondary}` `#52525B`; eyebrow grey, footer column headers, and meta `{colors.on-surface-tertiary}` `#A1A1AA`.
+
+**Hairlines & semantic.** Card borders, footer rules, dividers use `{colors.hairline}` `#E4E4E7`. Success reuses the brand mint `{colors.success}` `#18BE66` (the status dot) — Mintlify doesn't introduce a separate green.
+
+## Typography
+
+Family: **Inter** (with Inter Fallback), one family for everything except the mono eyebrow. Weight strategy: 600 for display/headlines (with tight negative tracking), 500 for headline-md and labels, 400 for body. The **eyebrow** is a separate role: uppercase **monospace** (Geist Mono / JetBrains Mono substitute), 13px, in `{colors.primary-strong}`.
+
+| Token        | Size | Weight | Tracking | Usage                                     |
+| ------------ | ---- | ------ | -------- | ----------------------------------------- |
+| display      | 48px | 600    | -0.02em  | Hero ("The Intelligent Knowledge Platform")|
+| headline-lg  | 42px | 600    | -0.02em  | Section headers ("Built for the intelligence age") |
+| headline-md  | 24px | 500    | -0.01em  | Card titles                               |
+| body-lg      | 18px | 400    | normal   | Lead paragraphs                           |
+| body-md      | 15px | 400    | normal   | Default body, descriptions                |
+| label        | 15px | 500    | normal   | Buttons, nav                              |
+| eyebrow-mono | 13px | 500    | +0.04em  | Uppercase section eyebrows (green)        |
+
+## Layout
+
+Base unit **8px**, with generous `xxxl` 80px section gaps. Content sits in a centered max-width (~1100px) column. The home alternates white and `#F5F6F7` sections; feature areas use 2-up bordered cards with a mono eyebrow → headline → description rhythm. Logo walls (Anthropic, Coinbase, Microsoft, Perplexity…) and a customer-story carousel anchor social proof. Whitespace is abundant and the vertical rhythm is loose.
+
+## Elevation & Depth
+
+Mostly flat with **hairline borders** doing the structural work. Feature cards are white with a 1px `#E4E4E7` edge and no resting shadow; soft shadows appear only on floating UI mock-ups inside illustrations and on hover. No heavy material elevation, no neumorphism.
+
+## Shapes
+
+Radius vocabulary: `{rounded.sm}` 8px (inputs, chips), `{rounded.md}` 12px (icon chips, cards), `{rounded.lg}` 16px (large feature cards), `{rounded.full}` (CTA pills, the NEW badge, search bar, status pill). Friendly-but-crisp — clearly rounded, never blobby.
+
+## Components
+
+- **button-primary** — black pill `#18181B`, white 500 label, full radius, ~`12px 24px` padding ("Get started for free").
+- **button-secondary** — white pill, 1px hairline, ink label ("Get a demo").
+- **badge-new** — mint pill, white mono text ("NEW").
+- **feature-card** — white, 1px hairline, 16px radius, with a green mono eyebrow over an ink headline.
+- **icon-chip** — rounded square on faint `#ECFBF2` mint tint, mint outline glyph.
+- **status-pill** — grey `#F5F6F7` pill with a mint dot ("All systems normal").
+- **link** — `#16A34A`, underline on hover.
+
+## Motion
+
+Restrained: `{motion.duration-fast}` 150ms hovers, `{motion.duration-standard}` 250ms transitions on a standard ease. Illustration mock-ups animate subtly (checkmarks completing, cursors moving) but the page itself avoids parallax and long scroll reveals.
+
+## Iconography
+
+**Outline** glyphs (Lucide as substitute for Mintlify's own doc icon set), ~1.75px stroke, 16/20/24px. Inside tinted chips they take mint `{colors.primary}`; elsewhere they inherit `{colors.on-surface}` ink. Never multi-tinted.
+
+## Do's and Don'ts
+
+- **Do** keep the canvas white — Mintlify is light-only; never ship a dark-background marketing variant.
+- **Do** carry primary actions on the **black pill**, not on green — reserve mint for logo, links, eyebrows, NEW badge, and status.
+- **Do** set section eyebrows in **uppercase green monospace**.
+- **Do** track headlines tight (~ -0.02em) at weight 600.
+- **Don't** use mint for large fills, body text, or primary buttons.
+- **Don't** add drop shadows to feature cards — use hairline borders.
+- **Don't** introduce a second accent hue; the system is one mint plus black/white.
+
+## Known Gaps
+
+- Inter family, 600 headline weight, negative tracking, black pill CTAs, hairline-bordered cards, and the mono green eyebrow were observed directly. Exact hexes for `primary` `#18BE66`, `success`, and the surface tints are reconciled from rendered screenshots (the page serves colors in `lab()`/`oklch`) and Mintlify's known mint identity — treat as authoritative-but-verify.
+- Docs-app surfaces (the actual generated documentation theme, with its light/dark toggle) were not probed; tokens describe the marketing site.

@@ -209,14 +209,14 @@ export default function AccountsPage() {
               <Plus className="w-5 h-5 mr-2" /> Thêm tài khoản
             </Button>
           } />
-          <DialogContent className="sm:max-w-[460px] rounded-[32px] border border-slate-200 bg-white p-8 text-slate-900">
+          <DialogContent className="sm:max-w-[700px] rounded-[32px] border border-slate-200 bg-white p-8 text-slate-900">
             <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-4 border-b border-slate-100 mb-6">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary-strong text-white flex items-center justify-center shadow-lg">
                 <UserPlus className="w-6 h-6" />
               </div>
               <div className="text-left">
                 <DialogTitle className="text-lg font-black uppercase tracking-tight text-blue-950">Tạo tài khoản mới</DialogTitle>
-                <DialogDescription className="text-slate-400 text-xs font-semibold">Tạo tài khoản phân quyền trong SQL Server.</DialogDescription>
+                <DialogDescription className="text-slate-400 text-xs font-semibold">Tạo tài khoản phân quyền truy cập hệ thống.</DialogDescription>
               </div>
             </DialogHeader>
 
@@ -226,48 +226,60 @@ export default function AccountsPage() {
               </div>
             )}
 
-            <form onSubmit={handleAddAccount} className="space-y-4">
-              <div className="space-y-1 text-left">
-                <Label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Họ và tên</Label>
-                <Input type="text" required placeholder="VD: Nguyễn Văn A" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-              </div>
+            <form onSubmit={handleAddAccount} className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left Column */}
+                <div className="space-y-4">
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Họ và tên</Label>
+                    <Input type="text" required placeholder="VD: Nguyễn Văn A" value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                  </div>
 
-              <div className="space-y-1 text-left">
-                <Label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Địa chỉ Email</Label>
-                <Input type="email" required placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1 text-left">
-                  <Label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Số điện thoại</Label>
-                  <Input type="tel" placeholder="0901234567" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Địa chỉ Email</Label>
+                    <Input type="email" required placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                  </div>
                 </div>
-                <div className="space-y-1 text-left">
-                  <Label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Vai trò</Label>
-                  <Select value={role} onValueChange={(val: any) => setRole(val)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Chọn vai trò" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="customer">Khách hàng</SelectItem>
-                      <SelectItem value="admin">Quản trị viên</SelectItem>
-                    </SelectContent>
-                  </Select>
+
+                {/* Right Column */}
+                <div className="space-y-4">
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Số điện thoại</Label>
+                    <Input type="tel" placeholder="0901234567" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                  </div>
+
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Vai trò</Label>
+                    <Select value={role} onValueChange={(val: any) => setRole(val)}>
+                      <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-11 bg-white font-bold text-xs shadow-none text-slate-800">
+                        <SelectValue placeholder="Chọn vai trò" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
+                        <SelectItem value="customer" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Khách hàng</SelectItem>
+                        <SelectItem value="admin" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Quản trị viên</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-1 text-left">
-                <Label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Mật khẩu ban đầu</Label>
+              <div className="space-y-2 text-left">
+                <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Mật khẩu ban đầu</Label>
                 <div className="relative">
-                  <Input type={showPass ? "text" : "password"} required placeholder="Mật khẩu ít nhất 6 ký tự" value={password} onChange={(e) => setPassword(e.target.value)} className="pr-10" />
+                  <Input type={showPass ? "text" : "password"} required placeholder="Mật khẩu ít nhất 6 ký tự" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none pl-3 pr-10 text-slate-800 transition-all" />
                   <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                     {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
-              <DialogFooter className="pt-4">
-                <Button type="submit" className="w-full bg-primary hover:bg-primary-strong text-white rounded-xl h-12 text-xs font-black uppercase tracking-widest">Tạo tài khoản</Button>
+              <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3 bg-white">
+                <Button type="button" variant="outline" onClick={() => setIsOpenAdd(false)} className="rounded-xl h-10 px-5 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">
+                  Hủy bỏ
+                </Button>
+                <Button type="submit" className="rounded-xl h-10 px-6 text-xs font-black uppercase tracking-widest bg-primary hover:bg-primary-strong text-white transition-all shadow-md">
+                  Tạo tài khoản
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -313,7 +325,7 @@ export default function AccountsPage() {
           {loading ? (
             <div className="py-24 flex flex-col items-center justify-center gap-4">
               <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs font-black uppercase tracking-widest text-slate-400">Đang đồng bộ cơ sở dữ liệu...</p>
+              <p className="text-xs font-black uppercase tracking-widest text-slate-400">Đang đồng bộ dữ liệu hệ thống...</p>
             </div>
           ) : (
             <Table>
@@ -392,7 +404,7 @@ export default function AccountsPage() {
 
       {/* Dialog Sửa tài khoản */}
       <Dialog open={isOpenEdit} onOpenChange={(val) => { setIsOpenEdit(val); if(!val) resetForm(); }}>
-        <DialogContent className="sm:max-w-[460px] rounded-[32px] border border-slate-200 bg-white p-8 text-slate-900">
+        <DialogContent className="sm:max-w-[700px] rounded-[32px] border border-slate-200 bg-white p-8 text-slate-900">
           <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-4 border-b border-slate-100 mb-6">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-400 to-indigo-600 text-white flex items-center justify-center shadow-lg">
               <Pencil className="w-5 h-5" />
@@ -409,48 +421,60 @@ export default function AccountsPage() {
             </div>
           )}
 
-          <form onSubmit={handleEditAccount} className="space-y-4">
-            <div className="space-y-1 text-left">
-              <Label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Họ và tên</Label>
-              <Input type="text" required placeholder="VD: Nguyễn Văn A" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-            </div>
+          <form onSubmit={handleEditAccount} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left Column */}
+              <div className="space-y-4">
+                <div className="space-y-2 text-left">
+                  <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Họ và tên</Label>
+                  <Input type="text" required placeholder="VD: Nguyễn Văn A" value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                </div>
 
-            <div className="space-y-1 text-left">
-              <Label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Địa chỉ Email</Label>
-              <Input type="email" required placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1 text-left">
-                <Label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Số điện thoại</Label>
-                <Input type="tel" placeholder="0901234567" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                <div className="space-y-2 text-left">
+                  <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Địa chỉ Email</Label>
+                  <Input type="email" required placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                </div>
               </div>
-              <div className="space-y-1 text-left">
-                <Label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Vai trò</Label>
-                <Select value={role} onValueChange={(val: any) => setRole(val)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Chọn vai trò" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="customer">Khách hàng</SelectItem>
-                    <SelectItem value="admin">Quản trị viên</SelectItem>
-                  </SelectContent>
-                </Select>
+
+              {/* Right Column */}
+              <div className="space-y-4">
+                <div className="space-y-2 text-left">
+                  <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Số điện thoại</Label>
+                  <Input type="tel" placeholder="0901234567" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                </div>
+
+                <div className="space-y-2 text-left">
+                  <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Vai trò</Label>
+                  <Select value={role} onValueChange={(val: any) => setRole(val)}>
+                    <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-11 bg-white font-bold text-xs shadow-none text-slate-800">
+                      <SelectValue placeholder="Chọn vai trò" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
+                      <SelectItem value="customer" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Khách hàng</SelectItem>
+                      <SelectItem value="admin" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Quản trị viên</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-1 text-left">
-              <Label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Đổi mật khẩu mới (Bỏ trống nếu không đổi)</Label>
+            <div className="space-y-2 text-left">
+              <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Đổi mật khẩu mới (Bỏ trống nếu không đổi)</Label>
               <div className="relative">
-                <Input type={showPass ? "text" : "password"} placeholder="Nhập mật khẩu mới" value={password} onChange={(e) => setPassword(e.target.value)} className="pr-10" />
+                <Input type={showPass ? "text" : "password"} placeholder="Nhập mật khẩu mới" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none pl-3 pr-10 text-slate-800 transition-all" />
                 <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                   {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            <DialogFooter className="pt-4">
-              <Button type="submit" className="w-full bg-primary hover:bg-primary-strong text-white rounded-xl h-12 text-xs font-black uppercase tracking-widest">Lưu thay đổi</Button>
+            <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3 bg-white">
+              <Button type="button" variant="outline" onClick={() => setIsOpenEdit(false)} className="rounded-xl h-10 px-5 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">
+                Hủy bỏ
+              </Button>
+              <Button type="submit" className="rounded-xl h-10 px-6 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-blue-500 to-indigo-600 text-white transition-all shadow-md">
+                Lưu thay đổi
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -465,7 +489,7 @@ export default function AccountsPage() {
             </div>
             <DialogTitle className="text-lg font-black uppercase tracking-tight text-blue-950">Xác nhận xóa tài khoản</DialogTitle>
             <DialogDescription className="text-slate-400 text-xs font-semibold mt-1">
-              Hành động này không thể hoàn tác. Tài khoản của <span className="font-bold text-slate-800">{selectedUser?.fullName}</span> sẽ bị xóa vĩnh viễn khỏi SQL Server.
+              Hành động này không thể hoàn tác. Tài khoản của <span className="font-bold text-slate-800">{selectedUser?.fullName}</span> sẽ bị xóa vĩnh viễn khỏi hệ thống.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="grid grid-cols-2 gap-3 mt-6">

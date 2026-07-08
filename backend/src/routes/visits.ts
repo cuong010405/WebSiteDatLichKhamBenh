@@ -5,6 +5,7 @@ import {
   createVisit,
   updateVisit,
   deleteVisit,
+  syncPatientsForVisits,
 } from "../services/visit";
 
 const router = Router();
@@ -24,6 +25,17 @@ router.get("/", async (req, res) => {
   } catch (error: any) {
     console.error("Visits route error:", error);
     res.status(500).json({ error: error.message || "Lỗi máy chủ nội bộ" });
+  }
+});
+
+// Sync: tạo Patient cho tất cả visit "Đã xác nhận" chưa có patient
+router.post("/sync-patients", async (req, res) => {
+  try {
+    const count = await syncPatientsForVisits();
+    res.json({ message: `Đã đồng bộ ${count} bệnh nhân từ lịch hẹn.`, count });
+  } catch (error: any) {
+    console.error("Sync patients error:", error);
+    res.status(500).json({ error: error.message || "Lỗi đồng bộ" });
   }
 });
 

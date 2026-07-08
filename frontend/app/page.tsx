@@ -37,6 +37,10 @@ import {
   Clock3,
   Send,
   FileText,
+  KeyRound,
+  ChevronDown,
+  Save,
+  UserCog,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -193,6 +197,7 @@ function Doctor3DCarousel({
 }) {
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [isHovered, setIsHovered] = React.useState<number | null>(null);
+  const [isAutoPlayPaused, setIsAutoPlayPaused] = React.useState(false);
 
   const handlePrev = () => {
     setCurrentIndex((prev) => (prev - 1 + staff.length) % staff.length);
@@ -201,6 +206,17 @@ function Doctor3DCarousel({
   const handleNext = () => {
     setCurrentIndex((prev) => (prev + 1) % staff.length);
   };
+
+  // Autoplay functionality with hover pause
+  React.useEffect(() => {
+    if (isAutoPlayPaused || isHovered !== null) return;
+
+    const interval = setInterval(() => {
+      handleNext();
+    }, 3000); // Transitions every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [isAutoPlayPaused, isHovered, staff.length]);
 
   const handleDragEnd = (event: any, info: any) => {
     const swipeThreshold = 50;
@@ -214,13 +230,18 @@ function Doctor3DCarousel({
   if (!staff || staff.length === 0) return null;
 
   return (
-    <div className="relative w-full py-16 flex flex-col items-center justify-center overflow-visible">
+    <div 
+      onMouseEnter={() => setIsAutoPlayPaused(true)}
+      onMouseLeave={() => setIsAutoPlayPaused(false)}
+      className="relative w-full py-16 flex flex-col items-center justify-center overflow-x-hidden"
+    >
       {/* 3D Carousel Stage */}
       <div className="relative w-full max-w-5xl h-[520px] flex items-center justify-center perspective-[1200px] overflow-visible">
         {/* Navigation Buttons */}
         <button
           onClick={handlePrev}
           type="button"
+          suppressHydrationWarning
           className="absolute left-0 md:left-4 z-40 p-4 rounded-full bg-white/70 hover:bg-white/90 backdrop-blur-md border border-white/80 shadow-xl text-blue-600 transition-all hover:scale-110 active:scale-95 cursor-pointer hover:ring-4 hover:ring-blue-100/60"
           aria-label="Previous specialist"
         >
@@ -230,6 +251,7 @@ function Doctor3DCarousel({
         <button
           onClick={handleNext}
           type="button"
+          suppressHydrationWarning
           className="absolute right-0 md:right-4 z-40 p-4 rounded-full bg-white/70 hover:bg-white/90 backdrop-blur-md border border-white/80 shadow-xl text-blue-600 transition-all hover:scale-110 active:scale-95 cursor-pointer hover:ring-4 hover:ring-blue-100/60"
           aria-label="Next specialist"
         >
@@ -271,30 +293,30 @@ function Doctor3DCarousel({
                   ).toFixed(1)
                 : "5.0";
 
-            // Premium dynamic hover gradient matching specialist department
+            // Premium dynamic hover gradient matching specialist department (friendly light medical theme)
             const getOverlayGradient = (dept: string) => {
               switch (dept) {
                 case "Ngoại khoa":
-                  return "from-purple-950/96 via-fuchsia-950/98 to-purple-950/98 border-purple-800/40";
+                  return "from-purple-50/98 via-white to-purple-50/98 border-purple-200/60 shadow-purple-500/5";
                 case "Phục hồi chức năng":
-                  return "from-emerald-950/96 via-teal-950/98 to-emerald-950/98 border-emerald-800/40";
+                  return "from-emerald-50/98 via-white to-emerald-50/98 border-emerald-200/60 shadow-emerald-500/5";
                 case "Nội khoa":
-                  return "from-indigo-950/96 via-blue-950/98 to-indigo-950/98 border-blue-800/40";
+                  return "from-blue-50/98 via-white to-blue-50/98 border-blue-200/60 shadow-blue-500/5";
                 default:
-                  return "from-slate-950/96 via-slate-900/98 to-slate-950/98 border-slate-800/40";
+                  return "from-slate-50/98 via-white to-slate-50/98 border-slate-200/60 shadow-slate-500/5";
               }
             };
 
             const getAccentColor = (dept: string) => {
               switch (dept) {
                 case "Ngoại khoa":
-                  return "text-purple-300";
+                  return "text-purple-600 bg-purple-100/60 border-purple-200/60";
                 case "Phục hồi chức năng":
-                  return "text-emerald-300";
+                  return "text-emerald-600 bg-emerald-100/60 border-emerald-200/60";
                 case "Nội khoa":
-                  return "text-blue-300";
+                  return "text-blue-600 bg-blue-100/60 border-blue-200/60";
                 default:
-                  return "text-slate-300";
+                  return "text-slate-600 bg-slate-100/60 border-slate-200/60";
               }
             };
 
@@ -401,7 +423,7 @@ function Doctor3DCarousel({
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.25 }}
                       className={cn(
-                        "absolute inset-0 bg-gradient-to-b backdrop-blur-md rounded-[40px] p-8 flex flex-col justify-between text-white z-50 shadow-2xl border",
+                        "absolute inset-0 bg-gradient-to-b backdrop-blur-md rounded-[40px] p-8 flex flex-col justify-between text-slate-700 z-50 shadow-2xl border",
                         getOverlayGradient(person.department),
                       )}
                     >
@@ -409,16 +431,16 @@ function Doctor3DCarousel({
                         <div className="flex items-center gap-4">
                           <img
                             src={person.avatar}
-                            className="w-14 h-14 rounded-2xl border-2 border-white/20 object-cover"
+                            className="w-14 h-14 rounded-2xl border border-slate-200 object-cover"
                             alt={person.name}
                           />
                           <div>
-                            <h4 className="font-black text-lg text-white leading-tight uppercase tracking-wide">
+                            <h4 className="font-black text-lg text-blue-950 leading-tight uppercase tracking-wide">
                               {person.name}
                             </h4>
                             <p
                               className={cn(
-                                "text-[10px] font-bold uppercase tracking-widest",
+                                "text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full border inline-block mt-1",
                                 getAccentColor(person.department),
                               )}
                             >
@@ -427,20 +449,20 @@ function Doctor3DCarousel({
                           </div>
                         </div>
 
-                        <div className="h-px bg-white/10 my-4" />
+                        <div className="h-px bg-slate-100 my-4" />
 
-                        <div className="space-y-3.5 text-xs font-semibold text-slate-200">
+                        <div className="space-y-3.5 text-xs font-semibold text-slate-600">
                           <div className="flex items-center gap-3">
-                            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
-                              <Phone className="w-3.5 h-3.5 text-blue-400" />
+                            <div className="w-7 h-7 rounded-lg bg-blue-50/80 flex items-center justify-center">
+                              <Phone className="w-3.5 h-3.5 text-blue-600" />
                             </div>
                             <span>
                               SĐT: {isLoggedIn ? person.phone : "•••• ••• •••"}
                             </span>
                           </div>
                           <div className="flex items-center gap-3">
-                            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
-                              <Mail className="w-3.5 h-3.5 text-blue-400" />
+                            <div className="w-7 h-7 rounded-lg bg-blue-50/80 flex items-center justify-center">
+                              <Mail className="w-3.5 h-3.5 text-blue-600" />
                             </div>
                             <span className="truncate">
                               Email:{" "}
@@ -450,8 +472,8 @@ function Doctor3DCarousel({
                             </span>
                           </div>
                           <div className="flex items-center gap-3">
-                            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
-                              <MapPin className="w-3.5 h-3.5 text-blue-400" />
+                            <div className="w-7 h-7 rounded-lg bg-blue-50/80 flex items-center justify-center">
+                              <MapPin className="w-3.5 h-3.5 text-blue-600" />
                             </div>
                             <span>
                               Khu vực:{" "}
@@ -461,15 +483,16 @@ function Doctor3DCarousel({
                             </span>
                           </div>
                           <div className="flex items-center gap-3">
-                            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
-                              <Clock className="w-3.5 h-3.5 text-blue-400" />
+                            <div className="w-7 h-7 rounded-lg bg-blue-50/80 flex items-center justify-center">
+                              <Clock className="w-3.5 h-3.5 text-blue-600" />
                             </div>
                             <span
-                              className={
+                              className={cn(
+                                "font-bold",
                                 person.available
-                                  ? "text-emerald-400 font-bold"
-                                  : "text-orange-400 font-bold"
-                              }
+                                  ? "text-emerald-600"
+                                  : "text-orange-500"
+                              )}
                             >
                               {person.available
                                 ? "Sẵn sàng nhận lịch"
@@ -479,9 +502,9 @@ function Doctor3DCarousel({
                         </div>
 
                         {!isLoggedIn && (
-                          <div className="bg-white/10 backdrop-blur-xs rounded-xl p-3 flex items-center gap-2 border border-white/5 mt-2">
-                            <ShieldCheck className="w-4 h-4 text-blue-400" />
-                            <span className="text-[9px] font-black uppercase tracking-wider text-slate-300">
+                          <div className="bg-blue-50/50 rounded-xl p-3 flex items-center gap-2 border border-blue-100/50 mt-2">
+                            <ShieldCheck className="w-4 h-4 text-blue-600" />
+                            <span className="text-[9px] font-black uppercase tracking-wider text-blue-700">
                               Đăng nhập để xem liên hệ
                             </span>
                           </div>
@@ -494,9 +517,9 @@ function Doctor3DCarousel({
                             render={
                               <Button
                                 variant="outline"
-                                className="w-full h-11 rounded-xl font-black text-[9px] uppercase tracking-widest border-white/20 text-white hover:bg-white/10 hover:text-white bg-transparent"
+                                className="w-full h-11 rounded-xl font-black text-[9px] uppercase tracking-widest border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-800 bg-white"
                               >
-                                <Eye className="w-3.5 h-3.5 mr-2 text-blue-400" />{" "}
+                                <Eye className="w-3.5 h-3.5 mr-2 text-blue-600" />{" "}
                                 Nhận xét
                               </Button>
                             }
@@ -591,11 +614,17 @@ function Doctor3DCarousel({
                         </Dialog>
 
                         <Button
+                          disabled={!person.available}
                           onClick={() => selectSpecialistForBooking(person.id)}
-                          className="w-full bg-linear-to-r from-blue-500 to-sky-500 text-white rounded-xl h-11 font-black text-[9px] uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:brightness-110 border-none"
+                          className={cn(
+                            "w-full rounded-xl h-11 font-black text-[9px] uppercase tracking-widest border-none transition-all duration-300",
+                            person.available
+                              ? "bg-linear-to-r from-blue-500 to-sky-500 text-white shadow-lg shadow-blue-500/20 hover:brightness-110 cursor-pointer"
+                              : "bg-slate-200 text-slate-400 cursor-not-allowed opacity-60"
+                          )}
                         >
-                          <CalendarPlus className="w-3.5 h-3.5 mr-2" /> Đặt lịch
-                          hẹn
+                          <CalendarPlus className="w-3.5 h-3.5 mr-2" />
+                          {person.available ? "Đặt lịch hẹn" : "Đang bận / Nghỉ phép"}
                         </Button>
                       </div>
                     </motion.div>
@@ -613,6 +642,7 @@ function Doctor3DCarousel({
           <button
             key={i}
             onClick={() => setCurrentIndex(i)}
+            suppressHydrationWarning
             className={cn(
               "h-2.5 rounded-full transition-all duration-300 cursor-pointer",
               i === currentIndex
@@ -661,6 +691,8 @@ export default function BookingPage() {
     email: string;
     address: string;
     summary: string;
+    age?: number;
+    gender?: string;
   }>({
     id: "BN-0842",
     name: "Evelyn Green",
@@ -669,6 +701,8 @@ export default function BookingPage() {
     address: "Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM",
     summary:
       "Bệnh nhân có tiền sử cao huyết áp và tiểu đường type 2. Đang trong lộ trình phục hồi sau phẫu thuật thay khớp gối trái.",
+    age: 35,
+    gender: "Nữ",
   });
 
   React.useEffect(() => {
@@ -679,7 +713,9 @@ export default function BookingPage() {
         phone: user.phone || "Chưa cập nhật",
         email: user.email,
         address: "Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM",
-        summary: "Hồ sơ cá nhân tự động đồng bộ từ tài khoản SQL Server.",
+        summary: "Hồ sơ cá nhân tự động đồng bộ từ tài khoản hệ thống.",
+        age: user.age ?? 35,
+        gender: user.gender ?? "Nam",
       });
     }
   }, [user]);
@@ -707,6 +743,147 @@ export default function BookingPage() {
   const [contactName, setContactName] = React.useState("");
   const [contactEmail, setContactEmail] = React.useState("");
   const [contactMsg, setContactMsg] = React.useState("");
+
+  // Profile Dropdown state
+  const [profileDropdownOpen, setProfileDropdownOpen] = React.useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = React.useState(false);
+  const [profileModalTab, setProfileModalTab] = React.useState<"profile" | "password">("profile");
+  const profileDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // Edit profile form
+  const [editName, setEditName] = React.useState("");
+  const [editPhone, setEditPhone] = React.useState("");
+  const [editAddress, setEditAddress] = React.useState("");
+  const [editSummary, setEditSummary] = React.useState("");
+  const [editAge, setEditAge] = React.useState("");
+  const [editGender, setEditGender] = React.useState("Nam");
+
+  // Change password form
+  const [currentPassword, setCurrentPassword] = React.useState("");
+  const [newPassword, setNewPassword] = React.useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = React.useState("");
+  const [showCurrentPw, setShowCurrentPw] = React.useState(false);
+  const [showNewPw, setShowNewPw] = React.useState(false);
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(e.target as Node)) {
+        setProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleOpenProfileEdit = () => {
+    setEditName(profile.name);
+    setEditPhone(profile.phone);
+    setEditAddress(profile.address);
+    setEditSummary(profile.summary);
+    setEditAge(profile.age ? String(profile.age) : "");
+    setEditGender(profile.gender || "Nam");
+    setProfileModalTab("profile");
+    setIsProfileModalOpen(true);
+    setProfileDropdownOpen(false);
+  };
+
+  const handleOpenChangePassword = () => {
+    setProfileModalTab("password");
+    setIsProfileModalOpen(true);
+    setProfileDropdownOpen(false);
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Save to backend if logged in
+    if (user?.id && !user.id.startsWith("CU-")) {
+      try {
+        const res = await fetch(`${API_URL}/users/${user.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fullName: editName,
+            phone: editPhone,
+            age: parseInt(editAge) || null,
+            gender: editGender,
+          }),
+        });
+        if (!res.ok) throw new Error("Cập nhật thất bại");
+        const data = await res.json();
+        
+        // Update localStorage session
+        const storedUser = localStorage.getItem("mintcare_user");
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser);
+          localStorage.setItem("mintcare_user", JSON.stringify({
+            ...parsed,
+            fullName: data.fullName,
+            phone: data.phone,
+            age: data.age,
+            gender: data.gender,
+          }));
+        }
+      } catch (err) {
+        console.error("Lỗi cập nhật user profile:", err);
+      }
+    }
+
+    setProfile((prev) => ({
+      ...prev,
+      name: editName,
+      phone: editPhone,
+      address: editAddress,
+      summary: editSummary,
+      age: parseInt(editAge) || 35,
+      gender: editGender,
+    }));
+    setIsProfileModalOpen(false);
+    addToast("Cập nhật hồ sơ cá nhân thành công!", "success");
+    
+    // Silently refresh profile context or trigger page reload to update auth user state
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+      addToast("Vui lòng điền đầy đủ thông tin.", "error");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      addToast("Mật khẩu xác nhận không khớp.", "error");
+      return;
+    }
+    if (newPassword.length < 6) {
+      addToast("Mật khẩu mới phải có ít nhất 6 ký tự.", "error");
+      return;
+    }
+    // Try backend update
+    if (user?.id && !user.id.startsWith("CU-")) {
+      try {
+        const res = await fetch(`${API_URL}/users/${user.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: newPassword }),
+        });
+        if (!res.ok) throw new Error("API error");
+        addToast("Đổi mật khẩu thành công!", "success");
+      } catch {
+        addToast("Không thể đổi mật khẩu lúc này. Thử lại sau.", "error");
+        return;
+      }
+    } else {
+      addToast("Đổi mật khẩu thành công!", "success");
+    }
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setIsProfileModalOpen(false);
+  };
 
   // Load staff list from backend API
   React.useEffect(() => {
@@ -936,10 +1113,16 @@ export default function BookingPage() {
       setAuthView("login");
       return;
     }
+
+    const staffMember = staff.find((s) => s.id === staffId);
+    if (staffMember && !staffMember.available) {
+      addToast("Chuyên gia hiện đang bận hoặc nghỉ phép. Vui lòng chọn người khác.", "error");
+      return;
+    }
+
     setBookingStaffId(staffId);
 
     // Auto-select first matching service
-    const staffMember = staff.find((s) => s.id === staffId);
     if (staffMember) {
       if (staffMember.role.includes("Y tá")) {
         setBookingServiceId("s1");
@@ -1145,7 +1328,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-600 selection:text-white relative">
+    <div className="min-h-screen w-full max-w-full overflow-x-clip bg-slate-50 text-slate-900 font-sans selection:bg-blue-600 selection:text-white relative">
       {/* Toast Notification Container */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm pointer-events-none">
         <AnimatePresence>
@@ -1251,27 +1434,100 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
 
           <div className="flex items-center gap-4">
             {isLoggedIn ? (
-              <div className="flex items-center gap-3 bg-blue-50/50 p-1.5 pl-4 rounded-full border border-blue-100 shadow-xs">
-                <span className="text-xs font-black text-blue-950 uppercase">
-                  {profile.name}
-                </span>
-                <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-black flex items-center justify-center text-xs uppercase">
-                  {profile.name
-                    ? profile.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .substring(0, 2)
-                    : "EG"}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleLogout}
-                  className="text-orange-500 hover:bg-orange-50 hover:text-orange-600 rounded-full h-8 w-8"
+              <div className="relative" ref={profileDropdownRef}>
+                {/* Avatar Button */}
+                <button
+                  onClick={() => setProfileDropdownOpen((p) => !p)}
+                  suppressHydrationWarning
+                  className="flex items-center gap-3 bg-blue-50/50 p-1.5 pl-4 rounded-full border border-blue-100 shadow-xs hover:bg-blue-100/60 transition-all group cursor-pointer"
                 >
-                  <LogOut className="w-4.5 h-4.5" />
-                </Button>
+                  <span className="text-xs font-black text-blue-950 uppercase hidden sm:block">
+                    {profile.name.split(" ").slice(-1)[0]}
+                  </span>
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-sky-600 text-white font-black flex items-center justify-center text-xs uppercase shadow-md shadow-blue-500/20 ring-2 ring-white">
+                    {profile.name
+                      ? profile.name.split(" ").map((n) => n[0]).join("").substring(0, 2)
+                      : "EG"}
+                  </div>
+                  <ChevronDown className={`w-3.5 h-3.5 text-blue-400 transition-transform duration-200 ${profileDropdownOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {/* Dropdown Panel */}
+                <AnimatePresence>
+                  {profileDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 4, scale: 0.97 }}
+                      transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
+                      className="absolute right-0 top-full mt-3 w-72 bg-white rounded-[24px] border border-blue-100 shadow-2xl shadow-blue-900/10 overflow-hidden z-50"
+                    >
+                      {/* Header */}
+                      <div className="bg-gradient-to-br from-blue-600 to-sky-500 p-5">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm text-white font-black flex items-center justify-center text-lg uppercase border-2 border-white/30 shadow-xl">
+                            {profile.name ? profile.name.split(" ").map((n) => n[0]).join("").substring(0, 2) : "EG"}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-black text-white text-sm leading-tight truncate">{profile.name}</p>
+                            <p className="text-blue-100 text-[10px] font-bold mt-0.5 truncate">{user?.email}</p>
+                            <span className="inline-flex items-center gap-1 mt-1.5 bg-white/20 text-white text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                              Đã xác thực
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Menu Items */}
+                      <div className="p-2">
+                        <button
+                          onClick={handleOpenProfileEdit}
+                          suppressHydrationWarning
+                          className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl hover:bg-blue-50 transition-all text-left group cursor-pointer"
+                        >
+                          <div className="w-9 h-9 rounded-xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center transition-colors">
+                            <UserCog className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-slate-800">Cài đặt tài khoản</p>
+                            <p className="text-[10px] text-slate-400 font-semibold">Hồ sơ, bảo mật & mật khẩu</p>
+                          </div>
+                        </button>
+
+                        <button
+                          onClick={() => { document.getElementById("my-appointments-section")?.scrollIntoView({ behavior: "smooth" }); setProfileDropdownOpen(false); }}
+                          suppressHydrationWarning
+                          className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl hover:bg-blue-50 transition-all text-left group cursor-pointer"
+                        >
+                          <div className="w-9 h-9 rounded-xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center transition-colors">
+                            <Calendar className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-slate-800">Lịch hẹn của tôi</p>
+                            <p className="text-[10px] text-slate-400 font-semibold">{myBookings.length} lịch đặt</p>
+                          </div>
+                        </button>
+
+                        <div className="h-px bg-blue-50 mx-2 my-1" />
+
+                        <button
+                          onClick={() => { handleLogout(); setProfileDropdownOpen(false); }}
+                          suppressHydrationWarning
+                          className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl hover:bg-orange-50 transition-all text-left group cursor-pointer"
+                        >
+                          <div className="w-9 h-9 rounded-xl bg-orange-50 group-hover:bg-orange-100 flex items-center justify-center transition-colors">
+                            <LogOut className="w-4 h-4 text-orange-500" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-orange-600">Đăng xuất</p>
+                            <p className="text-[10px] text-slate-400 font-semibold">Thoát khỏi tài khoản</p>
+                          </div>
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             ) : (
               <Button
@@ -1282,11 +1538,13 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
               </Button>
             )}
           </div>
+
+
         </div>
       </header>
 
       {/* --- View 1: Guest Landing Page (Intro view) --- */}
-      <section className="relative overflow-hidden py-24 bg-gradient-to-b from-blue-50/60 via-white to-slate-50">
+      <section className="relative overflow-hidden py-24 w-full bg-gradient-to-b from-blue-50/60 via-white to-slate-50">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-[10%] left-[-10%] w-[50%] h-[50%] bg-blue-100/40 rounded-full blur-[140px]" />
           <div className="absolute bottom-[20%] right-[-5%] w-[45%] h-[45%] bg-blue-50/50 rounded-full blur-[120px]" />
@@ -1404,7 +1662,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
       {/* --- Specialists Carousel Section (3D Rotate Showcase) --- */}
       <section
         id="specialists-section"
-        className="py-24 bg-white relative overflow-visible border-t border-slate-100"
+        className="py-24 bg-white relative overflow-x-hidden border-t border-slate-100"
       >
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-[20%] right-[-10%] w-[40%] h-[40%] bg-blue-100/30 rounded-full blur-[120px]" />
@@ -1449,7 +1707,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
             <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.25em]">
               Vì sao chọn MintCare?
             </span>
-            <h2 className="text-4xl font-black text-blue-950 uppercase tracking-tight md:whitespace-nowrap">
+            <h2 className="text-4xl font-black text-blue-950 uppercase tracking-tight">
               Quy trình khám bệnh tại gia tối ưu
             </h2>
           </motion.div>
@@ -1554,9 +1812,13 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                           <SelectItem
                             key={s.id}
                             value={s.id}
-                            className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest"
+                            disabled={!s.available}
+                            className={cn(
+                              "rounded-xl py-3 font-bold text-xs uppercase tracking-widest",
+                              !s.available && "opacity-45"
+                            )}
                           >
-                            {s.name} ({s.department})
+                            {s.name} ({s.department}) {!s.available && "— [ĐANG BẬN / NGHỈ]"}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -2681,6 +2943,246 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Consolidated Settings Modal */}
+      <AnimatePresence>
+        {isProfileModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[60] overflow-y-auto flex items-center justify-center p-4 sm:p-6"
+            onClick={(e) => { if (e.target === e.currentTarget) setIsProfileModalOpen(false); }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col border border-slate-100/80"
+            >
+              {/* Dynamic Top Indicator Line */}
+              <div className={cn(
+                "h-1.5 w-full transition-all duration-500 ease-out shrink-0",
+                profileModalTab === "profile" 
+                  ? "bg-gradient-to-r from-blue-500 to-sky-400" 
+                  : "bg-gradient-to-r from-violet-500 to-purple-400"
+              )} />
+
+              {/* Header & Tabs */}
+              <div className="px-8 pt-7 pb-5 shrink-0 bg-slate-50/50 border-b border-slate-100">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className={cn(
+                    "w-12 h-12 rounded-2xl text-white flex items-center justify-center shadow-lg transition-all duration-500 ease-out shrink-0",
+                    profileModalTab === "profile" 
+                      ? "bg-gradient-to-br from-blue-500 to-sky-500 shadow-blue-500/20" 
+                      : "bg-gradient-to-br from-violet-500 to-purple-500 shadow-purple-500/20"
+                  )}>
+                    {profileModalTab === "profile" ? (
+                      <UserCog className="w-5 h-5" />
+                    ) : (
+                      <KeyRound className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">
+                      {profileModalTab === "profile" ? "Hồ sơ cá nhân" : "Đổi mật khẩu"}
+                    </h3>
+                    <p className="text-[11px] text-slate-400 font-semibold mt-0.5">
+                      {profileModalTab === "profile" ? "Cập nhật thông tin tài khoản của bạn" : "Bảo mật tài khoản của bạn"}
+                    </p>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => setIsProfileModalOpen(false)} 
+                    suppressHydrationWarning 
+                    className="ml-auto w-8 h-8 rounded-full bg-white border border-slate-100 hover:bg-slate-50 flex items-center justify-center transition-colors cursor-pointer shadow-sm shrink-0"
+                  >
+                    <X className="w-4 h-4 text-slate-500" />
+                  </button>
+                </div>
+
+                {/* Sliding Pill Tab Switcher */}
+                <div className="flex bg-slate-100 p-1.5 rounded-[20px] relative max-w-xs">
+                  <button
+                    type="button"
+                    onClick={() => setProfileModalTab("profile")}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-2xl text-xs font-black transition-all z-10 cursor-pointer relative",
+                      profileModalTab === "profile" ? "text-blue-600 shadow-md bg-white" : "text-slate-500 hover:text-slate-800"
+                    )}
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    Hồ Sơ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProfileModalTab("password")}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-2xl text-xs font-black transition-all z-10 cursor-pointer relative",
+                      profileModalTab === "password" ? "text-violet-600 shadow-md bg-white" : "text-slate-500 hover:text-slate-800"
+                    )}
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    Mật Khẩu
+                  </button>
+                </div>
+              </div>
+
+              {/* Form Container */}
+              <div className="p-8">
+                <AnimatePresence mode="wait">
+                  {profileModalTab === "profile" ? (
+                    <motion.form
+                      key="profile-form"
+                      onSubmit={handleSaveProfile}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="space-y-5"
+                    >
+                      <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Họ và tên</Label>
+                          <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 h-11 text-sm font-semibold transition-all" placeholder="Nguyễn Văn A" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Số điện thoại</Label>
+                          <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 h-11 text-sm font-semibold transition-all" placeholder="090 xxx xxxx" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Email</Label>
+                          <Input value={user?.email || ""} disabled className="rounded-xl border-slate-100 h-11 text-sm font-semibold bg-slate-50/80 text-slate-400 cursor-not-allowed border" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Địa chỉ</Label>
+                          <Input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} className="rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 h-11 text-sm font-semibold transition-all" placeholder="Số nhà, đường, quận..." />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Tuổi</Label>
+                          <Input type="number" value={editAge} onChange={(e) => setEditAge(e.target.value)} className="rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 h-11 text-sm font-semibold transition-all" placeholder="VD: 35" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Giới tính</Label>
+                          <Select value={editGender} onValueChange={(val) => setEditGender(val || "Nam")}>
+                            <SelectTrigger className="w-full rounded-xl border border-slate-200 h-11 bg-white font-semibold text-sm shadow-none text-slate-800">
+                              <SelectValue placeholder="Chọn giới tính..." />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800 z-[70]">
+                              <SelectItem value="Nam" className="rounded-lg py-2.5 font-semibold text-sm focus:bg-slate-50">Nam</SelectItem>
+                              <SelectItem value="Nữ" className="rounded-lg py-2.5 font-semibold text-sm focus:bg-slate-50">Nữ</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-2 space-y-1.5">
+                          <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Tiền sử bệnh lý</Label>
+                          <Textarea value={editSummary} onChange={(e) => setEditSummary(e.target.value)} className="rounded-2xl border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 text-sm font-semibold resize-none transition-all" rows={3} placeholder="Mô tả tình trạng sức khỏe..." />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-3 pt-5 border-t border-slate-100 mt-2">
+                        <Button type="button" variant="outline" onClick={() => setIsProfileModalOpen(false)} className="rounded-xl h-11 px-6 font-black text-xs border-slate-200 hover:bg-slate-50 text-slate-500 transition-colors">
+                          Hủy
+                        </Button>
+                        <Button type="submit" className="bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 text-white rounded-xl h-11 px-8 font-black text-xs uppercase tracking-widest shadow-md shadow-blue-500/10 hover:shadow-lg transition-all">
+                          <Save className="w-3.5 h-3.5 mr-2" /> Lưu thay đổi
+                        </Button>
+                      </div>
+                    </motion.form>
+                  ) : (
+                    <motion.form
+                      key="password-form"
+                      onSubmit={handleChangePassword}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="space-y-5"
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
+                        <div className="space-y-1.5 md:col-span-2">
+                          <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Mật khẩu hiện tại</Label>
+                          <div className="relative">
+                            <Input
+                              type={showCurrentPw ? "text" : "password"}
+                              value={currentPassword}
+                              onChange={(e) => setCurrentPassword(e.target.value)}
+                              className="rounded-xl border-slate-200 focus:border-violet-500 focus:ring-violet-500/20 h-11 text-sm font-semibold pr-11 transition-all"
+                              placeholder="••••••••"
+                            />
+                            <button 
+                              type="button" 
+                              suppressHydrationWarning 
+                              onClick={() => setShowCurrentPw((p) => !p)} 
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                            >
+                              {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="space-y-1.5 col-span-1">
+                          <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Mật khẩu mới</Label>
+                          <div className="relative">
+                            <Input
+                              type={showNewPw ? "text" : "password"}
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              className="rounded-xl border-slate-200 focus:border-violet-500 focus:ring-violet-500/20 h-11 text-sm font-semibold pr-11 transition-all"
+                              placeholder="Tối thiểu 6 ký tự"
+                            />
+                            <button 
+                              type="button" 
+                              suppressHydrationWarning 
+                              onClick={() => setShowNewPw((p) => !p)} 
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                            >
+                              {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="space-y-1.5 col-span-1">
+                          <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Xác nhận mật khẩu mới</Label>
+                          <Input
+                            type="password"
+                            value={confirmNewPassword}
+                            onChange={(e) => setConfirmNewPassword(e.target.value)}
+                            className={cn(
+                              "rounded-xl border-slate-200 focus:border-violet-500 focus:ring-violet-500/20 h-11 text-sm font-semibold transition-all", 
+                              confirmNewPassword && newPassword !== confirmNewPassword ? "border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-500/20" : ""
+                            )}
+                            placeholder="Nhập lại mật khẩu mới"
+                          />
+                          {confirmNewPassword && newPassword !== confirmNewPassword && (
+                            <p className="text-[10px] font-bold text-red-500 mt-1">Mật khẩu không khớp</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => setIsProfileModalOpen(false)} 
+                          className="rounded-xl h-11 px-6 font-black text-xs border-slate-200 hover:bg-slate-50 text-slate-500 transition-colors"
+                        >
+                          Hủy
+                        </Button>
+                        <Button 
+                          type="submit" 
+                          className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white rounded-xl h-11 px-8 font-black text-xs uppercase tracking-widest shadow-md shadow-violet-500/10 hover:shadow-lg transition-all"
+                        >
+                          <Lock className="w-3.5 h-3.5 mr-2" /> Xác nhận
+                        </Button>
+                      </div>
+                    </motion.form>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

@@ -42,6 +42,7 @@ model Visit {
   PatientId     String?  @db.NVarChar(50)
   UserId        String?  @db.NVarChar(50)
   StaffId       String   @db.NVarChar(50)
+  Date          String?  @db.NVarChar(20)
   Time          String?  @db.NVarChar(100)
   StartTime     String?  @db.NVarChar(100)
   EndTime       String?  @db.NVarChar(100)
@@ -51,9 +52,10 @@ model Visit {
   PaymentAmount String?  @db.NVarChar(100)
   PaymentNote   String?  @db.NVarChar(Max)
   PaymentStatus String?  @db.NVarChar(100)
-  Patient       Patient? @relation(fields: [PatientId], references: [Id], onUpdate: NoAction, map: "FK_Visit_Patient")
-  User          User?    @relation(fields: [UserId], references: [Id], onUpdate: NoAction, map: "FK_Visit_User")
-  Staff         Staff    @relation(fields: [StaffId], references: [Id], onUpdate: NoAction, map: "FK_Visit_Staff")
+  Patient       Patient?  @relation(fields: [PatientId], references: [Id], onUpdate: NoAction, map: "FK_Visit_Patient")
+  User          User?     @relation(fields: [UserId], references: [Id], onUpdate: NoAction, map: "FK_Visit_User")
+  Staff         Staff     @relation(fields: [StaffId], references: [Id], onUpdate: NoAction, map: "FK_Visit_Staff")
+  Payment       Payment[]
 }
 
 model ActivityLog {
@@ -76,12 +78,26 @@ model PatientStaff {
 }
 
 model User {
-  Id           String   @id @default(uuid()) @db.NVarChar(50)
-  Email        String   @unique @db.NVarChar(200)
-  PasswordHash String   @db.NVarChar(500)
-  FullName     String   @db.NVarChar(200)
-  Phone        String?  @db.NVarChar(30)
-  Role         String   @default("customer") @db.NVarChar(20)
-  CreatedAt    DateTime @default(now()) @db.DateTime
+  Id           String    @id @default(uuid()) @db.NVarChar(50)
+  Email        String    @unique @db.NVarChar(200)
+  PasswordHash String    @db.NVarChar(500)
+  FullName     String    @db.NVarChar(200)
+  Phone        String?   @db.NVarChar(30)
+  Role         String    @default("customer") @db.NVarChar(20)
+  Age          Int?
+  Gender       String?   @db.NVarChar(20)
+  CreatedAt    DateTime  @default(now()) @db.DateTime
   Visit        Visit[]
+}
+
+model Payment {
+  Id        String   @id @default(uuid()) @db.NVarChar(50)
+  VisitId   String   @db.NVarChar(50)
+  UserId    String?  @db.NVarChar(50)
+  Amount    String   @db.NVarChar(50)
+  Method    String   @db.NVarChar(50)
+  Status    String   @default("Đã thanh toán") @db.NVarChar(50)
+  Note      String?  @db.NVarChar(Max)
+  CreatedAt DateTime @default(now()) @db.DateTime
+  Visit     Visit    @relation(fields: [VisitId], references: [Id], onDelete: Cascade, map: "FK_Payment_Visit")
 }

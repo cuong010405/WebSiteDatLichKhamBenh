@@ -43,17 +43,21 @@ import { API_URL } from "@/lib/api";
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8);
 
-function getPositionPercent(time: string) {
+function getPositionPercent(time: string): number {
+  if (!time || !time.includes(":")) return 0;
   const [h, m] = time.split(":").map(Number);
+  if (isNaN(h) || isNaN(m)) return 0;
   const startHour = 8;
   const totalMinutes = 12 * 60;
   const minutes = (h - startHour) * 60 + m;
-  return (minutes / totalMinutes) * 100;
+  return Math.max(0, (minutes / totalMinutes) * 100);
 }
 
-function getWidthPercent(duration: string) {
+function getWidthPercent(duration: string): number {
+  if (!duration) return 0;
   const hours = parseFloat(duration.replace("h", ""));
-  return (hours / 12) * 100;
+  if (isNaN(hours) || hours <= 0) return 0;
+  return Math.min(100, (hours / 12) * 100);
 }
 
 // Helper to check if two time ranges overlap
@@ -61,14 +65,16 @@ function isOverlapping(
   v1: { startTime: string; duration: string },
   v2: { startTime: string; duration: string },
 ) {
+  if (!v1.startTime || !v2.startTime || !v1.duration || !v2.duration) return false;
   const getMinutes = (t: string) => {
+    if (!t || !t.includes(":")) return 0;
     const [h, m] = t.split(":").map(Number);
-    return h * 60 + m;
+    return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
   };
   const start1 = getMinutes(v1.startTime);
-  const end1 = start1 + parseFloat(v1.duration.replace("h", "")) * 60;
+  const end1 = start1 + parseFloat(v1.duration.replace("h", "") || "0") * 60;
   const start2 = getMinutes(v2.startTime);
-  const end2 = start2 + parseFloat(v2.duration.replace("h", "")) * 60;
+  const end2 = start2 + parseFloat(v2.duration.replace("h", "") || "0") * 60;
   return start1 < end2 && start2 < end1;
 }
 
@@ -282,15 +288,19 @@ function SessionFormDialog({
                     <SelectValue placeholder="Chọn nhân viên..." />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                    {staffList.map((s) => (
-                      <SelectItem
-                        key={s.id}
-                        value={s.id}
-                        className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"
-                      >
-                        {s.name} ({s.department})
-                      </SelectItem>
-                    ))}
+                    {staffList.map((s) => {
+                      const isStaffBusy = (!s.available || s.status !== "Sẵn sàng") && s.id !== visit?.staffId;
+                      return (
+                        <SelectItem
+                          key={s.id}
+                          value={s.id}
+                          disabled={isStaffBusy}
+                          className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"
+                        >
+                          {s.name} ({s.department}) {isStaffBusy ? `[${s.status}]` : ""}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -823,13 +833,16 @@ function SessionCard({
   const isOngoing = visit.status === "Đang thực hiện";
   const isPending = visit.status === "Chờ duyệt";
   const isConfirmed = visit.status === "Đã xác nhận";
+  const isCompleted = visit.status === "Đã hoàn tất";
   const statusColor = isOngoing
     ? "bg-primary text-white"
     : isPending
       ? "bg-slate-100 text-slate-500"
       : isConfirmed
         ? "bg-blue-50 text-blue-600"
-        : "bg-surface-secondary text-muted-foreground";
+        : isCompleted
+          ? "bg-emerald-50 text-emerald-700"
+          : "bg-surface-secondary text-muted-foreground";
 
   const cardRef = React.useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = React.useState(false);
@@ -945,6 +958,22 @@ function SessionCard({
                     </p>
                   </div>
                 </div>
+                {/* Người đặt qua app */}
+                {visit.userId && (
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6 h-6 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0">
+                      <svg className="w-3 h-3 text-indigo-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-[8px] text-indigo-400 font-black uppercase tracking-widest">📱 Đặt qua app</p>
+                      <p className="text-[12px] font-black text-indigo-600 leading-tight">
+                        {visit.userName || "Người dùng"}
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center gap-2.5">
                   <div className="w-6 h-6 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
                     <svg
@@ -1076,7 +1105,9 @@ function SessionCard({
               ? "bg-slate-50/80 border-dashed border-slate-300 text-slate-400 opacity-80"
               : isConfirmed
                 ? "bg-white border-hairline text-foreground"
-                : "bg-surface-secondary/50 border-hairline text-muted-foreground",
+                : isCompleted
+                  ? "bg-emerald-50/60 border-emerald-200 text-foreground"
+                  : "bg-surface-secondary/50 border-hairline text-muted-foreground",
         )}
         style={{
           left: `${left}%`,
@@ -1089,6 +1120,9 @@ function SessionCard({
         )}
         {isPending && (
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-slate-300 rounded-t-full" />
+        )}
+        {isCompleted && (
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-t-full" />
         )}
         <div className="flex items-center gap-1 min-w-0 overflow-hidden">
           <p
@@ -1105,8 +1139,18 @@ function SessionCard({
             </div>
           )}
           {isPending && (
-            <span className="text-[7px] font-black text-slate-500 uppercase bg-slate-100 border border-slate-200 px-1 py-0.5 rounded-full shrink-0 ml-auto whitespace-nowrap">
+            <span className="text-[7px] font-black text-amber-600 uppercase bg-amber-100 border border-amber-200 px-1 py-0.5 rounded-full shrink-0 ml-auto whitespace-nowrap">
               Chờ
+            </span>
+          )}
+          {isCompleted && (
+            <span className="text-[7px] font-black text-emerald-700 uppercase bg-emerald-100 border border-emerald-200 px-1 py-0.5 rounded-full shrink-0 ml-auto whitespace-nowrap">
+              ✓ Thanh toán
+            </span>
+          )}
+          {!isOngoing && !isPending && !isCompleted && visit.userId && (
+            <span className="text-[7px] font-black text-indigo-400 uppercase bg-indigo-50 border border-indigo-100 px-1 py-0.5 rounded-full shrink-0 ml-auto whitespace-nowrap">
+              App
             </span>
           )}
         </div>
@@ -1213,7 +1257,7 @@ export default function SchedulePage() {
         setPatientList(patients);
       })
       .catch((err) =>
-        console.error("Lỗi tải dữ liệu lịch trình từ SQL Server:", err),
+        console.error("[SchedulePage] Lỗi tải dữ liệu lịch trình:", err),
       )
       .finally(() => setLoading(false));
   }, []);
@@ -1250,7 +1294,7 @@ export default function SchedulePage() {
       .then((r) => r.json())
       .then((created) => setAllVisits((prev) => [...prev, created]))
       .catch((err) =>
-        console.error("Lỗi tạo lịch trực trong SQL Server:", err),
+        console.error("[SchedulePage] Lỗi tạo lịch trực:", err),
       );
   };
 
@@ -1267,7 +1311,7 @@ export default function SchedulePage() {
         ),
       )
       .catch((err) =>
-        console.error("Lỗi cập nhật lịch trực trong SQL Server:", err),
+        console.error("[SchedulePage] Lỗi cập nhật lịch trực:", err),
       );
   };
 
@@ -1277,7 +1321,7 @@ export default function SchedulePage() {
         if (r.ok) setAllVisits((prev) => prev.filter((v) => v.id !== id));
       })
       .catch((err) =>
-        console.error("Lỗi xóa lịch trực trong SQL Server:", err),
+        console.error("[SchedulePage] Lỗi xóa lịch trực:", err),
       );
   };
 
@@ -1408,21 +1452,8 @@ export default function SchedulePage() {
               </Button>
             }
           />
-          <Button
-            onClick={() => setPaymentDialogOpen(true)}
-            disabled={confirmedVisits.length === 0}
-            variant="outline"
-            className="rounded-full px-6 py-3 font-black text-sm uppercase tracking-widest h-14 border-slate-200 text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Thanh toán ({confirmedVisits.length})
-          </Button>
-          <PaymentFormDialog
-            open={paymentDialogOpen}
-            onOpenChange={setPaymentDialogOpen}
-            confirmedVisits={confirmedVisits}
-            paymentInfo={paymentInfo}
-            onSave={handleSavePayment}
-          />
+
+
         </div>
       </div>
 
@@ -1463,7 +1494,7 @@ export default function SchedulePage() {
         <div className="py-24 flex flex-col items-center justify-center gap-4 bg-white rounded-[32px] border border-hairline shadow-sm">
           <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           <p className="text-xs font-black uppercase tracking-widest text-slate-400">
-            Đang tải lịch trực từ SQL Server...
+            Đang tải lịch trực từ hệ thống...
           </p>
         </div>
       ) : (
@@ -1622,7 +1653,7 @@ export default function SchedulePage() {
             </div>
             <div className="flex items-center gap-4 bg-white px-6 py-3 rounded-2xl border border-hairline shadow-sm text-[11px] font-black text-primary-strong uppercase tracking-[0.25em] animate-pulse">
               <div className="w-2 h-2 rounded-full bg-primary" />
-              Đang đồng bộ SQL Server
+              Đang đồng bộ hệ thống
             </div>
           </div>
         </div>

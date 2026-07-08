@@ -84,7 +84,9 @@ export async function deleteStaff(id: string) {
     await tx.patientStaff.deleteMany({
       where: { StaffId: id },
     });
-    // Delete associated visits first
+    // Note: Visit.StaffId is non-nullable in schema (NOT NULL FK), so visits
+    // referencing this staff member must be deleted to maintain referential integrity.
+    // Payment records linked to those visits are cascade-deleted by FK_Payment_Visit.
     await tx.visit.deleteMany({
       where: { StaffId: id },
     });

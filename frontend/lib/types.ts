@@ -44,17 +44,20 @@ export interface Visit {
   type: string;
   patientId: string;
   patientName: string;
+  staffId: string;
+  staffName?: string;
   userId?: string;
   userName?: string;
-  staffId: string;
+  date?: string;
   time: string;
   startTime?: string;
   endTime?: string;
-  duration: string; // e.g. "12m", "1h"
+  duration: string;
   status: VisitStatus;
   paymentMethod?: string;
   paymentAmount?: string;
   paymentNote?: string;
+  paymentStatus?: string;
   icon?: ElementType;
 }
 

@@ -13,10 +13,12 @@ interface AuthUser {
   fullName: string;
   phone?: string | null;
   role: "admin" | "customer";
+  age?: number | null;
+  gender?: string | null;
 }
 
 interface LocalStoredUser extends AuthUser {
-  password: string;
+  passwordHash: string; // simple btoa hash — not for production security, just avoids plain-text
 }
 
 interface AuthContextType {
@@ -40,7 +42,7 @@ const getDefaultLocalUsers = (): LocalStoredUser[] => [
     fullName: "Evelyn Green",
     phone: "090 987 6543",
     role: "customer",
-    password: "123456",
+    passwordHash: btoa("123456"), // base64-encoded, not plain-text
   },
 ];
 
@@ -83,8 +85,9 @@ const loginLocal = (email: string, password: string) => {
   const found = users.find(
     (user) => user.email.toLowerCase() === email.toLowerCase(),
   );
-  if (!found || found.password !== password) {
-    throw new Error("Email hoặc mật khẩu không chính xác");
+  // Compare against base64-encoded hash
+  if (!found || found.passwordHash !== btoa(password)) {
+    throw new Error("Đăng nhập thất bại");
   }
 
   return {
@@ -111,16 +114,16 @@ const registerLocal = (payload: {
       (user) => user.email.toLowerCase() === payload.email.toLowerCase(),
     )
   ) {
-    throw new Error("Email đã được đăng ký");
+    throw new Error("Đăng ký thất bại");
   }
 
   const newUser: LocalStoredUser = {
     id: `CU-${Date.now()}`,
-    email: payload.email,
+    email: payload.email.toLowerCase(),
     fullName: payload.fullName,
     phone: payload.phone || null,
     role: "customer",
-    password: payload.password,
+    passwordHash: btoa(payload.password), // base64-encoded, avoids plain-text storage
   };
 
   users.push(newUser);

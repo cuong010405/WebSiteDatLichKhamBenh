@@ -10,6 +10,7 @@ function mapVisitToUI(v: any) {
     userId: v.UserId,
     userName: v.User?.FullName ?? "",
     staffId: v.StaffId,
+    date: v.Date ?? "",
     time: v.Time ?? "",
     startTime: v.StartTime ?? "",
     endTime: v.EndTime ?? "",
@@ -22,6 +23,156 @@ function mapVisitToUI(v: any) {
     paymentNote: v.PaymentNote ?? "",
     paymentStatus: v.PaymentStatus ?? "Chưa thanh toán",
   };
+}
+
+async function ensurePatientForVisit(visitId: string) {
+  const visit = await db.visit.findUnique({
+    where: { Id: visitId },
+    include: {
+      Patient: true,
+      User: true,
+    },
+  });
+
+  if (!visit) return;
+  if (visit.Status !== "Đã xác nhận") return;
+
+  // Check if this User already has an associated Patient record from previous visits
+  let targetPatientId = visit.PatientId;
+
+  if (!targetPatientId && visit.UserId) {
+    const pastVisit = await db.visit.findFirst({
+      where: {
+        UserId: visit.UserId,
+        PatientId: { not: null },
+      },
+      select: { PatientId: true },
+    });
+    if (pastVisit && pastVisit.PatientId) {
+      targetPatientId = pastVisit.PatientId;
+      // Link this visit to the existing Patient
+      await db.visit.update({
+        where: { Id: visitId },
+        data: { PatientId: targetPatientId },
+      });
+    }
+  }
+
+  // If we now have a PatientId (either existing or pre-linked), update their status and info
+  if (targetPatientId) {
+    await db.patient.update({
+      where: { Id: targetPatientId },
+      data: {
+        Status: "Đang điều trị",
+        LastVisit: visit.Date || new Date().toLocaleDateString("vi-VN"),
+        LastVisitTime: visit.Time || new Date().toLocaleTimeString("vi-VN"),
+      },
+    });
+
+    // Assign staff to patient if not already linked
+    if (visit.StaffId) {
+      const link = await db.patientStaff.findFirst({
+        where: {
+          PatientId: targetPatientId,
+          StaffId: visit.StaffId,
+        },
+      });
+      if (!link) {
+        await db.patientStaff.create({
+          data: {
+            PatientId: targetPatientId,
+            StaffId: visit.StaffId,
+          },
+        });
+      }
+    }
+    return;
+  }
+
+  // Determine user info
+  let patientName = "Bệnh nhân mới";
+  let patientPhone = "0000000000";
+  let patientEmail = "";
+  let patientSummary = visit.Type || "";
+  let patientAge = 35;
+  let patientGender = "Nam";
+
+  if (visit.User) {
+    patientName = visit.User.FullName;
+    patientPhone = visit.User.Phone || "0000000000";
+    patientEmail = visit.User.Email;
+    if (visit.User.Age !== null && visit.User.Age !== undefined) {
+      patientAge = visit.User.Age;
+    }
+    if (visit.User.Gender) {
+      patientGender = visit.User.Gender;
+    }
+  }
+
+  // Generate unique patient ID — use crypto.randomUUID to prevent collision
+  const shortId = require("crypto").randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase();
+  const newPatientId = `BN-${shortId}`;
+
+  await db.patient.create({
+    data: {
+      Id: newPatientId,
+      Name: patientName,
+      Age: patientAge,
+      Gender: patientGender,
+      LastVisit: visit.Date || new Date().toLocaleDateString("vi-VN"),
+      LastVisitTime: visit.Time || new Date().toLocaleTimeString("vi-VN"),
+      Status: "Đang điều trị",
+      Summary: patientSummary,
+    },
+  });
+
+  // Assign staff to patient
+  if (visit.StaffId) {
+    const link = await db.patientStaff.findFirst({
+      where: {
+        PatientId: newPatientId,
+        StaffId: visit.StaffId,
+      },
+    });
+    if (!link) {
+      await db.patientStaff.create({
+        data: {
+          PatientId: newPatientId,
+          StaffId: visit.StaffId,
+        },
+      });
+    }
+  }
+
+  // Link visit to new Patient
+  await db.visit.update({
+    where: { Id: visitId },
+    data: { PatientId: newPatientId },
+  });
+}
+
+// Sync tất cả visit "Đã xác nhận" chưa có patient → tạo patient tương ứng
+export async function syncPatientsForVisits(): Promise<number> {
+  const confirmedVisits = await db.visit.findMany({
+    where: {
+      Status: "Đã xác nhận",
+      PatientId: null,
+      UserId: { not: null },
+    },
+    select: { Id: true },
+  });
+
+  let count = 0;
+  for (const visit of confirmedVisits) {
+    try {
+      await ensurePatientForVisit(visit.Id);
+      count++;
+    } catch (err: any) {
+      console.error(`[syncPatientsForVisits] Lỗi xử lý visit ${visit.Id}:`, err?.message ?? err);
+    }
+  }
+  console.log(`[syncPatientsForVisits] Đồng bộ thành công ${count}/${confirmedVisits.length} visits.`);
+  return count;
 }
 
 export async function getVisitList(
@@ -37,7 +188,15 @@ export async function getVisitList(
     where.Status = status;
   }
   if (paymentStatus) {
-    where.PaymentStatus = paymentStatus;
+    if (paymentStatus === "Chưa thanh toán") {
+      // Match both NULL and explicit "Chưa thanh toán"
+      where.OR = [
+        { PaymentStatus: null },
+        { PaymentStatus: "Chưa thanh toán" },
+      ];
+    } else {
+      where.PaymentStatus = paymentStatus;
+    }
   }
 
   const visits = await db.visit.findMany({
@@ -86,6 +245,7 @@ export async function createVisit(data: z.infer<typeof visitSchema>) {
     Id: validated.id,
     Type: validated.type,
     StaffId: validated.staffId,
+    Date: validated.date || null,
     Time: validated.time,
     Duration: validated.duration,
     Status: validated.status,
@@ -139,7 +299,18 @@ export async function createVisit(data: z.infer<typeof visitSchema>) {
       },
     },
   });
-  return mapVisitToUI(created);
+  if (created.Status === "Đã xác nhận") {
+    await ensurePatientForVisit(created.Id);
+  }
+  const refreshed = await db.visit.findUnique({
+    where: { Id: created.Id },
+    include: {
+      Patient: { select: { Name: true } },
+      Staff: { select: { Name: true } },
+      User: { select: { FullName: true } },
+    },
+  });
+  return mapVisitToUI(refreshed);
 }
 
 export async function updateVisit(
@@ -202,7 +373,18 @@ export async function updateVisit(
       },
     },
   });
-  return mapVisitToUI(updated);
+  if (updated.Status === "Đã xác nhận") {
+    await ensurePatientForVisit(updated.Id);
+  }
+  const refreshed = await db.visit.findUnique({
+    where: { Id: updated.Id },
+    include: {
+      Patient: { select: { Name: true } },
+      Staff: { select: { Name: true } },
+      User: { select: { FullName: true } },
+    },
+  });
+  return mapVisitToUI(refreshed);
 }
 
 export async function deleteVisit(id: string) {
@@ -246,27 +428,23 @@ export async function getReportData() {
     deptBreakdown[0].value += 100 - sumPercentage;
   }
 
-  const paidVisits = (await db.visit.findMany({
-    where: { PaymentStatus: "Đã thanh toán" } as any,
-    select: { PaymentAmount: true } as any,
-  })) as unknown as Array<{ PaymentAmount: string | null }>;
+  const paidVisits = await db.visit.findMany({
+    where: { PaymentStatus: "Đã thanh toán" },
+    select: { PaymentAmount: true },
+  });
 
   const totalRevenue = paidVisits.reduce((sum, visit) => {
     const amount = parseFloat(visit.PaymentAmount || "0");
     return sum + (Number.isFinite(amount) ? amount : 0);
   }, 0);
 
-  const paidCount = await db.visit.count({
-    where: { PaymentStatus: "Đã thanh toán" } as any,
-  });
+  const paidCount = paidVisits.length;
 
   const pendingPayments = await db.visit.count({
     where: {
       Status: "Đã xác nhận",
-      PaymentStatus: {
-        not: "Đã thanh toán",
-      },
-    } as any,
+      PaymentStatus: { not: "Đã thanh toán" },
+    },
   });
 
   return {

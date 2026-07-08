@@ -47,14 +47,29 @@
 }
 
 @layer base {
-  * {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
     @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground font-sans antialiased;
   }
   html {
     @apply font-sans;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
   }
 }
 

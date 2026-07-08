@@ -218,12 +218,15 @@ export default function ReportsPage() {
 
   const refreshReportData = React.useCallback(() => {
     setLoading(true);
+    // URL-encode Vietnamese query params
+    const visitParams = new URLSearchParams({
+      status: "Đã xác nhận",
+      paymentStatus: "Chưa thanh toán",
+    });
     return Promise.all([
       fetchJson(`${API_URL}/reports`),
       fetchJson(`${API_URL}/staff`),
-      fetchJson(
-        `${API_URL}/visits?status=Đã xác nhận&paymentStatus=Chưa thanh toán`,
-      ),
+      fetchJson(`${API_URL}/visits?${visitParams.toString()}`),
     ])
       .then(([reportData, staff, visits]) => {
         setStats(reportData);
@@ -237,7 +240,7 @@ export default function ReportsPage() {
           setSelectedPaymentVisitId(visits[0].id);
         }
       })
-      .catch((err) => console.error("Lỗi tải báo cáo từ SQL Server:", err))
+      .catch((err) => console.error("[ReportsPage] Lỗi tải dữ liệu báo cáo:", err))
       .finally(() => setLoading(false));
   }, [selectedPaymentVisitId]);
 
@@ -292,22 +295,26 @@ export default function ReportsPage() {
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.8 }}
         >
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex items-center gap-2 bg-surface-tinted px-3.5 py-2 rounded-full border border-primary/10 shadow-sm">
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-primary-strong">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-2 bg-surface-tinted px-3 py-1.5 rounded-full border border-primary/10 shadow-sm">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              <span className="eyebrow text-[10px] font-black uppercase tracking-widest text-primary-strong">
                 Thống kê vận hành lâm sàng
               </span>
             </div>
+            <div className="w-px h-4 bg-hairline" />
+            <span className="text-[10px] font-black text-on-surface-tertiary uppercase tracking-widest">
+              Dữ liệu thời gian thực
+            </span>
           </div>
-          <h1 className="text-[42px] font-semibold tight-tracking text-foreground leading-tight">
-            Báo cáo Vận hành
+          <h1 className="text-5xl md:text-6xl font-black tight-tracking text-foreground leading-[1.1] uppercase text-left">
+            Báo cáo <br />
+            Vận hành
           </h1>
-          <p className="text-muted-foreground mt-2 max-w-xl">
-            Phân tích chuyên sâu về hiệu suất đội ngũ y tế, lưu lượng bệnh nhân
-            và các chỉ số hài lòng trong thời gian thực.
+          <p className="text-xl text-muted-foreground mt-4 max-w-2xl font-medium leading-relaxed antialiased text-left">
+            Phân tích chuyên sâu về hiệu suất đội ngũ y tế, lưu lượng bệnh nhân và các chỉ số hài lòng trong thời gian thực.
           </p>
         </motion.div>
         <div className="flex gap-3">
@@ -370,7 +377,7 @@ export default function ReportsPage() {
                 Lưu lượng Thăm khám
               </h3>
               <p className="text-xs text-muted-foreground mt-1">
-                So sánh số lượt khám thực tế với tuần trước (từ SQL Server)
+                So sánh số lượt khám thực tế với tuần trước
               </p>
             </div>
             <div className="flex gap-6">
@@ -639,163 +646,6 @@ export default function ReportsPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-8">
-        <Card className="bg-white border-hairline rounded-[40px] p-10 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-            <div>
-              <h3 className="text-xl font-bold tight-tracking">
-                Form thanh toán
-              </h3>
-              <p className="text-xs text-muted-foreground mt-1">
-                Chọn ca chờ thanh toán và nhập thông tin thanh toán ở form riêng
-                này.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">
-                  Ca xác nhận
-                </Label>
-                <select
-                  className="w-full rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800"
-                  value={selectedPaymentVisitId}
-                  onChange={(e) => setSelectedPaymentVisitId(e.target.value)}
-                >
-                  <option value="">Chọn ca đã xác nhận</option>
-                  {pendingPaymentOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">
-                  Phương thức thanh toán
-                </Label>
-                <select
-                  className="w-full rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800"
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                >
-                  {[
-                    "Tiền mặt",
-                    "Chuyển khoản",
-                    "Ví điện tử",
-                    "Thẻ tín dụng",
-                  ].map((method) => (
-                    <option key={method} value={method}>
-                      {method}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">
-                  Số tiền thanh toán
-                </Label>
-                <Input
-                  type="number"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  placeholder="Nhập số tiền"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">
-                  Trạng thái thanh toán
-                </Label>
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
-                  Đã thanh toán sau khi lưu
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">
-                Ghi chú thanh toán
-              </Label>
-              <Textarea
-                value={paymentNote}
-                onChange={(e) => setPaymentNote(e.target.value)}
-                placeholder="Thêm ghi chú thanh toán..."
-                rows={4}
-              />
-            </div>
-
-            {paymentMessage && (
-              <div className="rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-                {paymentMessage}
-              </div>
-            )}
-
-            <div className="flex flex-col sm:flex-row items-center gap-3 mt-4">
-              <Button
-                disabled={
-                  !selectedPaymentVisitId || !paymentAmount || savingPayment
-                }
-                onClick={async () => {
-                  if (!selectedPaymentVisitId) return;
-                  setSavingPayment(true);
-                  setPaymentMessage(null);
-                  try {
-                    const response = await fetch(
-                      `${API_URL}/visits/${selectedPaymentVisitId}`,
-                      {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          paymentMethod,
-                          paymentAmount,
-                          paymentNote,
-                          paymentStatus: "Đã thanh toán",
-                        }),
-                      },
-                    );
-                    if (!response.ok) {
-                      const error = await response.json();
-                      throw new Error(error?.error || "Lỗi lưu thanh toán");
-                    }
-                    setPaymentMessage(
-                      "Thanh toán đã được cập nhật vào báo cáo.",
-                    );
-                    setPaymentAmount("");
-                    setPaymentNote("");
-                    await refreshReportData();
-                  } catch (err: any) {
-                    setPaymentMessage(`Lỗi: ${err.message}`);
-                  } finally {
-                    setSavingPayment(false);
-                  }
-                }}
-                className="rounded-full px-8 py-4 text-sm font-black uppercase tracking-[0.18em]"
-              >
-                {savingPayment ? "Đang lưu..." : "Lưu thanh toán"}
-              </Button>
-              <Button
-                variant="outline"
-                className="rounded-full px-8 py-4 text-sm font-black uppercase tracking-[0.18em]"
-                onClick={() => {
-                  setSelectedPaymentVisitId("");
-                  setPaymentAmount("");
-                  setPaymentNote("");
-                  setPaymentMethod("Tiền mặt");
-                  setPaymentMessage(null);
-                }}
-              >
-                Xóa rỗng form
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </div>
 
       {/* Bottom Section: Staff Rank & Recent Reports */}
       <div className="grid grid-cols-1 lg:grid-cols-10 gap-8">

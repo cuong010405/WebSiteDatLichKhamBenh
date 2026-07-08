@@ -11,7 +11,7 @@ export const staff: Staff[] = [
     phone: '090 123 4567',
     email: 'sandra@mintcare.com',
     location: 'Quận Queens',
-    avatar: 'https://i.pravatar.cc/150?u=sandra',
+    avatar: 'https://ui-avatars.com/api/?name=Sandra+Bullock&background=6366f1&color=fff&size=150&bold=true&rounded=true',
     isNew: true,
     available: true
   },
@@ -24,7 +24,7 @@ export const staff: Staff[] = [
     phone: '090 234 5678',
     email: 'marcus@mintcare.com',
     location: 'Kết thúc trong 12 phút',
-    avatar: 'https://i.pravatar.cc/150?u=marcus',
+    avatar: 'https://ui-avatars.com/api/?name=Marcus+Thorne&background=10b981&color=fff&size=150&bold=true&rounded=true',
     available: false
   },
   {
@@ -36,7 +36,7 @@ export const staff: Staff[] = [
     phone: '090 345 6789',
     email: 'lara@mintcare.com',
     location: 'Brooklyn',
-    avatar: 'https://i.pravatar.cc/150?u=lara',
+    avatar: 'https://ui-avatars.com/api/?name=Lara+Croft&background=a855f7&color=fff&size=150&bold=true&rounded=true',
     available: true
   },
   {
@@ -48,7 +48,7 @@ export const staff: Staff[] = [
     phone: '090 456 7890',
     email: 'peter@mintcare.com',
     location: 'Manhattan',
-    avatar: 'https://i.pravatar.cc/150?u=peter',
+    avatar: 'https://ui-avatars.com/api/?name=Peter+Parker&background=3b82f6&color=fff&size=150&bold=true&rounded=true',
     available: true
   }
 ];

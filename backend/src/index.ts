@@ -9,20 +9,49 @@ import logsRouter from "./routes/logs";
 import reportsRouter from "./routes/reports";
 import authRouter from "./routes/auth";
 import usersRouter from "./routes/users";
+import paymentsRouter from "./routes/payments";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Cấu hình CORS để cho phép frontend Next.js gọi API
+// Allowed origins — restrict to known frontend origins
+const ALLOWED_ORIGINS = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://127.0.0.1:3000",
+];
+
+// Cấu hình CORS chỉ cho phép frontend đã biết
 app.use(
   cors({
-    origin: true,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (server-to-server, curl, Postman)
+      if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS blocked: ${origin}`));
+      }
+    },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
   }),
 );
+
+// Thêm Security Headers cơ bản
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  next();
+});
+
+// Request logging middleware
+app.use((req, _res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  next();
+});
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
@@ -35,6 +64,7 @@ app.use("/api/logs", logsRouter);
 app.use("/api/reports", reportsRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
+app.use("/api/payments", paymentsRouter);
 
 // Endpoint kiểm tra trạng thái hoạt động
 app.get("/health", (req, res) => {
