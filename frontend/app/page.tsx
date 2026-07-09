@@ -667,6 +667,16 @@ export default function BookingPage() {
   const [authView, setAuthView] = React.useState<"login" | "register">("login");
   const [showPassword, setShowPassword] = React.useState(false);
 
+  // Auto-open login modal when ?action=login is present
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("action") === "login") {
+      setIsAuthModalOpen(true);
+      setAuthView("login");
+      window.history.replaceState({}, "", "/");
+    }
+  }, []);
+
   // Login Form States
   const [loginEmail, setLoginEmail] = React.useState("");
   const [loginPassword, setLoginPassword] = React.useState("");
