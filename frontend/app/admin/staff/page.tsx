@@ -102,7 +102,7 @@ function AvatarUpload({
 }
 
 /* ─── Add Staff Dialog ─── */
-function AddStaffDialog({ onAdd, departments, roles }: { onAdd: (s: Staff) => void; departments: string[]; roles: string[] }) {
+function AddStaffDialog({ onAdd, departments, positions }: { onAdd: (s: Staff) => void; departments: string[]; positions: string[] }) {
   const [open, setOpen] = React.useState(false)
   const [name, setName] = React.useState("")
   const [role, setRole] = React.useState("")
@@ -221,7 +221,7 @@ function AddStaffDialog({ onAdd, departments, roles }: { onAdd: (s: Staff) => vo
                             <SelectValue placeholder="Chọn chức vụ..." />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                            {roles.map((r) => <SelectItem key={r} value={r} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{r}</SelectItem>)}
+                            {positions.map((r) => <SelectItem key={r} value={r} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{r}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
@@ -300,14 +300,14 @@ function AddStaffDialog({ onAdd, departments, roles }: { onAdd: (s: Staff) => vo
 
 /* ─── Edit Staff Dialog ─── */
 function EditStaffDialog({
-  person, open, onOpenChange, onSave, departments, roles,
+  person, open, onOpenChange, onSave, departments, positions,
 }: {
   person: Staff
   open: boolean
   onOpenChange: (v: boolean) => void
   onSave: (updated: Staff) => void
   departments: string[]
-  roles: string[]
+  positions: string[]
 }) {
   const [name, setName] = React.useState(person.name)
   const [role, setRole] = React.useState(person.role.split("•")[0].trim())
@@ -370,7 +370,7 @@ function EditStaffDialog({
                       <SelectValue placeholder="Chọn chức vụ..." />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                      {roles.map((r) => <SelectItem key={r} value={r} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{r}</SelectItem>)}
+                      {positions.map((r) => <SelectItem key={r} value={r} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{r}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -481,13 +481,13 @@ function DeleteStaffDialog({
 
 /* ─── Staff Card ─── */
 function StaffCard({
-  person, onEdit, onDelete, departments, roles,
+  person, onEdit, onDelete, departments, positions,
 }: {
   person: Staff
   onEdit: (p: Staff) => void
   onDelete: (id: string) => void
   departments: string[]
-  roles: string[]
+  positions: string[]
 }) {
   const [editOpen, setEditOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
@@ -587,7 +587,7 @@ function StaffCard({
         </div>
       </motion.div>
 
-      <EditStaffDialog person={person} open={editOpen} onOpenChange={setEditOpen} onSave={onEdit} departments={departments} roles={roles} />
+      <EditStaffDialog person={person} open={editOpen} onOpenChange={setEditOpen} onSave={onEdit} departments={departments} positions={positions} />
       <DeleteStaffDialog person={person} open={deleteOpen} onOpenChange={setDeleteOpen} onDelete={onDelete} />
     </>
   )
@@ -598,7 +598,7 @@ export default function StaffPage() {
   const { show, hide } = useLoading()
   const [staffList, setStaffList] = React.useState<Staff[]>([])
   const [departments, setDepartments] = React.useState<string[]>([])
-  const [roles, setRoles] = React.useState<string[]>([])
+  const [positions, setPositions] = React.useState<string[]>([])
   const [loading, setLoading] = React.useState(true)
   const [searchQuery, setSearchQuery] = React.useState("")
 
@@ -617,14 +617,14 @@ export default function StaffPage() {
       .catch((err) => { console.error("Lỗi tải phòng ban:", err) })
   }
 
-  const loadRoles = () => {
-    fetch(`${API_URL}/api/roles/active`)
-      .then((res) => { if (!res.ok) throw new Error("Roles fetch failed"); return res.json() })
-      .then((data) => { setRoles(data.map((r: any) => r.Name)) })
+  const loadPositions = () => {
+    fetch(`${API_URL}/api/positions/active`)
+      .then((res) => { if (!res.ok) throw new Error("Positions fetch failed"); return res.json() })
+      .then((data) => { setPositions(data.map((p: any) => p.Name)) })
       .catch((err) => { console.error("Lỗi tải chức vụ:", err) })
   }
 
-  React.useEffect(() => { loadStaff(); loadDepartments(); loadRoles() }, [])
+  React.useEffect(() => { loadStaff(); loadDepartments(); loadPositions() }, [])
 
   const handleAdd = async (newStaff: Staff) => {
     show("Đang thêm chuyên gia...")
@@ -704,7 +704,7 @@ export default function StaffPage() {
           <Button variant="outline" className="bg-white text-foreground border-hairline rounded-[24px] px-8 h-14 text-xs font-black uppercase tracking-[0.2em] hover:bg-surface-secondary transition-all shadow-xl shadow-black/[0.02] flex items-center gap-3 active:scale-95 group">
             <Download className="w-5 h-5 text-primary group-hover:-translate-y-1 transition-transform" /> Xuất báo cáo
           </Button>
-          <AddStaffDialog onAdd={handleAdd} departments={departments} roles={roles} />
+          <AddStaffDialog onAdd={handleAdd} departments={departments} positions={positions} />
         </div>
       </div>
 
@@ -739,7 +739,7 @@ export default function StaffPage() {
           <AnimatePresence>
             {filteredStaff.length > 0 ? (
               filteredStaff.map((person) => (
-                <StaffCard key={person.id} person={person} onEdit={handleEdit} onDelete={handleDelete} departments={departments} roles={roles} />
+                <StaffCard key={person.id} person={person} onEdit={handleEdit} onDelete={handleDelete} departments={departments} positions={positions} />
               ))
             ) : (
               <p className="col-span-3 py-20 text-center font-bold text-slate-400 uppercase text-xs tracking-widest">Không tìm thấy chuyên gia nào</p>

@@ -125,3 +125,10 @@ model Role {
   Description String? @db.NVarChar(Max)
   Active      Boolean @default(true)
 }
+
+model Position {
+  Id          String  @id @default(uuid()) @db.NVarChar(50)
+  Name        String  @db.NVarChar(200)
+  Description String? @db.NVarChar(Max)
+  Active      Boolean @default(true)
+}
