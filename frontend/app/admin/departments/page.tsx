@@ -41,14 +41,14 @@ function AddDialog({ type, onAdd }: { type: string; onAdd: (d: Item) => Promise<
     e.preventDefault()
     if (!name) return
     setSubmitting(true); setError("")
-    const prefix = type === "department" ? "dept" : "pos"
+    const prefix = type === "departments" ? "dept" : "pos"
     const ok = await onAdd({ id: `${prefix}-${Date.now()}`, name, description, active: true })
     setSubmitting(false)
     if (ok) { setSuccess(true); reset(); setTimeout(() => { setSuccess(false); setOpen(false) }, 1500) }
-    else setError(`Không thể thêm ${type === "department" ? "phòng ban" : "chức vụ"}. Vui lòng thử lại.`)
+    else setError(`Không thể thêm ${type === "departments" ? "phòng ban" : "chức vụ"}. Vui lòng thử lại.`)
   }
 
-  const title = type === "department" ? "phòng ban" : "chức vụ"
+  const title = type === "departments" ? "phòng ban" : "chức vụ"
 
   return (
     <>
@@ -77,7 +77,7 @@ function AddDialog({ type, onAdd }: { type: string; onAdd: (d: Item) => Promise<
                 <div className="space-y-4">
                   <div className="space-y-2 text-left">
                     <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Tên {title} <span className="text-red-400">*</span></label>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder={type === "department" ? "VD: Nội khoa" : "VD: Bác sĩ Chuyên khoa"} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                    <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder={type === "departments" ? "VD: Nội khoa" : "VD: Bác sĩ Chuyên khoa"} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
                   </div>
                   <div className="space-y-2 text-left">
                     <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Mô tả</label>
@@ -105,7 +105,7 @@ function EditDialog({ item, type, open, onOpenChange, onSave }: { item: Item; ty
   const [description, setDescription] = React.useState(item.description)
   React.useEffect(() => { if (open) { setName(item.name); setDescription(item.description) } }, [open, item])
   const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave({ ...item, name, description }); onOpenChange(false) }
-  const title = type === "department" ? "phòng ban" : "chức vụ"
+  const title = type === "departments" ? "phòng ban" : "chức vụ"
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -141,7 +141,7 @@ function EditDialog({ item, type, open, onOpenChange, onSave }: { item: Item; ty
 
 /* ─── Toggle Dialog ─── */
 function ToggleDialog({ item, type, open, onOpenChange, onToggle }: { item: Item; type: string; open: boolean; onOpenChange: (v: boolean) => void; onToggle: (d: Item) => void }) {
-  const title = type === "department" ? "phòng ban" : "chức vụ"
+  const title = type === "departments" ? "phòng ban" : "chức vụ"
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px] rounded-[28px] border border-slate-200/80 shadow-2xl p-0 overflow-hidden bg-white">
@@ -172,7 +172,7 @@ function ToggleDialog({ item, type, open, onOpenChange, onToggle }: { item: Item
 
 /* ─── Delete Dialog ─── */
 function DeleteDialog({ item, type, open, onOpenChange, onDelete }: { item: Item; type: string; open: boolean; onOpenChange: (v: boolean) => void; onDelete: (id: string) => void }) {
-  const title = type === "department" ? "phòng ban" : "chức vụ"
+  const title = type === "departments" ? "phòng ban" : "chức vụ"
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px] rounded-[28px] border border-slate-200/80 shadow-2xl p-0 overflow-hidden bg-white">
@@ -206,7 +206,7 @@ function ItemCard({ item, type, icon: Icon, onEdit, onToggle, onDelete }: { item
   const [editOpen, setEditOpen] = React.useState(false)
   const [toggleOpen, setToggleOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
-  const title = type === "department" ? "phòng ban" : "chức vụ"
+  const title = type === "departments" ? "phòng ban" : "chức vụ"
 
   return (
     <>
