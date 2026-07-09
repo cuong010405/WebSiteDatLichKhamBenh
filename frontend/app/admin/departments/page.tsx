@@ -269,7 +269,7 @@ export default function DepartmentsPage() {
 
   const loadDepartments = () => {
     setLoading(true)
-    fetch(`${API_URL}/api/departments`)
+    fetch(`${API_URL}/departments`)
       .then((res) => { if (!res.ok) throw new Error("Failed"); return res.json() })
       .then((data) => { setDepartments(data.map((d: any) => ({ id: d.Id, name: d.Name, description: d.Description || "", active: d.Active }))); setLoading(false) })
       .catch(() => {
@@ -287,7 +287,7 @@ export default function DepartmentsPage() {
   const handleAdd = async (dept: Department): Promise<boolean> => {
     show("Đang thêm phòng ban...")
     try {
-      const res = await authFetch(`${API_URL}/api/departments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ Id: dept.id, Name: dept.name, Description: dept.description, Active: dept.active }) })
+      const res = await authFetch(`${API_URL}/departments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ Id: dept.id, Name: dept.name, Description: dept.description, Active: dept.active }) })
       if (!res.ok) { hide(); return false }
       const created = await res.json()
       setDepartments((prev) => [{ id: created.Id, name: created.Name, description: created.Description || "", active: created.Active }, ...prev])
@@ -298,7 +298,7 @@ export default function DepartmentsPage() {
   const handleEdit = async (updated: Department) => {
     show("Đang cập nhật...")
     try {
-      const res = await authFetch(`${API_URL}/api/departments/${updated.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ Name: updated.name, Description: updated.description }) })
+      const res = await authFetch(`${API_URL}/departments/${updated.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ Name: updated.name, Description: updated.description }) })
       if (!res.ok) throw new Error("Update failed")
       const saved = await res.json()
       setDepartments((prev) => prev.map((d) => d.id === saved.Id ? { id: saved.Id, name: saved.Name, description: saved.Description || "", active: saved.Active } : d))
@@ -308,7 +308,7 @@ export default function DepartmentsPage() {
   const handleToggle = async (updated: Department) => {
     show("Đang cập nhật...")
     try {
-      const res = await authFetch(`${API_URL}/api/departments/${updated.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ Active: updated.active }) })
+      const res = await authFetch(`${API_URL}/departments/${updated.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ Active: updated.active }) })
       if (!res.ok) throw new Error("Toggle failed")
       const saved = await res.json()
       setDepartments((prev) => prev.map((d) => d.id === saved.Id ? { ...d, active: saved.Active } : d))
@@ -318,7 +318,7 @@ export default function DepartmentsPage() {
   const handleDelete = async (id: string) => {
     show("Đang xóa phòng ban...")
     try {
-      const res = await authFetch(`${API_URL}/api/departments/${id}`, { method: "DELETE" })
+      const res = await authFetch(`${API_URL}/departments/${id}`, { method: "DELETE" })
       if (!res.ok) throw new Error("Delete failed")
       setDepartments((prev) => prev.filter((d) => d.id !== id))
     } catch (err) { console.error(err) } finally { hide() }

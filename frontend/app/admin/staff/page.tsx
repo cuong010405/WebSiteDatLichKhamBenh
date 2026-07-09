@@ -611,14 +611,14 @@ export default function StaffPage() {
   }
 
   const loadDepartments = () => {
-    fetch(`${API_URL}/api/departments/active`)
+    fetch(`${API_URL}/departments/active`)
       .then((res) => { if (!res.ok) throw new Error("Departments fetch failed"); return res.json() })
       .then((data) => { setDepartments(data.map((d: any) => d.Name)) })
       .catch((err) => { console.error("Lỗi tải phòng ban:", err) })
   }
 
   const loadPositions = () => {
-    fetch(`${API_URL}/api/positions/active`)
+    fetch(`${API_URL}/positions/active`)
       .then((res) => { if (!res.ok) throw new Error("Positions fetch failed"); return res.json() })
       .then((data) => { setPositions(data.map((p: any) => p.Name)) })
       .catch((err) => { console.error("Lỗi tải chức vụ:", err) })
