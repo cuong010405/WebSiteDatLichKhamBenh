@@ -12,6 +12,7 @@ import usersRouter from "./routes/users";
 import paymentsRouter from "./routes/payments";
 import servicesRouter from "./routes/services";
 import departmentsRouter from "./routes/departments";
+import rolesRouter from "./routes/roles";
 import { requireAuth, requireAdmin } from "./middleware/auth";
 
 dotenv.config();
@@ -67,6 +68,7 @@ app.use("/api/staff", staffRouter);
 app.use("/api/visits", visitsRouter);
 app.use("/api/services", servicesRouter);
 app.use("/api/departments", departmentsRouter);
+app.use("/api/roles", rolesRouter);
 
 // Admin-only endpoints
 app.use("/api/patients", requireAuth, requireAdmin, patientsRouter);
