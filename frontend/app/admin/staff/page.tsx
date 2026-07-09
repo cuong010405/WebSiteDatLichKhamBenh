@@ -36,7 +36,6 @@ import { API_URL, authFetch } from "@/lib/api"
 import { useLoading } from "@/lib/loading-context"
 
 const ROLES = ["Bác sĩ Chuyên khoa", "Y tá Điều dưỡng", "Chuyên gia VLTL", "Chuyên gia Dinh dưỡng"]
-const DEPARTMENTS = ["Nội khoa", "Ngoại khoa", "Phục hồi chức năng", "Cấp cứu tại gia"]
 
 /* ─── Avatar Upload Input ─── */
 function AvatarUpload({
@@ -105,7 +104,7 @@ function AvatarUpload({
 }
 
 /* ─── Add Staff Dialog ─── */
-function AddStaffDialog({ onAdd }: { onAdd: (s: Staff) => void }) {
+function AddStaffDialog({ onAdd, departments }: { onAdd: (s: Staff) => void; departments: string[] }) {
   const [open, setOpen] = React.useState(false)
   const [name, setName] = React.useState("")
   const [role, setRole] = React.useState("")
@@ -235,7 +234,7 @@ function AddStaffDialog({ onAdd }: { onAdd: (s: Staff) => void }) {
                             <SelectValue placeholder="Chọn phòng ban..." />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                            {DEPARTMENTS.map((d) => <SelectItem key={d} value={d} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{d}</SelectItem>)}
+                            {departments.map((d) => <SelectItem key={d} value={d} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{d}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
@@ -303,12 +302,13 @@ function AddStaffDialog({ onAdd }: { onAdd: (s: Staff) => void }) {
 
 /* ─── Edit Staff Dialog ─── */
 function EditStaffDialog({
-  person, open, onOpenChange, onSave,
+  person, open, onOpenChange, onSave, departments,
 }: {
   person: Staff
   open: boolean
   onOpenChange: (v: boolean) => void
   onSave: (updated: Staff) => void
+  departments: string[]
 }) {
   const [name, setName] = React.useState(person.name)
   const [role, setRole] = React.useState(person.role.split("•")[0].trim())
@@ -382,7 +382,7 @@ function EditStaffDialog({
                       <SelectValue placeholder="Chọn phòng ban..." />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                      {DEPARTMENTS.map((d) => <SelectItem key={d} value={d} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{d}</SelectItem>)}
+                      {departments.map((d) => <SelectItem key={d} value={d} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{d}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -482,11 +482,12 @@ function DeleteStaffDialog({
 
 /* ─── Staff Card ─── */
 function StaffCard({
-  person, onEdit, onDelete,
+  person, onEdit, onDelete, departments,
 }: {
   person: Staff
   onEdit: (p: Staff) => void
   onDelete: (id: string) => void
+  departments: string[]
 }) {
   const [editOpen, setEditOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
@@ -586,7 +587,7 @@ function StaffCard({
         </div>
       </motion.div>
 
-      <EditStaffDialog person={person} open={editOpen} onOpenChange={setEditOpen} onSave={onEdit} />
+      <EditStaffDialog person={person} open={editOpen} onOpenChange={setEditOpen} onSave={onEdit} departments={departments} />
       <DeleteStaffDialog person={person} open={deleteOpen} onOpenChange={setDeleteOpen} onDelete={onDelete} />
     </>
   )
@@ -596,6 +597,7 @@ function StaffCard({
 export default function StaffPage() {
   const { show, hide } = useLoading()
   const [staffList, setStaffList] = React.useState<Staff[]>([])
+  const [departments, setDepartments] = React.useState<string[]>([])
   const [loading, setLoading] = React.useState(true)
   const [searchQuery, setSearchQuery] = React.useState("")
 
@@ -607,7 +609,14 @@ export default function StaffPage() {
       .catch((err) => { console.error("Lỗi tải chuyên gia:", err); setLoading(false) })
   }
 
-  React.useEffect(() => { loadStaff() }, [])
+  const loadDepartments = () => {
+    fetch(`${API_URL}/api/departments/active`)
+      .then((res) => { if (!res.ok) throw new Error("Departments fetch failed"); return res.json() })
+      .then((data) => { setDepartments(data.map((d: any) => d.Name)) })
+      .catch((err) => { console.error("Lỗi tải phòng ban:", err) })
+  }
+
+  React.useEffect(() => { loadStaff(); loadDepartments() }, [])
 
   const handleAdd = async (newStaff: Staff) => {
     show("Đang thêm chuyên gia...")
@@ -687,7 +696,7 @@ export default function StaffPage() {
           <Button variant="outline" className="bg-white text-foreground border-hairline rounded-[24px] px-8 h-14 text-xs font-black uppercase tracking-[0.2em] hover:bg-surface-secondary transition-all shadow-xl shadow-black/[0.02] flex items-center gap-3 active:scale-95 group">
             <Download className="w-5 h-5 text-primary group-hover:-translate-y-1 transition-transform" /> Xuất báo cáo
           </Button>
-          <AddStaffDialog onAdd={handleAdd} />
+          <AddStaffDialog onAdd={handleAdd} departments={departments} />
         </div>
       </div>
 
@@ -722,7 +731,7 @@ export default function StaffPage() {
           <AnimatePresence>
             {filteredStaff.length > 0 ? (
               filteredStaff.map((person) => (
-                <StaffCard key={person.id} person={person} onEdit={handleEdit} onDelete={handleDelete} />
+                <StaffCard key={person.id} person={person} onEdit={handleEdit} onDelete={handleDelete} departments={departments} />
               ))
             ) : (
               <p className="col-span-3 py-20 text-center font-bold text-slate-400 uppercase text-xs tracking-widest">Không tìm thấy chuyên gia nào</p>

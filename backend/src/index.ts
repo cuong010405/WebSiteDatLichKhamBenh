@@ -11,6 +11,7 @@ import authRouter from "./routes/auth";
 import usersRouter from "./routes/users";
 import paymentsRouter from "./routes/payments";
 import servicesRouter from "./routes/services";
+import departmentsRouter from "./routes/departments";
 import { requireAuth, requireAdmin } from "./middleware/auth";
 
 dotenv.config();
@@ -65,6 +66,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/staff", staffRouter);
 app.use("/api/visits", visitsRouter);
 app.use("/api/services", servicesRouter);
+app.use("/api/departments", departmentsRouter);
 
 // Admin-only endpoints
 app.use("/api/patients", requireAuth, requireAdmin, patientsRouter);

@@ -12,8 +12,22 @@ import {
   Eye,
   EyeOff,
   LogIn,
+  CircleHelp,
+  Phone,
+  Send,
+  MessageSquare,
+  CheckCircle2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,7 +50,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 
 export function Header() {
   const { user, login, register, logout } = useAuth();
@@ -52,6 +65,27 @@ export function Header() {
   const [password, setPassword] = React.useState("");
   const [fullName, setFullName] = React.useState("");
   const [phone, setPhone] = React.useState("");
+
+  // Help dialog state
+  const [helpOpen, setHelpOpen] = React.useState(false);
+  const [helpTopic, setHelpTopic] = React.useState("");
+  const [helpEmail, setHelpEmail] = React.useState("");
+  const [helpPhone, setHelpPhone] = React.useState("");
+  const [helpMessage, setHelpMessage] = React.useState("");
+  const [helpSubmitted, setHelpSubmitted] = React.useState(false);
+
+  const handleSubmitHelp = (e: React.FormEvent) => {
+    e.preventDefault();
+    setHelpSubmitted(true);
+    setTimeout(() => {
+      setHelpSubmitted(false);
+      setHelpTopic("");
+      setHelpEmail("");
+      setHelpPhone("");
+      setHelpMessage("");
+      setHelpOpen(false);
+    }, 2000);
+  };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,6 +116,7 @@ export function Header() {
   };
 
   return (
+    <>
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-hairline px-8 py-4 flex items-center justify-between">
       <div className="flex items-center gap-8 flex-1">
         <div className="relative w-full max-w-md group">
@@ -187,6 +222,15 @@ export function Header() {
                       </span>
                     </DropdownMenuItem>
                   </Link>
+                  <DropdownMenuItem
+                    onClick={() => setHelpOpen(true)}
+                    className="rounded-xl gap-3 cursor-pointer px-3 py-3 focus:bg-surface-tinted focus:text-primary-strong transition-colors"
+                  >
+                    <CircleHelp className="w-4 h-4" />{" "}
+                    <span className="font-bold text-xs uppercase tracking-wider">
+                      Trợ giúp
+                    </span>
+                  </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator className="bg-hairline/50 my-1" />
                 <DropdownMenuItem
@@ -367,5 +411,145 @@ export function Header() {
         </div>
       </div>
     </header>
+
+    {/* Help Dialog */}
+    <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
+      <DialogContent className="sm:max-w-[520px] rounded-[32px] border border-slate-200/80 shadow-2xl p-0 bg-white overflow-hidden">
+        {helpSubmitted ? (
+          <div className="flex flex-col items-center justify-center py-16 px-8 space-y-5">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+              <CheckCircle2 className="w-8 h-8 text-primary" />
+            </div>
+            <h3 className="text-lg font-black text-foreground uppercase tracking-tight text-center">
+              Gửi thành công!
+            </h3>
+            <p className="text-xs text-on-surface-tertiary font-semibold text-center leading-relaxed">
+              Yêu cầu hỗ trợ của bạn đã được gửi. Đội ngũ IT sẽ phản hồi trong vòng 24 giờ.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmitHelp}>
+            {/* Header */}
+            <div className="bg-primary/5 px-8 pt-8 pb-6 border-b border-slate-100">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+                  <Stethoscope className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black uppercase tracking-tight text-foreground">
+                    Trung tâm hỗ trợ
+                  </h3>
+                  <p className="text-[10px] font-bold text-on-surface-tertiary uppercase tracking-widest mt-0.5">
+                    MintCare IT Helpdesk
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-2">
+                <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-slate-100">
+                  <Phone className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-[10px] font-bold text-foreground">1900 8198</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-slate-100">
+                  <Mail className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-[10px] font-bold text-foreground">it@mintcare.com</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Form */}
+            <div className="px-8 py-6 space-y-5">
+              <div className="space-y-2">
+                <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-on-surface-tertiary">
+                  Chủ đề hỗ trợ
+                </Label>
+                <Select value={helpTopic} onValueChange={(v) => setHelpTopic(v ?? "")}>
+                  <SelectTrigger className="rounded-xl h-11 border-slate-200 text-xs font-semibold">
+                    <SelectValue placeholder="Chọn vấn đề bạn gặp phải..." />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white">
+                    <SelectItem value="login" className="rounded-lg py-2.5 font-semibold text-xs">Lỗi đăng nhập / tài khoản</SelectItem>
+                    <SelectItem value="booking" className="rounded-lg py-2.5 font-semibold text-xs">Vấn đề đặt lịch hẹn</SelectItem>
+                    <SelectItem value="payment" className="rounded-lg py-2.5 font-semibold text-xs">Thanh toán & hóa đơn</SelectItem>
+                    <SelectItem value="schedule" className="rounded-lg py-2.5 font-semibold text-xs">Lịch trực & phân công</SelectItem>
+                    <SelectItem value="patient" className="rounded-lg py-2.5 font-semibold text-xs">Quản lý bệnh nhân</SelectItem>
+                    <SelectItem value="report" className="rounded-lg py-2.5 font-semibold text-xs">Báo cáo & thống kê</SelectItem>
+                    <SelectItem value="other" className="rounded-lg py-2.5 font-semibold text-xs">Vấn đề khác</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-on-surface-tertiary">
+                    Email liên hệ
+                  </Label>
+                  <Input
+                    type="email"
+                    required
+                    placeholder="email@mintcare.com"
+                    value={helpEmail}
+                    onChange={(e) => setHelpEmail(e.target.value)}
+                    className="rounded-xl h-11 text-xs font-semibold"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-on-surface-tertiary">
+                    Số điện thoại
+                  </Label>
+                  <Input
+                    type="tel"
+                    placeholder="0901 234 567"
+                    value={helpPhone}
+                    onChange={(e) => setHelpPhone(e.target.value)}
+                    className="rounded-xl h-11 text-xs font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-on-surface-tertiary">
+                  Mô tả vấn đề
+                </Label>
+                <Textarea
+                  required
+                  placeholder="Nhập chi tiết vấn đề bạn đang gặp phải..."
+                  value={helpMessage}
+                  onChange={(e) => setHelpMessage(e.target.value)}
+                  className="rounded-xl border-slate-200 min-h-[120px] text-xs font-semibold resize-none"
+                  rows={4}
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-[10px] text-on-surface-tertiary font-semibold">
+                <MessageSquare className="w-3.5 h-3.5" />
+                Phản hồi trong 24 giờ
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setHelpOpen(false)}
+                  className="rounded-xl h-10 px-5 text-[10px] font-bold border-slate-200"
+                >
+                  Đóng
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!helpTopic || !helpEmail || !helpMessage}
+                  className="bg-primary hover:bg-primary-strong text-white rounded-xl h-10 px-6 text-[10px] font-black uppercase tracking-widest shadow-md shadow-primary/20 disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5 mr-2" />
+                  Gửi yêu cầu
+                </Button>
+              </div>
+            </div>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

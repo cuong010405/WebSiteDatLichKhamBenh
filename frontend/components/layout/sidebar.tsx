@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -14,6 +15,7 @@ import {
   ChevronRight,
   CalendarCheck,
   Stethoscope,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,12 +23,12 @@ const navItems = [
   { label: "Tổng quan", href: "/admin", icon: LayoutGrid },
   { label: "Chuyên gia", href: "/admin/staff", icon: Users },
   { label: "Dịch vụ", href: "/admin/services", icon: Stethoscope },
+  { label: "Phòng ban", href: "/admin/departments", icon: Building2 },
   { label: "Lịch trực", href: "/admin/schedule", icon: Calendar },
   { label: "Bệnh nhân", href: "/admin/patients", icon: Activity },
   { label: "Thanh toán", href: "/admin/pay", icon: CalendarCheck },
   { label: "Báo cáo", href: "/admin/reports", icon: FileText },
   { label: "Tài khoản", href: "/admin/accounts", icon: ShieldCheck },
-  { label: "Đặt lịch (Khách)", href: "/", icon: CalendarCheck },
 ];
 
 export function Sidebar() {
@@ -100,7 +102,7 @@ export function Sidebar() {
 
       <div className="mt-auto p-8 pt-0">
         {/* Security Status Card */}
-        <div className="bg-surface-tinted/50 rounded-[28px] p-5 mb-8 border border-primary/10 relative overflow-hidden group/card cursor-pointer hover:bg-surface-tinted transition-colors">
+        <div className="bg-surface-tinted/50 rounded-[28px] p-5 border border-primary/10 relative overflow-hidden group/card cursor-pointer hover:bg-surface-tinted transition-colors">
           <div className="absolute -top-2 -right-2 p-2 opacity-10 group-hover/card:opacity-20 transition-all duration-500 transform group-hover/card:rotate-12 group-hover/card:scale-125">
             <ShieldCheck className="w-14 h-14 text-primary" />
           </div>
@@ -113,16 +115,6 @@ export function Sidebar() {
           <div className="mt-4 flex items-center gap-1.5 text-[9px] font-black text-primary-strong uppercase hover:translate-x-1 transition-transform">
             Chi tiết bảo mật <ChevronRight className="w-3 h-3" />
           </div>
-        </div>
-
-        <div className="space-y-1">
-          <Link
-            href="#"
-            className="flex items-center gap-4 px-4 py-3.5 text-on-surface-tertiary hover:bg-surface-secondary hover:text-foreground rounded-[20px] font-bold text-[11px] uppercase tracking-[0.15em] transition-all"
-          >
-            <HelpCircle className="w-4.5 h-4.5" />
-            Trợ giúp
-          </Link>
         </div>
       </div>
     </aside>
