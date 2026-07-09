@@ -297,7 +297,7 @@ export default function DepartmentsPage() {
       })
   }
 
-  React.useEffect(() => { setLoading(true); Promise.all([loadDepartments(), loadPositions()]).finally(() => setLoading(false)) }, [])
+  React.useEffect(() => { show("Đang tải dữ liệu..."); Promise.all([loadDepartments(), loadPositions()]).finally(() => { setLoading(false); hide() }) }, [])
 
   // CRUD handlers
   const handleAdd = async (item: Item, endpoint: string): Promise<boolean> => {
