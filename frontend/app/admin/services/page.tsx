@@ -19,6 +19,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { API_URL, authFetch } from "@/lib/api"
+import { useLoading } from "@/lib/loading-context"
 
 interface Service {
   id: string
@@ -48,7 +49,7 @@ const DURATION_OPTIONS = [
 ]
 
 /* ─── Add Service Dialog ─── */
-function AddServiceDialog({ onAdd }: { onAdd: (s: Service) => void }) {
+function AddServiceDialog({ onAdd }: { onAdd: (s: Service) => Promise<boolean> }) {
   const [open, setOpen] = React.useState(false)
   const [name, setName] = React.useState("")
   const [description, setDescription] = React.useState("")
@@ -57,15 +58,17 @@ function AddServiceDialog({ onAdd }: { onAdd: (s: Service) => void }) {
   const [type, setType] = React.useState("")
   const [success, setSuccess] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
+  const [error, setError] = React.useState("")
 
   const reset = () => {
-    setName(""); setDescription(""); setPrice(""); setDuration("1h"); setType("")
+    setName(""); setDescription(""); setPrice(""); setDuration("1h"); setType(""); setError("")
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name || !price || !type) return
     setSubmitting(true)
+    setError("")
     const newService: Service = {
       id: `svc-${Date.now()}`,
       name,
@@ -75,14 +78,15 @@ function AddServiceDialog({ onAdd }: { onAdd: (s: Service) => void }) {
       type,
       active: true,
     }
-    onAdd(newService)
+    const ok = await onAdd(newService)
     setSubmitting(false)
-    setSuccess(true)
-    reset()
-    setTimeout(() => {
-      setSuccess(false)
-      setOpen(false)
-    }, 1500)
+    if (ok) {
+      setSuccess(true)
+      reset()
+      setTimeout(() => { setSuccess(false); setOpen(false) }, 1500)
+    } else {
+      setError("Không thể thêm dịch vụ. Vui lòng thử lại.")
+    }
   }
 
   return (
@@ -133,6 +137,13 @@ function AddServiceDialog({ onAdd }: { onAdd: (s: Service) => void }) {
                     <DialogDescription className="text-slate-500 mt-1.5 text-[11px] font-semibold leading-tight">Đăng ký dịch vụ chăm sóc y tế trên hệ thống.</DialogDescription>
                   </div>
                 </DialogHeader>
+
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <p className="text-xs font-bold">{error}</p>
+                  </div>
+                )}
 
                 <div className="space-y-4">
                   {/* Name */}
@@ -439,83 +450,94 @@ function ServiceCard({
 
   return (
     <>
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} whileHover={{ y: -5 }} transition={{ duration: 0.4 }}>
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} whileHover={{ y: -4 }} transition={{ duration: 0.35 }} className="h-full">
         <div className={cn(
-          "group border rounded-[36px] p-8 bg-white transition-all cursor-pointer relative shadow-xs hover:shadow-2xl hover:shadow-black/[0.04]",
+          "group border rounded-3xl bg-white transition-all cursor-pointer relative shadow-xs hover:shadow-xl hover:shadow-black/[0.04] flex flex-col h-full",
           service.active ? "border-hairline hover:border-primary/30" : "border-dashed border-slate-200 opacity-60 hover:opacity-80"
         )}>
-          <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-bl from-surface-tinted/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="absolute top-0 right-0 w-24 h-24 bg-linear-to-bl from-surface-tinted/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-tr-3xl" />
 
-          <div className="flex items-start justify-between relative z-10">
-            <div className="flex items-center gap-5">
+          {/* Top section: icon + title + status */}
+          <div className="p-5 pb-3 relative z-10">
+            <div className="flex items-start gap-3">
               <div className={cn(
-                "w-16 h-16 rounded-[22px] flex items-center justify-center shadow-lg transition-all duration-500",
+                "w-10 h-10 rounded-xl flex items-center justify-center shadow-md transition-all duration-500 shrink-0",
                 service.active
-                  ? "bg-gradient-to-br from-primary to-blue-600 text-white group-hover:scale-110 group-hover:shadow-xl"
+                  ? "bg-gradient-to-br from-primary to-blue-600 text-white group-hover:scale-105"
                   : "bg-slate-100 text-slate-400"
               )}>
-                <Stethoscope className="w-7 h-7" />
+                <Stethoscope className="w-5 h-5" />
               </div>
-              <div className="flex-1 min-w-0 text-left">
-                <h3 className="font-black text-[21px] text-foreground group-hover:text-primary transition-colors duration-300 leading-snug py-0.5 uppercase tracking-tight truncate">{service.name}</h3>
-                <div className="flex flex-wrap items-center gap-2 mt-3">
-                  <span className={cn("text-[9px] font-black px-3 py-1 rounded-xl uppercase tracking-widest border", typeColors[service.type] || "bg-slate-50 text-slate-600 border-slate-100")}>
-                    {service.type}
-                  </span>
-                  <div className="w-1 h-1 rounded-full bg-hairline" />
-                  <span className="text-[9px] font-black text-on-surface-tertiary uppercase tracking-widest flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> {service.duration}
-                  </span>
-                </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-black text-sm text-foreground group-hover:text-primary transition-colors duration-300 leading-snug uppercase tracking-tight line-clamp-2">{service.name}</h3>
+              </div>
+              <div className={cn(
+                "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider shrink-0 whitespace-nowrap",
+                service.active ? "bg-green-50 text-green-600 border border-green-100" : "bg-slate-100 text-slate-400 border border-slate-200"
+              )}>
+                {service.active ? "Hoạt động" : "Tắt"}
               </div>
             </div>
-            <div className={cn(
-              "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
-              service.active ? "bg-green-50 text-green-600 border border-green-100" : "bg-slate-100 text-slate-400 border border-slate-200"
-            )}>
-              {service.active ? "Hoạt động" : "Tạm tắt"}
+
+            {/* Tags row */}
+            <div className="flex items-center gap-1.5 mt-2.5 ml-[52px]">
+              <span className={cn("text-[8px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider border", typeColors[service.type] || "bg-slate-50 text-slate-600 border-slate-100")}>
+                {service.type}
+              </span>
+              <div className="w-0.5 h-0.5 rounded-full bg-slate-300" />
+              <span className="text-[8px] font-black text-on-surface-tertiary uppercase tracking-wider flex items-center gap-0.5">
+                <Clock className="w-2.5 h-2.5" /> {service.duration}
+              </span>
             </div>
           </div>
 
+          {/* Description */}
           {service.description && (
-            <p className="mt-5 text-[11px] font-semibold text-slate-500 leading-relaxed text-left relative z-10 line-clamp-2">{service.description}</p>
+            <div className="px-5 pb-3 relative z-10">
+              <p className="text-[10px] font-semibold text-slate-500 leading-relaxed text-left line-clamp-2">{service.description}</p>
+            </div>
           )}
 
-          <div className="mt-6 flex items-center justify-between border-t border-hairline/50 pt-6 relative z-10">
-            <div className="flex items-center gap-3 text-left">
-              <div className="w-11 h-11 rounded-[18px] bg-surface-tinted flex items-center justify-center text-primary shadow-md">
-                <DollarSign className="w-5 h-5" />
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Price section */}
+          <div className="px-5 py-3 border-t border-hairline/40 relative z-10">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-surface-tinted flex items-center justify-center text-primary shrink-0">
+                <DollarSign className="w-4 h-4" />
               </div>
-              <div>
-                <p className="text-[9px] font-black text-on-surface-tertiary uppercase tracking-widest mb-0.5">Giá dịch vụ</p>
-                <p className="text-lg font-black text-foreground tracking-tighter">{service.price.toLocaleString("vi-VN")}<span className="text-[10px] text-on-surface-tertiary ml-1 opacity-50">VNĐ</span></p>
+              <div className="min-w-0">
+                <p className="text-[8px] font-black text-on-surface-tertiary uppercase tracking-widest">Giá dịch vụ</p>
+                <p className="text-base font-black text-foreground tracking-tight leading-tight">{service.price.toLocaleString("vi-VN")}<span className="text-[9px] text-on-surface-tertiary ml-0.5 opacity-50">VNĐ</span></p>
               </div>
             </div>
           </div>
 
-          <div className="overflow-hidden transition-all duration-300 ease-out max-h-0 group-hover:max-h-[52px] opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto">
-            <div className="pt-4 flex gap-2.5">
+          {/* Action buttons - hover reveal */}
+          <div className="overflow-hidden transition-all duration-300 ease-out max-h-0 group-hover:max-h-[48px] opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto">
+            <div className="px-5 pb-4 flex gap-2">
               <motion.button
-                whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+                whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                 onClick={(e) => { e.stopPropagation(); setEditOpen(true) }}
-                className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl bg-blue-100 text-blue-600 border border-blue-200 text-[9px] font-black uppercase tracking-widest hover:bg-blue-200/70 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-blue-100 text-blue-600 border border-blue-200 text-[8px] font-black uppercase tracking-widest hover:bg-blue-200/70 transition-colors"
               >
-                <Pencil className="w-3 h-3" /> Sửa
+                <Pencil className="w-2.5 h-2.5" /> Sửa
               </motion.button>
               <motion.button
-                whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+                whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                 onClick={(e) => { e.stopPropagation(); setToggleOpen(true) }}
-                className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl bg-amber-100 text-amber-600 border border-amber-200 text-[9px] font-black uppercase tracking-widest hover:bg-amber-200/70 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-amber-100 text-amber-600 border border-amber-200 text-[8px] font-black uppercase tracking-widest hover:bg-amber-200/70 transition-colors"
               >
-                {service.active ? <ToggleRight className="w-3 h-3" /> : <ToggleLeft className="w-3 h-3" />}
+                {service.active ? <ToggleRight className="w-2.5 h-2.5" /> : <ToggleLeft className="w-2.5 h-2.5" />}
                 {service.active ? "Tắt" : "Bật"}
               </motion.button>
               <motion.button
-                whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+                whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                 onClick={(e) => { e.stopPropagation(); setDeleteOpen(true) }}
-                className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl bg-red-100 text-red-500 border border-red-200 text-[9px] font-black uppercase tracking-widest hover:bg-red-200/70 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-red-100 text-red-500 border border-red-200 text-[8px] font-black uppercase tracking-widest hover:bg-red-200/70 transition-colors"
               >
-                <Trash2 className="w-3 h-3" /> Xóa
+                <Trash2 className="w-2.5 h-2.5" /> Xóa
               </motion.button>
             </div>
           </div>
@@ -531,6 +553,7 @@ function ServiceCard({
 
 /* ─── Page ─── */
 export default function ServicesPage() {
+  const { show, hide } = useLoading()
   const [services, setServices] = React.useState<Service[]>([])
   const [loading, setLoading] = React.useState(true)
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -557,43 +580,78 @@ export default function ServicesPage() {
 
   React.useEffect(() => { loadServices() }, [])
 
-  const handleAdd = (newService: Service) => {
-    authFetch(`${API_URL}/services`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newService),
-    })
-      .then((res) => { if (!res.ok) throw new Error("Add service failed"); return res.json() })
-      .then((created) => setServices((prev) => [created, ...prev]))
-      .catch(() => setServices((prev) => [newService, ...prev]))
+  const handleAdd = async (newService: Service): Promise<boolean> => {
+    show("Đang thêm dịch vụ...")
+    try {
+      const res = await authFetch(`${API_URL}/services`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newService),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        console.error("Add service failed:", err)
+        hide()
+        return false
+      }
+      const created = await res.json()
+      setServices((prev) => [created, ...prev])
+      hide()
+      return true
+    } catch (err) {
+      console.error("Add service error:", err)
+      hide()
+      return false
+    }
   }
 
-  const handleEdit = (updated: Service) => {
-    authFetch(`${API_URL}/services/${updated.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updated),
-    })
-      .then((res) => { if (!res.ok) throw new Error("Update service failed"); return res.json() })
-      .then((saved) => setServices((prev) => prev.map((s) => (s.id === saved.id ? saved : s))))
-      .catch(() => setServices((prev) => prev.map((s) => (s.id === updated.id ? updated : s))))
+  const handleEdit = async (updated: Service) => {
+    show("Đang cập nhật...")
+    try {
+      const res = await authFetch(`${API_URL}/services/${updated.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      })
+      if (!res.ok) throw new Error("Update failed")
+      const saved = await res.json()
+      setServices((prev) => prev.map((s) => (s.id === saved.id ? saved : s)))
+    } catch (err) {
+      console.error("Update service error:", err)
+    } finally {
+      hide()
+    }
   }
 
-  const handleToggle = (updated: Service) => {
-    authFetch(`${API_URL}/services/${updated.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updated),
-    })
-      .then((res) => { if (!res.ok) throw new Error("Toggle service failed"); return res.json() })
-      .then((saved) => setServices((prev) => prev.map((s) => (s.id === saved.id ? saved : s))))
-      .catch(() => setServices((prev) => prev.map((s) => (s.id === updated.id ? updated : s))))
+  const handleToggle = async (updated: Service) => {
+    show("Đang cập nhật...")
+    try {
+      const res = await authFetch(`${API_URL}/services/${updated.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      })
+      if (!res.ok) throw new Error("Toggle failed")
+      const saved = await res.json()
+      setServices((prev) => prev.map((s) => (s.id === saved.id ? saved : s)))
+    } catch (err) {
+      console.error("Toggle service error:", err)
+    } finally {
+      hide()
+    }
   }
 
-  const handleDelete = (id: string) => {
-    authFetch(`${API_URL}/services/${id}`, { method: "DELETE" })
-      .then((res) => { if (!res.ok) throw new Error("Delete failed"); setServices((prev) => prev.filter((s) => s.id !== id)) })
-      .catch(() => setServices((prev) => prev.filter((s) => s.id !== id)))
+  const handleDelete = async (id: string) => {
+    show("Đang xóa dịch vụ...")
+    try {
+      const res = await authFetch(`${API_URL}/services/${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Delete failed")
+      setServices((prev) => prev.filter((s) => s.id !== id))
+    } catch (err) {
+      console.error("Delete service error:", err)
+    } finally {
+      hide()
+    }
   }
 
   const filteredServices = services.filter((s) =>
@@ -654,7 +712,7 @@ export default function ServicesPage() {
           <p className="text-xs font-black uppercase tracking-widest text-slate-400">Đang tải danh sách dịch vụ...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-stretch">
           <AnimatePresence>
             {filteredServices.length > 0 ? (
               filteredServices.map((service) => (

@@ -33,6 +33,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { Staff, StaffStatus } from "@/lib/types"
 import { API_URL, authFetch } from "@/lib/api"
+import { useLoading } from "@/lib/loading-context"
 
 const ROLES = ["Bác sĩ Chuyên khoa", "Y tá Điều dưỡng", "Chuyên gia VLTL", "Chuyên gia Dinh dưỡng"]
 const DEPARTMENTS = ["Nội khoa", "Ngoại khoa", "Phục hồi chức năng", "Cấp cứu tại gia"]
@@ -492,82 +493,93 @@ function StaffCard({
 
   return (
     <>
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} whileHover={{ y: -5 }} transition={{ duration: 0.4 }}>
-        <div className="group border border-hairline rounded-[36px] p-8 bg-white hover:border-primary/30 transition-all cursor-pointer relative shadow-xs hover:shadow-2xl hover:shadow-black/[0.04]">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-bl from-surface-tinted/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} whileHover={{ y: -4 }} transition={{ duration: 0.35 }} className="h-full">
+        <div className="group border border-hairline rounded-3xl bg-white hover:border-primary/30 transition-all cursor-pointer relative shadow-xs hover:shadow-xl hover:shadow-black/[0.04] flex flex-col h-full">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-linear-to-bl from-surface-tinted/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-tr-3xl" />
 
-          <div className="flex items-start justify-between relative z-10">
-            <div className="flex items-center gap-6">
-              <div className="relative">
-                <Avatar className="w-22 h-20 rounded-[30px] border-4 border-white shadow-xl ring-1 ring-hairline group-hover:ring-primary/20 transition-all duration-500">
+          {/* Top: avatar + name + tags in one row */}
+          <div className="p-5 pb-3 relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="relative shrink-0">
+                <Avatar className="w-11 h-11 rounded-xl border-2 border-white shadow-lg ring-1 ring-hairline group-hover:ring-primary/20 transition-all duration-500">
                   <AvatarImage src={person.avatar || `https://i.pravatar.cc/150?u=${person.id}`} alt={person.name} className="object-cover" />
-                  <AvatarFallback className="bg-surface-secondary text-primary-strong text-2xl font-black uppercase">{person.name[0]}</AvatarFallback>
+                  <AvatarFallback className="bg-surface-secondary text-primary-strong text-sm font-black uppercase">{person.name[0]}</AvatarFallback>
                 </Avatar>
-                <div className={cn("absolute -bottom-1 -right-1 w-7 h-7 border-4 border-white rounded-full shadow-lg transition-colors duration-500", person.available ? "bg-primary" : "bg-orange-500")}>
+                <div className={cn("absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-white rounded-full shadow-sm transition-colors duration-500", person.available ? "bg-primary" : "bg-orange-500")}>
                   <div className="absolute inset-0 bg-white/20 rounded-full animate-ping opacity-30" />
                 </div>
               </div>
               <div className="flex-1 min-w-0 text-left">
-                <h3 className="font-black text-[21px] text-foreground group-hover:text-primary transition-colors duration-300 leading-snug py-0.5 uppercase tracking-tight truncate">{person.name}</h3>
-                <div className="flex flex-wrap items-center gap-2 mt-3">
-                  <span className="bg-surface-tinted text-primary-strong text-[9px] font-black px-3 py-1 rounded-xl uppercase tracking-widest border border-primary/10">{person.role.split("•")[0]}</span>
-                  <div className="w-1 h-1 rounded-full bg-hairline" />
-                  <span className="text-[9px] font-black text-on-surface-tertiary uppercase tracking-widest">{person.department}</span>
+                <h3 className="font-black text-sm text-foreground group-hover:text-primary transition-colors duration-300 leading-tight uppercase tracking-tight line-clamp-1">{person.name}</h3>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="bg-surface-tinted text-primary-strong text-[8px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider border border-primary/10 whitespace-nowrap">{person.role.split("•")[0]}</span>
+                  <div className="w-0.5 h-0.5 rounded-full bg-slate-300" />
+                  <span className="text-[8px] font-black text-on-surface-tertiary uppercase tracking-wider whitespace-nowrap truncate">{person.department}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-4 relative z-10">
-            <div className="bg-surface-secondary/40 p-5 rounded-[24px] border border-hairline/40 transition-all group-hover:bg-white group-hover:shadow-sm text-left">
-              <p className="text-[9px] font-black text-on-surface-tertiary uppercase tracking-widest mb-2 flex items-center gap-2">
-                <Star className="w-3.5 h-3.5 fill-primary text-primary" /> Xếp hạng
-              </p>
-              <p className="text-lg font-black text-foreground tracking-tighter">4.9<span className="text-[10px] text-on-surface-tertiary ml-1 opacity-50">/5.0</span></p>
-            </div>
-            <div className="bg-surface-secondary/40 p-5 rounded-[24px] border border-hairline/40 transition-all group-hover:bg-white group-hover:shadow-sm text-left">
-              <p className="text-[9px] font-black text-on-surface-tertiary uppercase tracking-widest mb-2 flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5 text-primary" /> Hiệu suất
-              </p>
-              <p className="text-lg font-black text-foreground tracking-tighter">120+<span className="text-[10px] text-on-surface-tertiary ml-1 opacity-50">CA TRỰC</span></p>
+          {/* Stats */}
+          <div className="px-5 pb-3 relative z-10">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-surface-secondary/40 p-3 rounded-xl border border-hairline/40 transition-all group-hover:bg-white group-hover:shadow-sm text-left">
+                <p className="text-[8px] font-black text-on-surface-tertiary uppercase tracking-wider mb-1 flex items-center gap-1">
+                  <Star className="w-3 h-3 fill-primary text-primary" /> Xếp hạng
+                </p>
+                <p className="text-base font-black text-foreground tracking-tight">4.9<span className="text-[9px] text-on-surface-tertiary ml-0.5 opacity-50">/5.0</span></p>
+              </div>
+              <div className="bg-surface-secondary/40 p-3 rounded-xl border border-hairline/40 transition-all group-hover:bg-white group-hover:shadow-sm text-left">
+                <p className="text-[8px] font-black text-on-surface-tertiary uppercase tracking-wider mb-1 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-primary" /> Hiệu suất
+                </p>
+                <p className="text-base font-black text-foreground tracking-tight">120+<span className="text-[9px] text-on-surface-tertiary ml-0.5 opacity-50">CA TRỰC</span></p>
+              </div>
             </div>
           </div>
 
-          <div className="mt-10 flex items-center justify-between border-t border-hairline/50 pt-8 relative z-10">
-            <div className="flex items-center gap-3.5 text-[13px] font-bold text-muted-foreground group-hover:text-foreground transition-colors text-left">
-              <div className={cn("w-11 h-11 rounded-[18px] flex items-center justify-center shadow-md transition-all group-hover:scale-110", person.available ? "bg-surface-tinted text-primary" : "bg-orange-50 text-orange-600")}>
-                {person.available ? <MapPin className="w-6 h-6" /> : <Clock className="w-6 h-6" />}
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Location + contact */}
+          <div className="px-5 py-3 border-t border-hairline/40 relative z-10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 text-left min-w-0">
+                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shadow-sm transition-all shrink-0", person.available ? "bg-surface-tinted text-primary" : "bg-orange-50 text-orange-600")}>
+                  {person.available ? <MapPin className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[8px] font-black text-on-surface-tertiary uppercase tracking-wider block">Vị trí hiện tại</span>
+                  <span className="text-xs font-black tracking-tight truncate block max-w-[120px]">{person.location}</span>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black text-on-surface-tertiary uppercase tracking-[0.1em] mb-0.5">Vị trí hiện tại</span>
-                <span className="truncate max-w-[140px] font-black tracking-tight">{person.location}</span>
+              <div className="flex gap-1.5 shrink-0">
+                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-hairline bg-white hover:bg-primary hover:text-white hover:shadow-lg transition-all shadow-sm">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                </Button>
+                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-hairline bg-white hover:bg-primary hover:text-white hover:shadow-lg transition-all shadow-sm">
+                  <Phone className="w-3.5 h-3.5" />
+                </Button>
               </div>
-            </div>
-            <div className="flex gap-2.5">
-              <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-hairline bg-white hover:bg-primary hover:text-white hover:shadow-xl transition-all shadow-sm">
-                <MessageSquare className="w-5 h-5" />
-              </Button>
-              <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-hairline bg-white hover:bg-primary hover:text-white hover:shadow-xl transition-all shadow-sm">
-                <Phone className="w-5 h-5" />
-              </Button>
             </div>
           </div>
 
-          <div className="overflow-hidden transition-all duration-300 ease-out max-h-0 group-hover:max-h-[52px] opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto">
-            <div className="pt-4 flex gap-2.5">
+          {/* Action buttons - hover reveal */}
+          <div className="overflow-hidden transition-all duration-300 ease-out max-h-0 group-hover:max-h-[44px] opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto">
+            <div className="px-5 pb-4 flex gap-2">
               <motion.button
-                whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+                whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                 onClick={(e) => { e.stopPropagation(); setEditOpen(true) }}
-                className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl bg-blue-100 text-blue-600 border border-blue-200 text-[9px] font-black uppercase tracking-widest hover:bg-blue-200/70 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-blue-100 text-blue-600 border border-blue-200 text-[8px] font-black uppercase tracking-widest hover:bg-blue-200/70 transition-colors"
               >
-                <Pencil className="w-3 h-3" /> Sửa
+                <Pencil className="w-2.5 h-2.5" /> Sửa
               </motion.button>
               <motion.button
-                whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+                whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                 onClick={(e) => { e.stopPropagation(); setDeleteOpen(true) }}
-                className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl bg-red-100 text-red-500 border border-red-200 text-[9px] font-black uppercase tracking-widest hover:bg-red-200/70 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-red-100 text-red-500 border border-red-200 text-[8px] font-black uppercase tracking-widest hover:bg-red-200/70 transition-colors"
               >
-                <Trash2 className="w-3 h-3" /> Xóa
+                <Trash2 className="w-2.5 h-2.5" /> Xóa
               </motion.button>
             </div>
           </div>
@@ -582,6 +594,7 @@ function StaffCard({
 
 /* ─── Page ─── */
 export default function StaffPage() {
+  const { show, hide } = useLoading()
   const [staffList, setStaffList] = React.useState<Staff[]>([])
   const [loading, setLoading] = React.useState(true)
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -596,32 +609,53 @@ export default function StaffPage() {
 
   React.useEffect(() => { loadStaff() }, [])
 
-  const handleAdd = (newStaff: Staff) => {
-    authFetch(`${API_URL}/staff`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newStaff),
-    })
-      .then((res) => { if (!res.ok) throw new Error("Add staff failed"); return res.json() })
-      .then((created) => setStaffList((prev) => [created, ...prev]))
-      .catch((err) => console.error("Lỗi thêm chuyên gia:", err))
+  const handleAdd = async (newStaff: Staff) => {
+    show("Đang thêm chuyên gia...")
+    try {
+      const res = await authFetch(`${API_URL}/staff`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newStaff),
+      })
+      if (!res.ok) throw new Error("Add staff failed")
+      const created = await res.json()
+      setStaffList((prev) => [created, ...prev])
+    } catch (err) {
+      console.error("Lỗi thêm chuyên gia:", err)
+    } finally {
+      hide()
+    }
   }
 
-  const handleEdit = (updated: Staff) => {
-    authFetch(`${API_URL}/staff/${updated.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updated),
-    })
-      .then((res) => { if (!res.ok) throw new Error("Update staff failed"); return res.json() })
-      .then((saved) => setStaffList((prev) => prev.map((s) => (s.id === saved.id ? saved : s))))
-      .catch((err) => console.error("Lỗi cập nhật chuyên gia:", err))
+  const handleEdit = async (updated: Staff) => {
+    show("Đang cập nhật...")
+    try {
+      const res = await authFetch(`${API_URL}/staff/${updated.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      })
+      if (!res.ok) throw new Error("Update staff failed")
+      const saved = await res.json()
+      setStaffList((prev) => prev.map((s) => (s.id === saved.id ? saved : s)))
+    } catch (err) {
+      console.error("Lỗi cập nhật chuyên gia:", err)
+    } finally {
+      hide()
+    }
   }
 
-  const handleDelete = (id: string) => {
-    authFetch(`${API_URL}/staff/${id}`, { method: "DELETE" })
-      .then((res) => { if (!res.ok) throw new Error("Delete failed"); setStaffList((prev) => prev.filter((s) => s.id !== id)) })
-      .catch((err) => console.error("Lỗi xóa chuyên gia:", err))
+  const handleDelete = async (id: string) => {
+    show("Đang xóa chuyên gia...")
+    try {
+      const res = await authFetch(`${API_URL}/staff/${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Delete failed")
+      setStaffList((prev) => prev.filter((s) => s.id !== id))
+    } catch (err) {
+      console.error("Lỗi xóa chuyên gia:", err)
+    } finally {
+      hide()
+    }
   }
 
   const filteredStaff = staffList.filter((s) =>
@@ -684,7 +718,7 @@ export default function StaffPage() {
           <p className="text-xs font-black uppercase tracking-widest text-slate-400">Đang tải danh sách chuyên gia...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-stretch">
           <AnimatePresence>
             {filteredStaff.length > 0 ? (
               filteredStaff.map((person) => (

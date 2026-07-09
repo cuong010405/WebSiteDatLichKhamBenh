@@ -45,6 +45,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { API_URL, authFetch } from "@/lib/api";
+import { useLoading } from "@/lib/loading-context";
 import { cn } from "@/lib/utils";
 
 interface AccountUser {
@@ -57,6 +58,7 @@ interface AccountUser {
 }
 
 export default function AccountsPage() {
+  const { show, hide } = useLoading();
   const [users, setUsers] = React.useState<AccountUser[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -96,6 +98,7 @@ export default function AccountsPage() {
   const handleAddAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
+    show("Đang thêm tài khoản...")
     try {
       const res = await authFetch(`${API_URL}/users`, {
         method: "POST",
@@ -104,12 +107,14 @@ export default function AccountsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Thêm tài khoản thất bại");
-      
+
       setUsers((prev) => [data, ...prev]);
       setIsOpenAdd(false);
       resetForm();
     } catch (err: any) {
       setErrorMsg(err.message);
+    } finally {
+      hide();
     }
   };
 
@@ -117,6 +122,7 @@ export default function AccountsPage() {
     e.preventDefault();
     if (!selectedUser) return;
     setErrorMsg("");
+    show("Đang cập nhật...")
     try {
       const res = await authFetch(`${API_URL}/users/${selectedUser.id}`, {
         method: "PUT",
@@ -131,11 +137,14 @@ export default function AccountsPage() {
       resetForm();
     } catch (err: any) {
       setErrorMsg(err.message);
+    } finally {
+      hide();
     }
   };
 
   const handleDeleteAccount = async () => {
     if (!selectedUser) return;
+    show("Đang xóa tài khoản...")
     try {
       const res = await authFetch(`${API_URL}/users/${selectedUser.id}`, {
         method: "DELETE",
@@ -145,6 +154,8 @@ export default function AccountsPage() {
       setIsOpenDelete(false);
     } catch (err: any) {
       console.error(err);
+    } finally {
+      hide();
     }
   };
 

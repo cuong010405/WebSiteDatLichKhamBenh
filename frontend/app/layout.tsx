@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
+import { LoadingProvider } from "@/lib/loading-context";
+import { GlobalLoading } from "@/components/global-loading";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -29,9 +31,12 @@ export default function RootLayout({
         className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
         suppressHydrationWarning
       >
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <LoadingProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+          <GlobalLoading />
+        </LoadingProvider>
       </body>
     </html>
   );

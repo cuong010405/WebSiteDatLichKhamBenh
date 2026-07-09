@@ -36,6 +36,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 import { API_URL, authFetch } from "@/lib/api"
+import { useLoading } from "@/lib/loading-context"
 
 interface SettingSectionProps {
   title: string
@@ -86,6 +87,7 @@ function SettingItem({ icon: Icon, title, description, children, noBorder }: Set
 }
 
 export default function SettingsPage() {
+  const { show, hide } = useLoading()
   const { user, logout } = useAuth()
   const router = useRouter()
   const [fullName, setFullName] = React.useState("")
@@ -119,6 +121,7 @@ export default function SettingsPage() {
   const handleSaveProfile = async () => {
     if (!user?.id) return
     setSaving(true)
+    show("Đang lưu dữ liệu...")
     try {
       const res = await authFetch(`${API_URL}/users/${user.id}`, {
         method: "PUT",
@@ -126,7 +129,6 @@ export default function SettingsPage() {
       })
       if (!res.ok) throw new Error("API error")
       const data = await res.json()
-      // Update localStorage session
       const stored = localStorage.getItem("mintcare_user")
       if (stored) {
         const parsed = JSON.parse(stored)
@@ -142,6 +144,7 @@ export default function SettingsPage() {
       showToast("Không thể cập nhật. Thử lại sau.", "err")
     } finally {
       setSaving(false)
+      hide()
     }
   }
 
@@ -166,6 +169,7 @@ export default function SettingsPage() {
     if (!user?.id) return
 
     setPwSaving(true)
+    show("Đang cập nhật...")
     try {
       const res = await authFetch(`${API_URL}/users/${user.id}`, {
         method: "PUT",
@@ -184,6 +188,7 @@ export default function SettingsPage() {
       showToast(err.message || "Không thể đổi mật khẩu. Thử lại sau.", "err")
     } finally {
       setPwSaving(false)
+      hide()
     }
   }
 

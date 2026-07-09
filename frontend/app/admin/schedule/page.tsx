@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Visit, VisitStatus, Staff, Patient } from "@/lib/types";
 import { API_URL, authFetch } from "@/lib/api";
+import { useLoading } from "@/lib/loading-context";
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8);
 
@@ -105,6 +106,7 @@ interface SessionFormDialogProps {
   staffList: Staff[];
   patientList: Patient[];
   allVisits: Visit[];
+  visitTypes?: string[];
 }
 
 function SessionFormDialog({
@@ -117,6 +119,7 @@ function SessionFormDialog({
   staffList,
   patientList,
   allVisits,
+  visitTypes = DEFAULT_VISIT_TYPES,
 }: SessionFormDialogProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
@@ -819,6 +822,7 @@ function SessionCard({
   staffList,
   patientList,
   allVisits,
+  visitTypes = DEFAULT_VISIT_TYPES,
 }: {
   visit: Visit;
   staffName?: string;
@@ -827,6 +831,7 @@ function SessionCard({
   staffList: Staff[];
   patientList: Patient[];
   allVisits: Visit[];
+  visitTypes?: string[];
 }) {
   const left = getPositionPercent(visit.startTime || "08:00");
   const width = getWidthPercent(visit.duration);
@@ -1177,6 +1182,7 @@ function SessionCard({
         staffList={staffList}
         patientList={patientList}
         allVisits={allVisits}
+        visitTypes={visitTypes}
       />
       <DeleteDialog
         visit={visit}
@@ -1193,6 +1199,7 @@ function SessionCard({
 }
 
 export default function SchedulePage() {
+  const { show, hide } = useLoading();
   const [view, setView] = React.useState<"day" | "week" | "month">("day");
   const [allVisits, setAllVisits] = React.useState<Visit[]>([]);
   const [staffList, setStaffList] = React.useState<Staff[]>([]);
@@ -1286,7 +1293,8 @@ export default function SchedulePage() {
       .catch(() => {});
   }, []);
 
-  const handleCreateSession = (data: Partial<Visit>) => {
+  const handleCreateSession = async (data: Partial<Visit>) => {
+    show("Đang phân công ca trực...")
     const newVisit: Visit = {
       id: `V${Date.now()}`,
       type: data.type ?? "Khám nội khoa",
@@ -1299,68 +1307,79 @@ export default function SchedulePage() {
       duration: data.duration ?? "1h",
       status: (data.status ?? "Đã xác nhận") as VisitStatus,
     };
-    authFetch(`${API_URL}/visits`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newVisit),
-    })
-      .then((r) => r.json())
-      .then((created) => setAllVisits((prev) => [...prev, created]))
-      .catch((err) =>
-        console.error("[SchedulePage] Lỗi tạo lịch trực:", err),
-      );
+    try {
+      const r = await authFetch(`${API_URL}/visits`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newVisit),
+      });
+      const created = await r.json();
+      setAllVisits((prev) => [...prev, created]);
+    } catch (err) {
+      console.error("[SchedulePage] Lỗi tạo lịch trực:", err);
+    } finally {
+      hide();
+    }
   };
 
-  const handleEditSession = (updated: Visit) => {
-    authFetch(`${API_URL}/visits/${updated.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updated),
-    })
-      .then((r) => r.json())
-      .then((saved) =>
-        setAllVisits((prev) =>
-          prev.map((v) => (v.id === saved.id ? saved : v)),
-        ),
-      )
-      .catch((err) =>
-        console.error("[SchedulePage] Lỗi cập nhật lịch trực:", err),
-      );
+  const handleEditSession = async (updated: Visit) => {
+    show("Đang cập nhật...")
+    try {
+      const r = await authFetch(`${API_URL}/visits/${updated.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+      const saved = await r.json();
+      setAllVisits((prev) => prev.map((v) => (v.id === saved.id ? saved : v)));
+    } catch (err) {
+      console.error("[SchedulePage] Lỗi cập nhật lịch trực:", err);
+    } finally {
+      hide();
+    }
   };
 
-  const handleDeleteSession = (id: string) => {
-    authFetch(`${API_URL}/visits/${id}`, { method: "DELETE" })
-      .then((r) => {
-        if (r.ok) setAllVisits((prev) => prev.filter((v) => v.id !== id));
-      })
-      .catch((err) =>
-        console.error("[SchedulePage] Lỗi xóa lịch trực:", err),
-      );
+  const handleDeleteSession = async (id: string) => {
+    show("Đang xóa lịch trực...")
+    try {
+      const r = await authFetch(`${API_URL}/visits/${id}`, { method: "DELETE" });
+      if (r.ok) setAllVisits((prev) => prev.filter((v) => v.id !== id));
+    } catch (err) {
+      console.error("[SchedulePage] Lỗi xóa lịch trực:", err);
+    } finally {
+      hide();
+    }
   };
 
-  const handleApprove = (id: string) => {
+  const handleApprove = async (id: string) => {
     const visit = allVisits.find((v) => v.id === id);
     if (!visit) return;
-    authFetch(`${API_URL}/visits/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...visit, status: "Đã xác nhận" }),
-    })
-      .then((r) => r.json())
-      .then((saved) =>
-        setAllVisits((prev) =>
-          prev.map((v) => (v.id === saved.id ? saved : v)),
-        ),
-      )
-      .catch((err) => console.error("Lỗi phê duyệt lịch:", err));
+    show("Đang phê duyệt...")
+    try {
+      const r = await authFetch(`${API_URL}/visits/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...visit, status: "Đã xác nhận" }),
+      });
+      const saved = await r.json();
+      setAllVisits((prev) => prev.map((v) => (v.id === saved.id ? saved : v)));
+    } catch (err) {
+      console.error("Lỗi phê duyệt lịch:", err);
+    } finally {
+      hide();
+    }
   };
 
-  const handleReject = (id: string) => {
-    authFetch(`${API_URL}/visits/${id}`, { method: "DELETE" })
-      .then((r) => {
-        if (r.ok) setAllVisits((prev) => prev.filter((v) => v.id !== id));
-      })
-      .catch((err) => console.error("Lỗi từ chối lịch:", err));
+  const handleReject = async (id: string) => {
+    show("Đang từ chối...")
+    try {
+      const r = await authFetch(`${API_URL}/visits/${id}`, { method: "DELETE" });
+      if (r.ok) setAllVisits((prev) => prev.filter((v) => v.id !== id));
+    } catch (err) {
+      console.error("Lỗi từ chối lịch:", err);
+    } finally {
+      hide();
+    }
   };
 
   const handleSavePayment = (
@@ -1459,6 +1478,7 @@ export default function SchedulePage() {
             staffList={staffList}
             patientList={patientList}
             allVisits={allVisits}
+            visitTypes={visitTypes}
             trigger={
               <Button className="bg-primary text-white rounded-full px-8 py-3 font-black text-sm flex items-center gap-3 hover:opacity-95 transition-all shadow-2xl shadow-primary/20 h-14 uppercase tracking-widest border-b-4 border-white/10 active:border-b-0 active:translate-y-1">
                 <CalendarPlus className="w-5 h-5" /> Phân công ca trực
@@ -1635,6 +1655,7 @@ export default function SchedulePage() {
                           staffList={staffList}
                           patientList={patientList}
                           allVisits={allVisits}
+                          visitTypes={visitTypes}
                         />
                       ))}
                     </div>

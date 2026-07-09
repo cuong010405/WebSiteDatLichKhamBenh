@@ -55,6 +55,7 @@ import { cn } from "@/lib/utils";
 import { Patient, Staff, Visit } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URL, authFetch } from "@/lib/api";
+import { useLoading } from "@/lib/loading-context";
 
 // Simple MultiSelect component for assigned staff
 function StaffMultiSelect({
@@ -953,6 +954,7 @@ function PatientRow({
 }
 
 export default function PatientsPage() {
+  const { show, hide } = useLoading();
   const [patientList, setPatientList] = React.useState<Patient[]>([]);
   const [staffList, setStaffList] = React.useState<Staff[]>([]);
   const [visitList, setVisitList] = React.useState<Visit[]>([]);
@@ -1043,68 +1045,56 @@ export default function PatientsPage() {
       .finally(() => setLoadingVisits(false));
   }, [loadData]);
 
-  const handleAddPatient = (newPatient: Patient) => {
-    // Optimistic update: add immediately so it shows right away
-    setPatientList((prev) => [newPatient, ...prev]);
-
-    authFetch(`${API_URL}/patients`, {
-      method: "POST",
-      body: JSON.stringify(newPatient),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Create patient failed");
-        return res.json();
-      })
-      .then((created) => {
-        // Replace temp entry with server-confirmed data
-        setPatientList((prev) =>
-          prev.map((p) => (p.id === newPatient.id ? created : p)),
-        );
-      })
-      .catch((err) => {
-        console.error("[PatientsPage] Lỗi thêm bệnh nhân:", err);
-        // Rollback optimistic update on failure
-        setPatientList((prev) => prev.filter((p) => p.id !== newPatient.id));
+  const handleAddPatient = async (newPatient: Patient) => {
+    show("Đang thêm bệnh nhân...")
+    try {
+      const res = await authFetch(`${API_URL}/patients`, {
+        method: "POST",
+        body: JSON.stringify(newPatient),
       });
+      if (!res.ok) throw new Error("Create patient failed");
+      const created = await res.json();
+      setPatientList((prev) => [created, ...prev]);
+    } catch (err) {
+      console.error("[PatientsPage] Lỗi thêm bệnh nhân:", err);
+    } finally {
+      hide();
+    }
   };
 
 
-  const handleEditPatient = (updatedPatient: Patient) => {
-    authFetch(`${API_URL}/patients/${updatedPatient.id}`, {
-      method: "PUT",
-      body: JSON.stringify(updatedPatient),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Update patient failed");
-        return res.json();
-      })
-      .then((saved) => {
-        setPatientList((prev) =>
-          prev.map((p) => (p.id === saved.id ? saved : p)),
-        );
-      })
-      .catch((err) => {
-        console.error("[PatientsPage] Lỗi cập nhật bệnh nhân:", err);
+  const handleEditPatient = async (updatedPatient: Patient) => {
+    show("Đang cập nhật...")
+    try {
+      const res = await authFetch(`${API_URL}/patients/${updatedPatient.id}`, {
+        method: "PUT",
+        body: JSON.stringify(updatedPatient),
       });
+      if (!res.ok) throw new Error("Update patient failed");
+      const saved = await res.json();
+      setPatientList((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
+    } catch (err) {
+      console.error("[PatientsPage] Lỗi cập nhật bệnh nhân:", err);
+    } finally {
+      hide();
+    }
   };
 
-  const handleApprovePatient = (id: string) => {
-    authFetch(`${API_URL}/patients/${id}`, {
-      method: "PUT",
-      body: JSON.stringify({ status: "Đang điều trị" }),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Approve patient failed");
-        return res.json();
-      })
-      .then((saved) => {
-        setPatientList((prev) =>
-          prev.map((p) => (p.id === saved.id ? saved : p)),
-        );
-      })
-      .catch((err) => {
-        console.error("[PatientsPage] Lỗi duyệt bệnh nhân:", err);
+  const handleApprovePatient = async (id: string) => {
+    show("Đang phê duyệt...")
+    try {
+      const res = await authFetch(`${API_URL}/patients/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "Đang điều trị" }),
       });
+      if (!res.ok) throw new Error("Approve patient failed");
+      const saved = await res.json();
+      setPatientList((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
+    } catch (err) {
+      console.error("[PatientsPage] Lỗi duyệt bệnh nhân:", err);
+    } finally {
+      hide();
+    }
   };
 
   // Approve a visit from app → automatically creates patient record on SQL Server backend
@@ -1130,17 +1120,19 @@ export default function PatientsPage() {
       });
   };
 
-  const handleDeletePatient = (id: string) => {
-    authFetch(`${API_URL}/patients/${id}`, {
-      method: "DELETE",
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Delete patient failed");
-        setPatientList((prev) => prev.filter((p) => p.id !== id));
-      })
-      .catch((err) => {
-        console.error("[PatientsPage] Lỗi xóa bệnh nhân:", err);
+  const handleDeletePatient = async (id: string) => {
+    show("Đang xóa bệnh nhân...")
+    try {
+      const res = await authFetch(`${API_URL}/patients/${id}`, {
+        method: "DELETE",
       });
+      if (!res.ok) throw new Error("Delete patient failed");
+      setPatientList((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      console.error("[PatientsPage] Lỗi xóa bệnh nhân:", err);
+    } finally {
+      hide();
+    }
   };
 
   const filteredPatients = (Array.isArray(patientList) ? patientList : []).filter((p) => {

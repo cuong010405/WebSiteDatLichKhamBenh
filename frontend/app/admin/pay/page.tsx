@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { API_URL, authFetch } from "@/lib/api";
+import { useLoading } from "@/lib/loading-context";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
@@ -60,6 +61,7 @@ const methodIcon: Record<string, React.ReactNode> = {
 const PAYMENT_METHODS = ["Tiền mặt", "Chuyển khoản", "Ví điện tử", "Thẻ tín dụng"];
 
 export default function AdminPayPage() {
+  const { show, hide } = useLoading();
   const [pendingVisits, setPendingVisits] = React.useState<PaymentVisit[]>([]);
   const [payments, setPayments] = React.useState<PaymentRecord[]>([]);
   const [selectedVisitId, setSelectedVisitId] = React.useState("");
@@ -149,6 +151,7 @@ export default function AdminPayPage() {
     }
 
     setSaving(true);
+    show("Đang thanh toán...")
     try {
       const res = await authFetch(`${API_URL}/payments`, {
         method: "POST",
@@ -172,12 +175,14 @@ export default function AdminPayPage() {
       showToast(e?.message || "Lỗi không xác định", "err");
     } finally {
       setSaving(false);
+      hide();
     }
   };
 
   const handleDelete = async (paymentId: string) => {
     if (!confirm("Xóa hóa đơn này? Lịch hẹn sẽ trở về trạng thái Đã xác nhận.")) return;
     setDeletingId(paymentId);
+    show("Đang xóa hóa đơn...")
     try {
       const res = await authFetch(`${API_URL}/payments/${paymentId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Xóa thất bại");
@@ -187,6 +192,7 @@ export default function AdminPayPage() {
       showToast(e?.message || "Lỗi xóa hóa đơn", "err");
     } finally {
       setDeletingId(null);
+      hide();
     }
   };
 
