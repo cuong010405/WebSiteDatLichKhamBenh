@@ -4,7 +4,7 @@ import * as React from "react"
 import { Card } from "@/components/ui/card"
 import { motion } from "framer-motion"
 import { LineChart, Line, ResponsiveContainer } from "recharts"
-import { API_URL } from "@/lib/api"
+import { API_URL, authFetch } from "@/lib/api"
 
 const defaultStats = [
   { 
@@ -50,7 +50,7 @@ export function Stats() {
   }, [])
 
   React.useEffect(() => {
-    fetch(`${API_URL}/reports`)
+    authFetch(`${API_URL}/reports`)
       .then((res) => {
         if (!res.ok) throw new Error("API error")
         return res.json()

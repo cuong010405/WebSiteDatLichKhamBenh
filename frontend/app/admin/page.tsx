@@ -8,8 +8,11 @@ import { TodayVisits } from "@/components/dashboard/today-visits"
 import { DispatchMap } from "@/components/dashboard/dispatch-map"
 import { ActivityLog } from "@/components/dashboard/activity-log"
 import { motion } from "framer-motion"
+import { useAuth } from "@/lib/auth-context"
 
 export default function Home() {
+  const { user } = useAuth()
+  const displayName = user?.fullName?.split(" ").slice(-1)[0] || "Admin"
   return (
     <div className="relative isolate min-h-screen overflow-x-hidden">
       {/* Dynamic Background Elements */}
@@ -54,7 +57,7 @@ export default function Home() {
               </div>
               <h1 className="text-5xl md:text-7xl font-bold tight-tracking text-foreground leading-[1.05] mb-6">
                 Chào buổi sáng, <br />
-                <span className="text-primary-strong bg-linear-to-r from-primary-strong to-primary bg-clip-text text-transparent">Alex Miller.</span>
+                <span className="text-primary-strong bg-linear-to-r from-primary-strong to-primary bg-clip-text text-transparent">{displayName}.</span>
               </h1>
               <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl font-medium">
                 Nền tảng quản lý lưu động tích hợp AI. Theo dõi hoạt động của 58 nhân viên và 142 ca trực đang diễn ra trong mạng lưới.

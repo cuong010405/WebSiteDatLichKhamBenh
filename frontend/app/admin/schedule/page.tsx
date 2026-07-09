@@ -39,7 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Visit, VisitStatus, Staff, Patient } from "@/lib/types";
-import { API_URL } from "@/lib/api";
+import { API_URL, authFetch } from "@/lib/api";
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8);
 
@@ -78,7 +78,7 @@ function isOverlapping(
   return start1 < end2 && start2 < end1;
 }
 
-const VISIT_TYPES = [
+const DEFAULT_VISIT_TYPES = [
   "Kiểm tra sức khỏe định kỳ",
   "Vật lý trị liệu",
   "Phục hồi chức năng",
@@ -261,7 +261,7 @@ function SessionFormDialog({
                   <SelectValue placeholder="Chọn loại dịch vụ..." />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                  {VISIT_TYPES.map((t) => (
+                  {visitTypes.map((t) => (
                     <SelectItem
                       key={t}
                       value={t}
@@ -1198,6 +1198,7 @@ export default function SchedulePage() {
   const [staffList, setStaffList] = React.useState<Staff[]>([]);
   const [patientList, setPatientList] = React.useState<Patient[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [visitTypes, setVisitTypes] = React.useState<string[]>(DEFAULT_VISIT_TYPES);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string>("Tất cả");
   const [paymentDialogOpen, setPaymentDialogOpen] = React.useState(false);
@@ -1239,7 +1240,7 @@ export default function SchedulePage() {
           throw new Error(`Staff JSON parse failed: ${text}`);
         }
       }),
-      fetch(`${API_URL}/patients`).then(async (r) => {
+      authFetch(`${API_URL}/patients`).then(async (r) => {
         const text = await r.text();
         if (!r.ok) {
           throw new Error(`Patients fetch failed ${r.status}: ${text}`);
@@ -1252,9 +1253,9 @@ export default function SchedulePage() {
       }),
     ])
       .then(([visits, staff, patients]) => {
-        setAllVisits(visits);
-        setStaffList(staff);
-        setPatientList(patients);
+        setAllVisits(Array.isArray(visits) ? visits : []);
+        setStaffList(Array.isArray(staff) ? staff : []);
+        setPatientList(Array.isArray(patients) ? patients : []);
       })
       .catch((err) =>
         console.error("[SchedulePage] Lỗi tải dữ liệu lịch trình:", err),
@@ -1273,6 +1274,18 @@ export default function SchedulePage() {
     return () => window.clearInterval(interval);
   }, [loadData]);
 
+  // Fetch service types from API
+  React.useEffect(() => {
+    fetch(`${API_URL}/services/active`)
+      .then((res) => { if (!res.ok) throw new Error("fail"); return res.json() })
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setVisitTypes(data.map((s: any) => s.name));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const handleCreateSession = (data: Partial<Visit>) => {
     const newVisit: Visit = {
       id: `V${Date.now()}`,
@@ -1286,7 +1299,7 @@ export default function SchedulePage() {
       duration: data.duration ?? "1h",
       status: (data.status ?? "Đã xác nhận") as VisitStatus,
     };
-    fetch(`${API_URL}/visits`, {
+    authFetch(`${API_URL}/visits`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newVisit),
@@ -1299,7 +1312,7 @@ export default function SchedulePage() {
   };
 
   const handleEditSession = (updated: Visit) => {
-    fetch(`${API_URL}/visits/${updated.id}`, {
+    authFetch(`${API_URL}/visits/${updated.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updated),
@@ -1316,7 +1329,7 @@ export default function SchedulePage() {
   };
 
   const handleDeleteSession = (id: string) => {
-    fetch(`${API_URL}/visits/${id}`, { method: "DELETE" })
+    authFetch(`${API_URL}/visits/${id}`, { method: "DELETE" })
       .then((r) => {
         if (r.ok) setAllVisits((prev) => prev.filter((v) => v.id !== id));
       })
@@ -1328,7 +1341,7 @@ export default function SchedulePage() {
   const handleApprove = (id: string) => {
     const visit = allVisits.find((v) => v.id === id);
     if (!visit) return;
-    fetch(`${API_URL}/visits/${id}`, {
+    authFetch(`${API_URL}/visits/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...visit, status: "Đã xác nhận" }),
@@ -1343,7 +1356,7 @@ export default function SchedulePage() {
   };
 
   const handleReject = (id: string) => {
-    fetch(`${API_URL}/visits/${id}`, { method: "DELETE" })
+    authFetch(`${API_URL}/visits/${id}`, { method: "DELETE" })
       .then((r) => {
         if (r.ok) setAllVisits((prev) => prev.filter((v) => v.id !== id));
       })

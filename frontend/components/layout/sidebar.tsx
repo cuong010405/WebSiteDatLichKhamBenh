@@ -13,12 +13,14 @@ import {
   HelpCircle,
   ChevronRight,
   CalendarCheck,
+  Stethoscope,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { label: "Tổng quan", href: "/admin", icon: LayoutGrid },
   { label: "Chuyên gia", href: "/admin/staff", icon: Users },
+  { label: "Dịch vụ", href: "/admin/services", icon: Stethoscope },
   { label: "Lịch trực", href: "/admin/schedule", icon: Calendar },
   { label: "Bệnh nhân", href: "/admin/patients", icon: Activity },
   { label: "Thanh toán", href: "/admin/pay", icon: CalendarCheck },

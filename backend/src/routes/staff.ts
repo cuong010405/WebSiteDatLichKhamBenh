@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { getStaffList, getStaffById, createStaff, updateStaff, deleteStaff } from "../services/staff";
+import { requireAuth, requireAdmin } from "../middleware/auth";
 
 const router = Router();
 
@@ -12,7 +13,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireAuth, requireAdmin, async (req, res) => {
   try {
     const newStaff = await createStaff(req.body);
     res.status(201).json(newStaff);
@@ -33,7 +34,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const updated = await updateStaff(req.params.id, req.body);
     res.json(updated);
@@ -42,7 +43,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     await deleteStaff(req.params.id);
     res.json({ message: "Xóa nhân viên thành công" });

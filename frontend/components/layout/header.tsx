@@ -179,17 +179,11 @@ export function Header() {
                 </div>
                 <DropdownMenuSeparator className="bg-hairline/50 my-1" />
                 <DropdownMenuGroup>
-                  <DropdownMenuItem className="rounded-xl gap-3 cursor-pointer px-3 py-3 focus:bg-surface-tinted focus:text-primary-strong transition-colors">
-                    <User className="w-4 h-4" />{" "}
-                    <span className="font-bold text-xs uppercase tracking-wider">
-                      Hồ sơ chuyên gia
-                    </span>
-                  </DropdownMenuItem>
                   <Link href="/admin/settings">
                     <DropdownMenuItem className="rounded-xl gap-3 cursor-pointer px-3 py-3 focus:bg-surface-tinted focus:text-primary-strong transition-colors">
-                      <Settings className="w-4 h-4" />{" "}
+                      <User className="w-4 h-4" />{" "}
                       <span className="font-bold text-xs uppercase tracking-wider">
-                        Cấu hình hệ thống
+                        Hồ sơ & Cài đặt
                       </span>
                     </DropdownMenuItem>
                   </Link>

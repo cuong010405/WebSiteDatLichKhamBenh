@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
 import { CheckCircle2, Star, ArrowRight, ShieldCheck, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { API_URL } from "@/lib/api"
+import { API_URL, authFetch } from "@/lib/api"
 
 const iconMap: Record<string, any> = {
   completed: { icon: CheckCircle2, color: "text-primary", bgColor: "bg-surface-tinted" },
@@ -39,7 +39,7 @@ export function ActivityLog() {
   const [loading, setLoading] = React.useState(true)
 
   React.useEffect(() => {
-    fetch(`${API_URL}/logs`)
+    authFetch(`${API_URL}/logs`)
       .then((res) => {
         if (!res.ok) throw new Error("API error")
         return res.json()

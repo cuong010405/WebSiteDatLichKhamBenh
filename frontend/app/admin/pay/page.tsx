@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { API_URL } from "@/lib/api";
+import { API_URL, authFetch } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
@@ -102,7 +102,7 @@ export default function AdminPayPage() {
   const fetchPayments = React.useCallback(async () => {
     setLoadingPayments(true);
     try {
-      const res = await fetch(`${API_URL}/payments`);
+      const res = await authFetch(`${API_URL}/payments`);
       const data = await res.json();
       setPayments(Array.isArray(data) ? data : []);
     } catch {
@@ -150,9 +150,8 @@ export default function AdminPayPage() {
 
     setSaving(true);
     try {
-      const res = await fetch(`${API_URL}/payments`, {
+      const res = await authFetch(`${API_URL}/payments`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           visitId: selectedVisitId,
           amount: paymentAmount,
@@ -180,7 +179,7 @@ export default function AdminPayPage() {
     if (!confirm("Xóa hóa đơn này? Lịch hẹn sẽ trở về trạng thái Đã xác nhận.")) return;
     setDeletingId(paymentId);
     try {
-      const res = await fetch(`${API_URL}/payments/${paymentId}`, { method: "DELETE" });
+      const res = await authFetch(`${API_URL}/payments/${paymentId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Xóa thất bại");
       showToast("Đã xóa hóa đơn.", "ok");
       await Promise.all([fetchPendingVisits(), fetchPayments()]);

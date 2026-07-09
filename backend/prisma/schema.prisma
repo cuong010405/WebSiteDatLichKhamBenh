@@ -101,3 +101,13 @@ model Payment {
   CreatedAt DateTime @default(now()) @db.DateTime
   Visit     Visit    @relation(fields: [VisitId], references: [Id], onDelete: Cascade, map: "FK_Payment_Visit")
 }
+
+model Service {
+  Id          String  @id @default(uuid()) @db.NVarChar(50)
+  Name        String  @db.NVarChar(200)
+  Description String? @db.NVarChar(Max)
+  Price       Int     @db.Int
+  Duration    String  @db.NVarChar(20)
+  Type        String  @db.NVarChar(100)
+  Active      Boolean @default(true)
+}

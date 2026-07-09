@@ -32,7 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { API_URL } from "@/lib/api";
+import { API_URL, authFetch } from "@/lib/api";
 
 const DEPT_COLORS = ["#18BE66", "#16A34A", "#18181B", "#E4E4E7"];
 
@@ -208,7 +208,7 @@ export default function ReportsPage() {
   );
 
   const fetchJson = async (url: string) => {
-    const response = await fetch(url);
+    const response = await authFetch(url);
     const result = await response.json();
     if (!response.ok) {
       throw new Error(result?.error || `Fetch failed: ${response.status}`);

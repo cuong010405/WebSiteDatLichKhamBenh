@@ -62,12 +62,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { staff as mockStaff, visits as mockVisits } from "@/lib/mock-data";
+import { staff as mockStaff } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
-import { API_URL } from "@/lib/api";
+import { API_URL, authFetch } from "@/lib/api";
 
-// Service pricing mapping
-const SERVICES = [
+// Service pricing mapping (fallback if API unavailable)
+const DEFAULT_SERVICES = [
   {
     id: "s1",
     name: "Kiểm tra sức khỏe & Đo sinh hiệu",
@@ -679,6 +679,17 @@ export default function BookingPage() {
   const [regConfirmPassword, setRegConfirmPassword] = React.useState("");
 
   const [staff, setStaff] = React.useState<any[]>(mockStaff);
+  const [services, setServices] = React.useState(DEFAULT_SERVICES);
+
+  // Fetch services from API (fallback to DEFAULT_SERVICES)
+  React.useEffect(() => {
+    fetch(`${API_URL}/services/active`)
+      .then((res) => { if (!res.ok) throw new Error("fail"); return res.json() })
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) setServices(data);
+      })
+      .catch(() => {});
+  }, []);
 
   // Specialist selection for reviews modal
   const [reviewStaff, setReviewStaff] = React.useState<any | null>(null);
@@ -797,10 +808,12 @@ export default function BookingPage() {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    let saveOk = true;
+
     // Save to backend if logged in
-    if (user?.id && !user.id.startsWith("CU-")) {
+    if (isBackendUser && user?.id) {
       try {
-        const res = await fetch(`${API_URL}/users/${user.id}`, {
+        const res = await authFetch(`${API_URL}/users/${user.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -827,7 +840,13 @@ export default function BookingPage() {
         }
       } catch (err) {
         console.error("Lỗi cập nhật user profile:", err);
+        saveOk = false;
       }
+    }
+
+    if (!saveOk) {
+      addToast("Cập nhật hồ sơ thất bại. Thử lại sau.", "error");
+      return;
     }
 
     setProfile((prev) => ({
@@ -863,9 +882,9 @@ export default function BookingPage() {
       return;
     }
     // Try backend update
-    if (user?.id && !user.id.startsWith("CU-")) {
+    if (isBackendUser && user?.id) {
       try {
-        const res = await fetch(`${API_URL}/users/${user.id}`, {
+        const res = await authFetch(`${API_URL}/users/${user.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ password: newPassword }),
@@ -929,24 +948,28 @@ export default function BookingPage() {
       })
       .then((data) => {
         const formatted = Array.isArray(data)
-          ? data.map((v: any) => ({
-              id: v.id,
-              staffId: v.staffId,
-              staffName:
-                v.staffName ||
-                staff.find((s) => s.id === v.staffId)?.name ||
-                "Chuyên gia y tế",
-              type: v.type,
-              date: v.date || "2026-06-24",
-              time: v.time,
-              status: v.status,
-              price: v.type.includes("Vật lý")
-                ? "500.000 VNĐ"
-                : v.type.includes("Truyền")
-                  ? "400.000 VNĐ"
-                  : "200.000 VNĐ",
-              paymentMethod: "Tiền mặt",
-            }))
+          ? data.map((v: any) => {
+              // Match visit type to service price, fallback to service list lookup
+              const matchedService = services.find((s) => v.type?.includes(s.name) || s.name.includes(v.type || ""));
+              const priceValue = matchedService?.price
+                || (v.type?.includes("Vật lý") ? 500000
+                  : v.type?.includes("Truyền") ? 400000
+                  : 200000);
+              return {
+                id: v.id,
+                staffId: v.staffId,
+                staffName:
+                  v.staffName ||
+                  staff.find((s) => s.id === v.staffId)?.name ||
+                  "Chuyên gia y tế",
+                type: v.type,
+                date: v.date || "2026-06-24",
+                time: v.time,
+                status: v.status,
+                price: priceValue.toLocaleString("vi-VN") + " VNĐ",
+                paymentMethod: v.paymentMethod || "Tiền mặt",
+              };
+            })
           : [];
         setMyBookings(formatted);
       })
@@ -960,7 +983,7 @@ export default function BookingPage() {
           setMyBookings(JSON.parse(stored));
         }
       });
-  }, [staff, user]);
+  }, [user]); // staff removed: API already returns staffName
 
   React.useEffect(() => {
     fetchMyVisits();
@@ -990,24 +1013,7 @@ export default function BookingPage() {
     }, 4000);
   };
 
-  // Seed default user account if not exists
-  React.useEffect(() => {
-    const existingUsers = localStorage.getItem("mintcare_users");
-    if (!existingUsers) {
-      const defaultUsers = [
-        {
-          name: "Evelyn Green",
-          phone: "090 987 6543",
-          email: "evelyn.green@gmail.com",
-          password: "123456",
-          address: "Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM",
-          summary:
-            "Bệnh nhân có tiền sử cao huyết áp và tiểu đường type 2. Đang trong lộ trình phục hồi sau phẫu thuật thay khớp gối trái.",
-        },
-      ];
-      localStorage.setItem("mintcare_users", JSON.stringify(defaultUsers));
-    }
-  }, []);
+  // Default users are seeded by auth-context (ensureLocalUsers)
 
   // Handle local registration
   const handleLocalRegister = async (e: React.FormEvent) => {
@@ -1099,9 +1105,35 @@ export default function BookingPage() {
     addToast("Đã đăng xuất khỏi tài khoản.", "info");
   };
 
-  // Profile update
-  const handleUpdateProfile = (e: React.FormEvent) => {
+  // Profile update — sync to backend for backend users, local state for others
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isBackendUser && user?.id) {
+      try {
+        const res = await fetch(`${API_URL}/users/${user.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fullName: profile.name,
+            phone: profile.phone,
+          }),
+        });
+        if (!res.ok) throw new Error("API error");
+        const data = await res.json();
+        const storedUser = localStorage.getItem("mintcare_user");
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser);
+          localStorage.setItem("mintcare_user", JSON.stringify({
+            ...parsed,
+            fullName: data.fullName,
+            phone: data.phone,
+          }));
+        }
+      } catch {
+        addToast("Không thể lưu hồ sơ lên hệ thống. Thử lại sau.", "error");
+        return;
+      }
+    }
     addToast("Cập nhật thông tin hồ sơ y tế thành công!", "success");
   };
 
@@ -1154,11 +1186,11 @@ export default function BookingPage() {
     }
 
     const selectedStaff = staff.find((s) => s.id === bookingStaffId);
-    const selectedService = SERVICES.find((s) => s.id === bookingServiceId);
+    const selectedService = services.find((s) => s.id === bookingServiceId);
 
     if (!selectedStaff || !selectedService) return;
 
-    const newId = Math.floor(100 + Math.random() * 900).toString();
+    const newId = crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase();
     const duration = selectedService.duration;
     const endTime = calculateEndTime(bookingSlot, duration);
 
@@ -1184,7 +1216,7 @@ export default function BookingPage() {
     };
 
     const postVisit = isBackendUser
-      ? fetch(`${API_URL}/visits`, {
+      ? authFetch(`${API_URL}/visits`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(newVisitObj),
@@ -1266,7 +1298,16 @@ export default function BookingPage() {
   };
 
   // Cancel Booking handler
-  const handleCancelBooking = (id: string) => {
+  const handleCancelBooking = async (id: string) => {
+    if (isBackendUser) {
+      try {
+        const res = await authFetch(`${API_URL}/visits/${id}`, { method: "DELETE" });
+        if (!res.ok) throw new Error("API error");
+      } catch {
+        addToast("Không thể hủy lịch hẹn. Thử lại sau.", "error");
+        return;
+      }
+    }
     const updated = myBookings.filter((b) => b.id !== id);
     saveBookingsToStorage(updated);
     addToast(`Đã hủy thành công ca hẹn #${id}`, "success");
@@ -1837,7 +1878,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                         <SelectValue placeholder="Chọn loại dịch vụ" />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border-blue-100 shadow-2xl p-2 bg-white">
-                        {SERVICES.map((serv) => (
+                        {services.map((serv) => (
                           <SelectItem
                             key={serv.id}
                             value={serv.id}
@@ -1982,7 +2023,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                         </span>
                         <span className="text-xs font-black text-right max-w-[180px] leading-tight text-blue-950">
                           {
-                            SERVICES.find((s) => s.id === bookingServiceId)
+                            services.find((s) => s.id === bookingServiceId)
                               ?.name
                           }
                         </span>
@@ -1993,7 +2034,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                         </span>
                         <span className="text-xs font-black text-blue-950">
                           {
-                            SERVICES.find((s) => s.id === bookingServiceId)
+                            services.find((s) => s.id === bookingServiceId)
                               ?.duration
                           }
                         </span>
@@ -2038,7 +2079,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                           </p>
                           <p className="text-3xl font-black text-blue-950 tracking-tighter mt-1">
                             {(
-                              SERVICES.find((s) => s.id === bookingServiceId)
+                              services.find((s) => s.id === bookingServiceId)
                                 ?.price || 0
                             ).toLocaleString("vi-VN")}
                             <span className="text-xs text-slate-400 ml-1">

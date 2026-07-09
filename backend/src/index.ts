@@ -10,6 +10,8 @@ import reportsRouter from "./routes/reports";
 import authRouter from "./routes/auth";
 import usersRouter from "./routes/users";
 import paymentsRouter from "./routes/payments";
+import servicesRouter from "./routes/services";
+import { requireAuth, requireAdmin } from "./middleware/auth";
 
 dotenv.config();
 
@@ -57,14 +59,19 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Đăng ký API Routes
-app.use("/api/staff", staffRouter);
-app.use("/api/patients", patientsRouter);
-app.use("/api/visits", visitsRouter);
-app.use("/api/logs", logsRouter);
-app.use("/api/reports", reportsRouter);
 app.use("/api/auth", authRouter);
-app.use("/api/users", usersRouter);
-app.use("/api/payments", paymentsRouter);
+
+// Public read-only endpoints (customer page needs these)
+app.use("/api/staff", staffRouter);
+app.use("/api/visits", visitsRouter);
+app.use("/api/services", servicesRouter);
+
+// Admin-only endpoints
+app.use("/api/patients", requireAuth, requireAdmin, patientsRouter);
+app.use("/api/logs", requireAuth, requireAdmin, logsRouter);
+app.use("/api/reports", requireAuth, requireAdmin, reportsRouter);
+app.use("/api/users", requireAuth, requireAdmin, usersRouter);
+app.use("/api/payments", requireAuth, requireAdmin, paymentsRouter);
 
 // Endpoint kiểm tra trạng thái hoạt động
 app.get("/health", (req, res) => {

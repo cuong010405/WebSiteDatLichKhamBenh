@@ -44,7 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { API_URL } from "@/lib/api";
+import { API_URL, authFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 interface AccountUser {
@@ -79,12 +79,12 @@ export default function AccountsPage() {
 
   const loadUsers = () => {
     setLoading(true);
-    fetch(`${API_URL}/users`)
+    authFetch(`${API_URL}/users`)
       .then((res) => {
         if (!res.ok) throw new Error("Fetch failed");
         return res.json();
       })
-      .then((data) => setUsers(data))
+      .then((data) => setUsers(Array.isArray(data) ? data : []))
       .catch((err) => console.error("Lỗi tải tài khoản:", err))
       .finally(() => setLoading(false));
   };
@@ -97,7 +97,7 @@ export default function AccountsPage() {
     e.preventDefault();
     setErrorMsg("");
     try {
-      const res = await fetch(`${API_URL}/users`, {
+      const res = await authFetch(`${API_URL}/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, fullName, phone, role }),
@@ -118,7 +118,7 @@ export default function AccountsPage() {
     if (!selectedUser) return;
     setErrorMsg("");
     try {
-      const res = await fetch(`${API_URL}/users/${selectedUser.id}`, {
+      const res = await authFetch(`${API_URL}/users/${selectedUser.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, fullName, phone, role, password: password || undefined }),
@@ -137,7 +137,7 @@ export default function AccountsPage() {
   const handleDeleteAccount = async () => {
     if (!selectedUser) return;
     try {
-      const res = await fetch(`${API_URL}/users/${selectedUser.id}`, {
+      const res = await authFetch(`${API_URL}/users/${selectedUser.id}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Xóa thất bại");

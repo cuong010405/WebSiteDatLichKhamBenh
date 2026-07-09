@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { db } from "../db";
 import { visitSchema } from "../validations/schemas";
 import { z } from "zod";
@@ -110,7 +111,7 @@ async function ensurePatientForVisit(visitId: string) {
   }
 
   // Generate unique patient ID — use crypto.randomUUID to prevent collision
-  const shortId = require("crypto").randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase();
+  const shortId = crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase();
   const newPatientId = `BN-${shortId}`;
 
   await db.patient.create({

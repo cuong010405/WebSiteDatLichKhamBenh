@@ -32,7 +32,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { Staff, StaffStatus } from "@/lib/types"
-import { API_URL } from "@/lib/api"
+import { API_URL, authFetch } from "@/lib/api"
 
 const ROLES = ["Bác sĩ Chuyên khoa", "Y tá Điều dưỡng", "Chuyên gia VLTL", "Chuyên gia Dinh dưỡng"]
 const DEPARTMENTS = ["Nội khoa", "Ngoại khoa", "Phục hồi chức năng", "Cấp cứu tại gia"]
@@ -590,14 +590,14 @@ export default function StaffPage() {
     setLoading(true)
     fetch(`${API_URL}/staff`)
       .then((res) => { if (!res.ok) throw new Error("Staff fetch failed"); return res.json() })
-      .then((data) => { setStaffList(data); setLoading(false) })
+      .then((data) => { setStaffList(Array.isArray(data) ? data : []); setLoading(false) })
       .catch((err) => { console.error("Lỗi tải chuyên gia:", err); setLoading(false) })
   }
 
   React.useEffect(() => { loadStaff() }, [])
 
   const handleAdd = (newStaff: Staff) => {
-    fetch(`${API_URL}/staff`, {
+    authFetch(`${API_URL}/staff`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newStaff),
@@ -608,7 +608,7 @@ export default function StaffPage() {
   }
 
   const handleEdit = (updated: Staff) => {
-    fetch(`${API_URL}/staff/${updated.id}`, {
+    authFetch(`${API_URL}/staff/${updated.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updated),
@@ -619,7 +619,7 @@ export default function StaffPage() {
   }
 
   const handleDelete = (id: string) => {
-    fetch(`${API_URL}/staff/${id}`, { method: "DELETE" })
+    authFetch(`${API_URL}/staff/${id}`, { method: "DELETE" })
       .then((res) => { if (!res.ok) throw new Error("Delete failed"); setStaffList((prev) => prev.filter((s) => s.id !== id)) })
       .catch((err) => console.error("Lỗi xóa chuyên gia:", err))
   }

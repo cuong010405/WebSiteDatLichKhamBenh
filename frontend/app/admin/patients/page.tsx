@@ -54,7 +54,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Patient, Staff, Visit } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_URL } from "@/lib/api";
+import { API_URL, authFetch } from "@/lib/api";
 
 // Simple MultiSelect component for assigned staff
 function StaffMultiSelect({
@@ -972,15 +972,15 @@ export default function PatientsPage() {
   const syncPatients = React.useCallback(async (silent = false) => {
     if (!silent) setSyncing(true);
     try {
-      await fetch(`${API_URL}/visits/sync-patients`, { method: "POST" });
+      await authFetch(`${API_URL}/visits/sync-patients`, { method: "POST" });
       // Reload patients after sync
       await new Promise<void>((resolve) => {
         Promise.all([
-          fetch(`${API_URL}/patients`).then((r) => r.json()),
+          authFetch(`${API_URL}/patients`).then((r) => r.json()),
           fetch(`${API_URL}/staff`).then((r) => r.json()),
         ]).then(([p, s]) => {
-          setPatientList(p);
-          setStaffList(s);
+          setPatientList(Array.isArray(p) ? p : []);
+          setStaffList(Array.isArray(s) ? s : []);
           resolve();
         }).catch(() => resolve());
       });
@@ -996,7 +996,7 @@ export default function PatientsPage() {
     setLoading(true);
     try {
       const [patientsData, staffData] = await Promise.all([
-        fetch(`${API_URL}/patients`).then((res) => {
+        authFetch(`${API_URL}/patients`).then((res) => {
           if (!res.ok) throw new Error("Không thể tải danh sách bệnh nhân");
           return res.json();
         }),
@@ -1005,8 +1005,8 @@ export default function PatientsPage() {
           return res.json();
         }),
       ]);
-      setPatientList(patientsData);
-      setStaffList(staffData);
+      setPatientList(Array.isArray(patientsData) ? patientsData : []);
+      setStaffList(Array.isArray(staffData) ? staffData : []);
     } catch (err: any) {
       console.error("[PatientsPage] Lỗi tải dữ liệu:", err?.message ?? err);
     } finally {
@@ -1019,10 +1019,10 @@ export default function PatientsPage() {
     const init = async () => {
       await loadData();
       try {
-        await fetch(`${API_URL}/visits/sync-patients`, { method: "POST" });
+        await authFetch(`${API_URL}/visits/sync-patients`, { method: "POST" });
         // Reload patients after sync to pick up any newly linked profiles
-        const freshPatients = await fetch(`${API_URL}/patients`).then((r) => r.json());
-        setPatientList(freshPatients);
+        const freshPatients = await authFetch(`${API_URL}/patients`).then((r) => r.json());
+        setPatientList(Array.isArray(freshPatients) ? freshPatients : []);
       } catch (err: any) {
         console.warn("[PatientsPage] Đồng bộ lịch hẹn thất bại:", err?.message ?? err);
       }
@@ -1047,9 +1047,8 @@ export default function PatientsPage() {
     // Optimistic update: add immediately so it shows right away
     setPatientList((prev) => [newPatient, ...prev]);
 
-    fetch(`${API_URL}/patients`, {
+    authFetch(`${API_URL}/patients`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newPatient),
     })
       .then((res) => {
@@ -1071,9 +1070,8 @@ export default function PatientsPage() {
 
 
   const handleEditPatient = (updatedPatient: Patient) => {
-    fetch(`${API_URL}/patients/${updatedPatient.id}`, {
+    authFetch(`${API_URL}/patients/${updatedPatient.id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updatedPatient),
     })
       .then((res) => {
@@ -1091,9 +1089,8 @@ export default function PatientsPage() {
   };
 
   const handleApprovePatient = (id: string) => {
-    fetch(`${API_URL}/patients/${id}`, {
+    authFetch(`${API_URL}/patients/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "Đang điều trị" }),
     })
       .then((res) => {
@@ -1112,9 +1109,8 @@ export default function PatientsPage() {
 
   // Approve a visit from app → automatically creates patient record on SQL Server backend
   const handleApproveVisit = (visit: Visit) => {
-    fetch(`${API_URL}/visits/${visit.id}`, {
+    authFetch(`${API_URL}/visits/${visit.id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "Đã xác nhận" }),
     })
       .then((res) => {
@@ -1135,7 +1131,7 @@ export default function PatientsPage() {
   };
 
   const handleDeletePatient = (id: string) => {
-    fetch(`${API_URL}/patients/${id}`, {
+    authFetch(`${API_URL}/patients/${id}`, {
       method: "DELETE",
     })
       .then((res) => {
@@ -1147,7 +1143,7 @@ export default function PatientsPage() {
       });
   };
 
-  const filteredPatients = patientList.filter((p) => {
+  const filteredPatients = (Array.isArray(patientList) ? patientList : []).filter((p) => {
     const matchQuery =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||

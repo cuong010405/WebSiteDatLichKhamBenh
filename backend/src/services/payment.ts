@@ -1,6 +1,5 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import crypto from "crypto";
+import { db } from "../db";
 
 function mapPayment(p: any) {
   return {
@@ -33,7 +32,7 @@ const visitInclude = {
 };
 
 export async function getPaymentList() {
-  const payments = await prisma.payment.findMany({
+  const payments = await db.payment.findMany({
     include: visitInclude,
     orderBy: { CreatedAt: "desc" },
   });
@@ -41,7 +40,7 @@ export async function getPaymentList() {
 }
 
 export async function getPaymentById(id: string) {
-  const payment = await prisma.payment.findUnique({
+  const payment = await db.payment.findUnique({
     where: { Id: id },
     include: visitInclude,
   });
@@ -56,16 +55,16 @@ export async function createPayment(data: {
   method: string;
   note?: string;
 }) {
-  const id = require("crypto").randomUUID();
+  const id = crypto.randomUUID();
 
   // Find the visit first to get PatientId
-  const visit = await prisma.visit.findUnique({
+  const visit = await db.visit.findUnique({
     where: { Id: data.visitId },
     select: { PatientId: true },
   });
 
   // Create payment record
-  const payment = await prisma.payment.create({
+  const payment = await db.payment.create({
     data: {
       Id: id,
       VisitId: data.visitId,
@@ -79,7 +78,7 @@ export async function createPayment(data: {
   });
 
   // Update Visit payment status
-  await prisma.visit.update({
+  await db.visit.update({
     where: { Id: data.visitId },
     data: {
       PaymentStatus: "Đã thanh toán",
@@ -94,11 +93,11 @@ export async function createPayment(data: {
 }
 
 export async function deletePayment(id: string) {
-  const payment = await prisma.payment.findUnique({ where: { Id: id } });
+  const payment = await db.payment.findUnique({ where: { Id: id } });
   if (!payment) throw new Error("Không tìm thấy hóa đơn");
 
   // Revert visit payment status
-  await prisma.visit.update({
+  await db.visit.update({
     where: { Id: payment.VisitId },
     data: {
       PaymentStatus: "Chưa thanh toán",
@@ -109,6 +108,6 @@ export async function deletePayment(id: string) {
     },
   });
 
-  await prisma.payment.delete({ where: { Id: id } });
+  await db.payment.delete({ where: { Id: id } });
   return { success: true };
 }

@@ -7,6 +7,7 @@ import {
   deleteVisit,
   syncPatientsForVisits,
 } from "../services/visit";
+import { requireAuth, requireAdmin } from "../middleware/auth";
 
 const router = Router();
 
@@ -29,7 +30,7 @@ router.get("/", async (req, res) => {
 });
 
 // Sync: tạo Patient cho tất cả visit "Đã xác nhận" chưa có patient
-router.post("/sync-patients", async (req, res) => {
+router.post("/sync-patients", requireAuth, requireAdmin, async (req, res) => {
   try {
     const count = await syncPatientsForVisits();
     res.json({ message: `Đã đồng bộ ${count} bệnh nhân từ lịch hẹn.`, count });
@@ -39,14 +40,14 @@ router.post("/sync-patients", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireAuth, async (req, res) => {
   try {
     const newVisit = await createVisit(req.body);
     res.status(201).json(newVisit);
   } catch (error: any) {
     console.error("Visits POST error:", error);
-    const status = error?.statusCode || 500;
-    res.status(status).json({ error: error.message || "Yêu cầu không hợp lệ" });
+    const isNotFound = error.message?.includes("không tồn tại");
+    res.status(isNotFound ? 404 : 400).json({ error: error.message || "Yêu cầu không hợp lệ" });
   }
 });
 
@@ -62,7 +63,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const updated = await updateVisit(req.params.id, req.body);
     res.json(updated);
@@ -71,8 +72,12 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAuth, async (req, res) => {
   try {
+    const existing = await getVisitById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ error: "Không tìm thấy lịch hẹn" });
+    }
     await deleteVisit(req.params.id);
     res.json({ message: "Xóa lịch hẹn thành công" });
   } catch (error: any) {
