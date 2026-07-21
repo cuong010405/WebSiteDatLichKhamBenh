@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "skills": {
+    "ask-matt": {
+      "_note": "Hỏi Matt Pocock về TypeScript, thiết kế code, hoặc bất kỳ câu hỏi kỹ thuật nào. Dùng khi cần tư vấn chuyên sâu từ góc nhìn của Matt.",
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/ask-matt/SKILL.md",
+      "computedHash": "5ec84a4c2d9021d99780e5222b2a9f532b53cca8237024eb6cb40ad370c667c5"
+    },
+    "code-review": {
+      "_note": "Review code thay đổi từ một commit/branch/tag cụ thể. Dùng khi muốn kiểm tra PR, WIP, hoặc 'review từ X đến nay'.",
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/code-review/SKILL.md",
+      "computedHash": "7c3170d8b1b904418358af0474f82e74c89a2dd66c12c956caefdc0aa81ea09f"
+    },
+    "codebase-design": {
+      "_note": "Thiết kế/cải thiện interface module theo triết lý 'deep modules'. Dùng khi muốn refactor, tìm seam tốt hơn, hoặc làm code dễ test hơn.",
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/codebase-design/SKILL.md",
+      "computedHash": "cdc3d683881cbe5ca367c954571e158861176aa9af8adad1b2c5edd9eb72fe05"
+    },
+    "diagnosing-bugs": {
+      "_note": "Chẩn đoán bug khó hoặc performance regression. Dùng khi báo cáo 'diagnose/debug cái này', thứ gì đó bị lỗi, crash, hoặc chạy chậm.",
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/diagnosing-bugs/SKILL.md",
+      "computedHash": "44417076a76b40331f3816f21e76ea7c9d129e3f73cca2e159b69a56aaa838b2"
+    },
+    "grill-with-docs": {
+      "_note": "Phỏng vấn/hỏi đáp tương tác dựa trên tài liệu. Dùng khi muốn AI hỏi lại để hiểu rõ yêu cầu trước khi làm, có tham chiếu docs cụ thể.",
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/grill-with-docs/SKILL.md",
+      "computedHash": "96718e0a89e48c7d76cc9759c7094a82ff34eb89ddc46a30388063fa9812356f"
+    },
+    "handoff": {
+      "_note": "Bàn giao công việc giữa các agent hoặc phiên làm việc. Dùng khi cần tóm tắt trạng thái hiện tại để chuyển sang agent khác tiếp tục.",
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/productivity/handoff/SKILL.md",
+      "computedHash": "7b03a812d5ca10fa8fe69d4cf8a34542684db51f5db0271254b96074e9f3a243"
+    },
+    "implement": {
+      "_note": "Triển khai tính năng từ spec/ticket có sẵn. Dùng khi đã có mô tả rõ ràng và muốn AI tự động implement đúng theo yêu cầu.",
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/implement/SKILL.md",
+      "computedHash": "130cac2d72bfde8cd526bf3b754211e2fe00e84bc4d9f9c56f749b9541a3afad"
+    },
+    "improve-codebase-architecture": {
+      "_note": "Cải thiện kiến trúc tổng thể của codebase. Dùng khi cảm thấy codebase khó bảo trì, muốn tìm vấn đề kiến trúc và đề xuất cải tiến.",
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
+      "computedHash": "569299a60c8e93880f3b3c1eca55578f58f7e1a4155876edb4cb814da3d6b3ea"
+    },
+    "prototype": {
+      "_note": "Xây prototype nhanh để kiểm tra ý tưởng thiết kế. Dùng khi muốn sanity-check state model, logic, hoặc xem UI trông như thế nào trước khi làm thật.",
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/prototype/SKILL.md",
+      "computedHash": "aa385376b4bf4b5d69378e606f1cce3d98578ecba02c25273cd4a3e4deaceedb"
+    },
+    "research": {
+      "_note": "Nghiên cứu một chủ đề từ các nguồn đáng tin cậy và lưu kết quả thành file Markdown. Dùng khi cần tìm hiểu API, docs, hoặc giao cho background agent nghiên cứu.",
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/research/SKILL.md",
+      "computedHash": "0ce7d7a48175ab30c80240df350a73c216489f775324c8d27c8a10b1b38a49bf"
+    },
+    "setup-matt-pocock-skills": {
+      "_note": "Skill dùng để cài đặt bộ skills của Matt Pocock. Đã dùng 1 lần để setup, thường không cần gọi lại trừ khi reset.",
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/setup-matt-pocock-skills/SKILL.md",
+      "computedHash": "509889c1c4970485fdd558df50142d4bf28d6f40866923637c32e64689c9fbda"
+    },
+    "tdd": {
+      "_note": "Phát triển theo hướng test-first (TDD). Dùng khi muốn viết test trước rồi mới code, theo vòng red-green-refactor, hoặc cần integration test.",
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/tdd/SKILL.md",
+      "computedHash": "7ac19bf391ceb23266ed5b4f81068201eaa38dcf76d0b59850d49c2c9e426d63"
+    },
+    "to-spec": {
+      "_note": "Chuyển yêu cầu/idea thành tài liệu spec chi tiết. Dùng khi có ý tưởng mơ hồ và muốn AI giúp định hình thành spec rõ ràng trước khi implement.",
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/to-spec/SKILL.md",
+      "computedHash": "4049d9955a79642ca945e844362d889060787167719bcca0b0cd6f53a95dc9e0"
+    },
+    "to-tickets": {
+      "_note": "Chia nhỏ công việc thành các ticket/task có thể thực hiện được. Dùng khi có spec/feature lớn và muốn tách ra thành các bước nhỏ để làm dần.",
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/to-tickets/SKILL.md",
+      "computedHash": "733df2a51c28078b6b3b8b96ee0c0a70e846163444bf202422d5a1f17bfabea6"
+    },
+    "triage": {
+      "_note": "Phân loại và ưu tiên các issue/bug. Dùng khi có nhiều vấn đề cần giải quyết và muốn AI giúp xác định cái nào quan trọng nhất cần làm trước.",
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/triage/SKILL.md",
+      "computedHash": "8695824ffe756567f6cf3b758853a094a9c974bf96226cde88b0b6c08099dabc"
+    }
+  }
+}
