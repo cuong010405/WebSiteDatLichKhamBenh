@@ -98,6 +98,13 @@ const DEFAULT_SERVICES = [
   },
 ];
 
+// Payment method options
+const PAYMENT_METHODS = [
+  { value: "Tiền mặt", label: "Tiền mặt tại gia" },
+  { value: "Chuyển khoản", label: "Chuyển khoản ngân hàng" },
+  { value: "Ví điện tử", label: "Ví điện tử MoMo/ZaloPay" },
+];
+
 // Specialist Reviews Data
 const SPECIALIST_REVIEWS: Record<
   string,
@@ -689,14 +696,44 @@ export default function BookingPage() {
   const [regConfirmPassword, setRegConfirmPassword] = React.useState("");
 
   const [staff, setStaff] = React.useState<any[]>(mockStaff);
-  const [services, setServices] = React.useState(DEFAULT_SERVICES);
+  const [services, setServices] = React.useState<any[]>(DEFAULT_SERVICES);
 
   // Fetch services from API (fallback to DEFAULT_SERVICES)
   React.useEffect(() => {
     fetch(`${API_URL}/services/active`)
       .then((res) => { if (!res.ok) throw new Error("fail"); return res.json() })
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) setServices(data);
+        if (Array.isArray(data) && data.length > 0) {
+          setServices((prev) => {
+            const list = [...data];
+            prev.forEach((p) => {
+              if (!list.some((item) => (item.id || item.serviceId) === (p.id || p.serviceId))) {
+                list.push(p);
+              }
+            });
+            return list;
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Fetch staff from API (fallback to mockStaff)
+  React.useEffect(() => {
+    fetch(`${API_URL}/staff`)
+      .then((res) => { if (!res.ok) throw new Error("fail"); return res.json() })
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setStaff((prev) => {
+            const list = [...data];
+            prev.forEach((p) => {
+              if (!list.some((item) => (item.id || item.staffId) === (p.id || p.staffId))) {
+                list.push(p);
+              }
+            });
+            return list;
+          });
+        }
       })
       .catch(() => {});
   }, []);
@@ -748,6 +785,7 @@ export default function BookingPage() {
   const [bookingSlot, setBookingSlot] = React.useState("");
   const [bookingPayment, setBookingPayment] = React.useState("Tiền mặt");
   const [bookingNotes, setBookingNotes] = React.useState("");
+  const [qrConfirmed, setQrConfirmed] = React.useState(false);
 
   // Customer Bookings List State (Stored/Shared via LocalStorage)
   const [myBookings, setMyBookings] = React.useState<StoredVisit[]>([]);
@@ -1156,7 +1194,7 @@ export default function BookingPage() {
       return;
     }
 
-    const staffMember = staff.find((s) => s.id === staffId);
+    const staffMember = staff.find((s) => (s.id || s.staffId) === staffId);
     if (staffMember && !staffMember.available) {
       addToast("Chuyên gia hiện đang bận hoặc nghỉ phép. Vui lòng chọn người khác.", "error");
       return;
@@ -1166,14 +1204,16 @@ export default function BookingPage() {
 
     // Auto-select first matching service
     if (staffMember) {
-      if (staffMember.role.includes("Y tá")) {
-        setBookingServiceId("s1");
-      } else if (staffMember.role.includes("VLTL")) {
-        setBookingServiceId("s2");
-      } else if (staffMember.role.includes("dinh dưỡng")) {
-        setBookingServiceId("s4");
-      } else {
-        setBookingServiceId("s1");
+      const roleStr = (staffMember.role || "").toLowerCase();
+      const matchingServ = services.find((serv) => {
+        if (roleStr.includes("y tá") && serv.type === "Clinical") return true;
+        if (roleStr.includes("vltl") && serv.type === "Rehab") return true;
+        if (roleStr.includes("dinh dưỡng") && serv.type === "Nutrition") return true;
+        return false;
+      }) || services[0];
+
+      if (matchingServ) {
+        setBookingServiceId(matchingServ.id || matchingServ.serviceId);
       }
     }
 
@@ -1182,7 +1222,7 @@ export default function BookingPage() {
       .getElementById("booking-form-section")
       ?.scrollIntoView({ behavior: "smooth" });
     addToast(
-      `Đã chọn chuyên gia ${staffMember?.name || ""}. Vui lòng nhập thông tin khám.`,
+      `Đã chọn chuyên gia ${staffMember?.name || staffMember?.fullName || ""}. Vui lòng nhập thông tin khám.`,
       "info",
     );
   };
@@ -1195,10 +1235,18 @@ export default function BookingPage() {
       return;
     }
 
-    const selectedStaff = staff.find((s) => s.id === bookingStaffId);
-    const selectedService = services.find((s) => s.id === bookingServiceId);
+    if (bookingPayment === "Chuyển khoản" && !qrConfirmed) {
+      addToast("Vui lòng quét QR và xác nhận đã chuyển khoản trước khi đặt lịch.", "error");
+      return;
+    }
 
-    if (!selectedStaff || !selectedService) return;
+    const selectedStaff = staff.find((s) => (s.id || s.staffId) === bookingStaffId);
+    const selectedService = services.find((s) => (s.id || s.serviceId) === bookingServiceId);
+
+    if (!selectedStaff || !selectedService) {
+      addToast("Chuyên gia hoặc dịch vụ không hợp lệ. Vui lòng thử chọn lại.", "error");
+      return;
+    }
 
     const newId = crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase();
     const duration = selectedService.duration;
@@ -1211,7 +1259,7 @@ export default function BookingPage() {
         ? profile.id
         : undefined;
 
-    const newVisitObj = {
+    const newVisitObj: Record<string, any> = {
       id: newId,
       type: selectedService.name,
       date: bookingDate,
@@ -1223,7 +1271,13 @@ export default function BookingPage() {
       endTime: endTime,
       duration: duration,
       status: "Chờ duyệt",
+      paymentMethod: bookingPayment,
     };
+
+    if (bookingPayment === "Chuyển khoản" && qrConfirmed) {
+      newVisitObj.paymentStatus = "Đã thanh toán";
+      newVisitObj.paymentAmount = String(selectedService.price);
+    }
 
     const postVisit = isBackendUser
       ? authFetch(`${API_URL}/visits`, {
@@ -1859,19 +1913,23 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                         <SelectValue placeholder="Chọn chuyên gia" />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border-blue-100 shadow-2xl p-2 bg-white">
-                        {staff.map((s) => (
-                          <SelectItem
-                            key={s.id}
-                            value={s.id}
-                            disabled={!s.available}
-                            className={cn(
-                              "rounded-xl py-3 font-bold text-xs uppercase tracking-widest",
-                              !s.available && "opacity-45"
-                            )}
-                          >
-                            {s.name} ({s.department}) {!s.available && "— [ĐANG BẬN / NGHỈ]"}
-                          </SelectItem>
-                        ))}
+                        {staff.map((s) => {
+                          const sid = s.id || s.staffId;
+                          const sname = s.name || s.fullName || sid;
+                          return (
+                            <SelectItem
+                              key={sid}
+                              value={sid}
+                              disabled={!s.available}
+                              className={cn(
+                                "rounded-xl py-3 font-bold text-xs uppercase tracking-widest",
+                                !s.available && "opacity-45"
+                              )}
+                            >
+                              {sname} {s.department ? `(${s.department})` : ""} {!s.available && "— [ĐANG BẬN / NGHỈ]"}
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1888,15 +1946,19 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                         <SelectValue placeholder="Chọn loại dịch vụ" />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border-blue-100 shadow-2xl p-2 bg-white">
-                        {services.map((serv) => (
-                          <SelectItem
-                            key={serv.id}
-                            value={serv.id}
-                            className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest"
-                          >
-                            {serv.name}
-                          </SelectItem>
-                        ))}
+                        {services.map((serv) => {
+                          const svid = serv.id || serv.serviceId;
+                          const svname = serv.name || serv.serviceName || svid;
+                          return (
+                            <SelectItem
+                              key={svid}
+                              value={svid}
+                              className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest"
+                            >
+                              {svname}
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1964,32 +2026,24 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                     </Label>
                     <Select
                       value={bookingPayment}
-                      onValueChange={(val) =>
-                        setBookingPayment(val || "Tiền mặt")
-                      }
+                      onValueChange={(val) => {
+                        setBookingPayment(val || "Tiền mặt");
+                        setQrConfirmed(false);
+                      }}
                     >
                       <SelectTrigger className="w-full rounded-2xl border-blue-100 h-14 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950">
                         <SelectValue placeholder="Hình thức" />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border-blue-100 shadow-2xl p-2 bg-white">
-                        <SelectItem
-                          value="Tiền mặt"
-                          className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest"
-                        >
-                          Tiền mặt tại gia
-                        </SelectItem>
-                        <SelectItem
-                          value="Chuyển khoản"
-                          className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest"
-                        >
-                          Chuyển khoản ngân hàng
-                        </SelectItem>
-                        <SelectItem
-                          value="Ví điện tử"
-                          className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest"
-                        >
-                          Ví điện tử MoMo/ZaloPay
-                        </SelectItem>
+                        {PAYMENT_METHODS.map((pm) => (
+                          <SelectItem
+                            key={pm.value}
+                            value={pm.value}
+                            className="rounded-xl py-3 font-bold text-xs uppercase tracking-widest"
+                          >
+                            {pm.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -2033,8 +2087,10 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                         </span>
                         <span className="text-xs font-black text-right max-w-[180px] leading-tight text-blue-950">
                           {
-                            services.find((s) => s.id === bookingServiceId)
-                              ?.name
+                            (() => {
+                              const s = services.find((serv) => (serv.id || serv.serviceId) === bookingServiceId);
+                              return s?.name || s?.serviceName || bookingServiceId;
+                            })()
                           }
                         </span>
                       </div>
@@ -2044,8 +2100,8 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                         </span>
                         <span className="text-xs font-black text-blue-950">
                           {
-                            services.find((s) => s.id === bookingServiceId)
-                              ?.duration
+                            services.find((s) => (s.id || s.serviceId) === bookingServiceId)
+                              ?.duration || "1h"
                           }
                         </span>
                       </div>
@@ -2055,7 +2111,12 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                             Chuyên gia:
                           </span>
                           <span className="text-xs font-black text-blue-950">
-                            {staff.find((s) => s.id === bookingStaffId)?.name}
+                            {
+                              (() => {
+                                const st = staff.find((s) => (s.id || s.staffId) === bookingStaffId);
+                                return st?.name || st?.fullName || bookingStaffId;
+                              })()
+                            }
                           </span>
                         </div>
                       )}
@@ -2079,7 +2140,84 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                           </span>
                         </div>
                       )}
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-slate-500 font-bold">
+                          Hình thức thanh toán:
+                        </span>
+                        <span className="text-xs font-black text-blue-950">
+                          {PAYMENT_METHODS.find((p) => p.value === bookingPayment)?.label || bookingPayment}
+                        </span>
+                      </div>
                     </div>
+
+                    {/* QR Code Section for Chuyển khoản */}
+                    {bookingPayment === "Chuyển khoản" && bookingServiceId && (
+                      <div className="space-y-3 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
+                        <div className="text-center">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-2">
+                            Quét QR để chuyển khoản
+                          </p>
+                          <div className="bg-white p-3 rounded-xl inline-block shadow-sm border border-blue-50">
+                            <svg
+                              viewBox="0 0 200 200"
+                              className="w-32 h-32"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <rect width="200" height="200" fill="white"/>
+                              <rect x="20" y="20" width="40" height="40" fill="black"/>
+                              <rect x="25" y="25" width="30" height="30" fill="white"/>
+                              <rect x="30" y="30" width="20" height="20" fill="black"/>
+                              <rect x="140" y="20" width="40" height="40" fill="black"/>
+                              <rect x="145" y="25" width="30" height="30" fill="white"/>
+                              <rect x="150" y="30" width="20" height="20" fill="black"/>
+                              <rect x="20" y="140" width="40" height="40" fill="black"/>
+                              <rect x="25" y="145" width="30" height="30" fill="white"/>
+                              <rect x="30" y="150" width="20" height="20" fill="black"/>
+                              <rect x="70" y="20" width="10" height="10" fill="black"/>
+                              <rect x="90" y="20" width="10" height="10" fill="black"/>
+                              <rect x="110" y="20" width="10" height="10" fill="black"/>
+                              <rect x="70" y="40" width="10" height="10" fill="black"/>
+                              <rect x="100" y="40" width="10" height="10" fill="black"/>
+                              <rect x="70" y="70" width="60" height="60" fill="black"/>
+                              <rect x="75" y="75" width="50" height="50" fill="white"/>
+                              <rect x="80" y="80" width="40" height="40" fill="black"/>
+                              <rect x="85" y="85" width="30" height="30" fill="white"/>
+                              <rect x="90" y="90" width="20" height="20" fill="black"/>
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="text-center space-y-1">
+                          <p className="text-[10px] font-bold text-slate-700">
+                            Ngân hàng: <span className="text-blue-600">Vietcombank</span>
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-700">
+                            Số TK: <span className="text-blue-600">1234567890</span>
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-700">
+                            Chủ TK: <span className="text-blue-600">CONG TY TNHH MINTCARE</span>
+                          </p>
+                          <p className="text-[9px] text-slate-500 italic">
+                            Nội dung CK: MINTCARE - [Tên dịch vụ]
+                          </p>
+                        </div>
+                        {!qrConfirmed ? (
+                          <button
+                            type="button"
+                            onClick={() => setQrConfirmed(true)}
+                            className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:from-blue-600 hover:to-indigo-600 transition-all shadow-lg shadow-blue-500/20"
+                          >
+                            ✓ Xác nhận đã chuyển khoản
+                          </button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2 py-2.5 bg-green-50 rounded-xl border border-green-200">
+                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                            <span className="text-[10px] font-black text-green-700 uppercase tracking-widest">
+                              Đã xác nhận chuyển khoản
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div className="border-t border-blue-100 pt-6 space-y-4 mt-auto">
                       <div className="flex justify-between items-end">
@@ -2088,10 +2226,10 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                             Chi phí tạm tính
                           </p>
                           <p className="text-3xl font-black text-blue-950 tracking-tighter mt-1">
-                            {(
-                              services.find((s) => s.id === bookingServiceId)
-                                ?.price || 0
-                            ).toLocaleString("vi-VN")}
+                             {(
+                               services.find((s) => (s.id || s.serviceId) === bookingServiceId)
+                                 ?.price || 0
+                             ).toLocaleString("vi-VN")}
                             <span className="text-xs text-slate-400 ml-1">
                               đ
                             </span>
@@ -2188,7 +2326,8 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                               <Button
                                 variant="outline"
                                 onClick={() => handleCancelBooking(booking.id)}
-                                className="h-11 px-4 rounded-xl border-blue-100 bg-white hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 font-black text-[9px] uppercase tracking-widest flex items-center gap-2 shadow-xs text-slate-500"
+                                disabled={booking.status === "Đã hoàn tất"}
+                                className="h-11 px-4 rounded-xl border-blue-100 bg-white hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 font-black text-[9px] uppercase tracking-widest flex items-center gap-2 shadow-xs text-slate-500 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-500 disabled:hover:border-blue-100"
                               >
                                 <Trash2 className="w-3.5 h-3.5 text-orange-500" />{" "}
                                 Hủy lịch
@@ -2284,7 +2423,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                               <CreditCard className="w-4 h-4 text-blue-600" />
                               <span>
                                 Chi phí: {booking.price} (
-                                {booking.paymentMethod})
+                                {PAYMENT_METHODS.find((p) => p.value === booking.paymentMethod)?.label || booking.paymentMethod})
                               </span>
                             </div>
                             <div>

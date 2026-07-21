@@ -33,6 +33,8 @@ interface PaymentVisit {
   time: string;
   status: string;
   paymentStatus?: string;
+  paymentMethod?: string;
+  paymentAmount?: string;
 }
 
 interface PaymentRecord {
@@ -79,18 +81,19 @@ export default function AdminPayPage() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Load visits chờ thanh toán
+  // Load visits chờ thanh toán (bao gồm cả đã QR thanh toán nhưng chưa có hóa đơn)
   const fetchPendingVisits = React.useCallback(async () => {
     setLoadingVisits(true);
     try {
-      // URL-encode Vietnamese query params to avoid server receiving garbled characters
+      // Fetch visits with "Đã xác nhận" status - both paid and unpaid
       const params = new URLSearchParams({
         status: "Đã xác nhận",
-        paymentStatus: "Chưa thanh toán",
       });
       const res = await fetch(`${API_URL}/visits?${params.toString()}`);
       const data = await res.json();
       const list = Array.isArray(data) ? data : [];
+      // Filter out visits that already have an invoice (paymentStatus === "Đã thanh toán" with existing invoice)
+      // But keep QR-paid visits that don't have an invoice yet
       setPendingVisits(list);
       if (list.length > 0 && !selectedVisitId) setSelectedVisitId(list[0].id);
     } catch {
@@ -133,7 +136,10 @@ export default function AdminPayPage() {
     if (selectedVisitId) {
       const visit = pendingVisits.find((v) => v.id === selectedVisitId);
       if (visit) {
-        setPaymentAmount(getPriceByVisitType(visit.type));
+        setPaymentAmount(visit.paymentAmount || getPriceByVisitType(visit.type));
+        if (visit.paymentMethod) {
+          setPaymentMethod(visit.paymentMethod);
+        }
       }
     } else {
       setPaymentAmount("");
@@ -328,9 +334,21 @@ export default function AdminPayPage() {
             <div className="space-y-4">
               {selectedVisit && (
                 <div className="rounded-2xl bg-primary/5 border border-primary/20 p-3.5">
-                  <p className="text-[9px] font-black text-primary uppercase tracking-widest mb-1">Ca đã chọn</p>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[9px] font-black text-primary uppercase tracking-widest">Ca đã chọn</p>
+                    {selectedVisit.paymentStatus === "Đã thanh toán" && (
+                      <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-green-50 text-green-600 border border-green-200">
+                        ✓ Đã QR thanh toán
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs font-black text-slate-800">{selectedVisit.type}</p>
                   <p className="text-[10px] text-slate-500 font-semibold">{selectedVisit.patientName} · {selectedVisit.time}</p>
+                  {selectedVisit.paymentMethod && (
+                    <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                      Phương thức: {selectedVisit.paymentMethod}
+                    </p>
+                  )}
                 </div>
               )}
               <div className="space-y-1.5">
@@ -378,6 +396,13 @@ export default function AdminPayPage() {
                   className="rounded-2xl border-slate-200 text-sm font-semibold resize-none"
                 />
               </div>
+              {selectedVisit?.paymentStatus === "Đã thanh toán" && (
+                <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+                  <p className="text-[10px] font-bold text-blue-700 text-center">
+                    Khách hàng đã thanh toán qua QR. Bấm Tạo hóa đơn để ghi nhận.
+                  </p>
+                </div>
+              )}
               <Button
                 disabled={!selectedVisitId || !paymentAmount || saving}
                 onClick={handleSubmit}

@@ -823,6 +823,7 @@ function SessionCard({
   patientList,
   allVisits,
   visitTypes = DEFAULT_VISIT_TYPES,
+  isRecentlyPaid = false,
 }: {
   visit: Visit;
   staffName?: string;
@@ -832,6 +833,7 @@ function SessionCard({
   patientList: Patient[];
   allVisits: Visit[];
   visitTypes?: string[];
+  isRecentlyPaid?: boolean;
 }) {
   const left = getPositionPercent(visit.startTime || "08:00");
   const width = getWidthPercent(visit.duration);
@@ -839,15 +841,17 @@ function SessionCard({
   const isPending = visit.status === "Chờ duyệt";
   const isConfirmed = visit.status === "Đã xác nhận";
   const isCompleted = visit.status === "Đã hoàn tất";
-  const statusColor = isOngoing
-    ? "bg-primary text-white"
-    : isPending
-      ? "bg-slate-100 text-slate-500"
-      : isConfirmed
-        ? "bg-blue-50 text-blue-600"
-        : isCompleted
-          ? "bg-emerald-50 text-emerald-700"
-          : "bg-surface-secondary text-muted-foreground";
+  const statusColor = isRecentlyPaid
+    ? "bg-emerald-500 text-white"
+    : isOngoing
+      ? "bg-primary text-white"
+      : isPending
+        ? "bg-slate-100 text-slate-500"
+        : isConfirmed
+          ? "bg-blue-50 text-blue-600"
+          : isCompleted
+            ? "bg-emerald-50 text-emerald-700"
+            : "bg-surface-secondary text-muted-foreground";
 
   const cardRef = React.useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = React.useState(false);
@@ -929,7 +933,7 @@ function SessionCard({
                       statusColor,
                     )}
                   >
-                    {visit.status}
+                    {isRecentlyPaid ? "ĐÃ THANH TOÁN" : visit.status}
                   </span>
                 </div>
                 <p className="text-[9px] text-on-surface-tertiary font-bold mt-1.5 uppercase tracking-wider">
@@ -1056,6 +1060,28 @@ function SessionCard({
                   </div>
                 </div>
               )}
+              {isRecentlyPaid && (
+                <div className="mt-3 pt-3 border-t border-emerald-200 bg-emerald-50 -mx-4 -mb-4 px-4 pb-3 rounded-b-xl">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <div>
+                      <p className="text-[8px] font-black text-emerald-700 uppercase tracking-widest">
+                        Đã thanh toán
+                      </p>
+                      {visit.paymentAmount && (
+                        <p className="text-[11px] font-black text-emerald-800">
+                          {parseFloat(visit.paymentAmount).toLocaleString("vi-VN")}đ
+                          {visit.paymentMethod && (
+                            <span className="text-[9px] font-bold text-emerald-600 ml-1">
+                              ({visit.paymentMethod})
+                            </span>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="mt-3 pt-3 border-t border-slate-100 flex gap-2">
                 <Button
                   onClick={() => {
@@ -1104,15 +1130,17 @@ function SessionCard({
         onMouseLeave={handleMouseLeave}
         className={cn(
           "absolute h-[80px] top-1.5 rounded-[12px] p-2.5 flex flex-col justify-between cursor-pointer border shadow-sm text-left overflow-hidden",
-          isOngoing
-            ? "bg-white border-primary/40 text-foreground ring-4 ring-primary/5"
-            : isPending
-              ? "bg-slate-50/80 border-dashed border-slate-300 text-slate-400 opacity-80"
-              : isConfirmed
-                ? "bg-white border-hairline text-foreground"
-                : isCompleted
-                  ? "bg-emerald-50/60 border-emerald-200 text-foreground"
-                  : "bg-surface-secondary/50 border-hairline text-muted-foreground",
+          isRecentlyPaid
+            ? "bg-emerald-50 border-emerald-400 text-emerald-800 ring-4 ring-emerald-100"
+            : isOngoing
+              ? "bg-white border-primary/40 text-foreground ring-4 ring-primary/5"
+              : isPending
+                ? "bg-slate-50/80 border-dashed border-slate-300 text-slate-400 opacity-80"
+                : isConfirmed
+                  ? "bg-white border-hairline text-foreground"
+                  : isCompleted
+                    ? "bg-emerald-50/60 border-emerald-200 text-foreground"
+                    : "bg-surface-secondary/50 border-hairline text-muted-foreground",
         )}
         style={{
           left: `${left}%`,
@@ -1120,6 +1148,9 @@ function SessionCard({
           zIndex: hovered ? 50 : 10,
         }}
       >
+        {isRecentlyPaid && (
+          <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500 rounded-t-full shadow-[0_0_12px_rgba(16,185,129,0.6)]" />
+        )}
         {isOngoing && (
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary rounded-t-full shadow-[0_0_10px_rgba(24,190,102,0.5)]" />
         )}
@@ -1405,6 +1436,30 @@ export default function SchedulePage() {
 
   const confirmedVisits = allVisits.filter((v) => v.status === "Đã xác nhận");
 
+  // Track recently paid visits (show in green for 5 minutes)
+  const [recentlyPaidIds, setRecentlyPaidIds] = React.useState<Set<string>>(new Set());
+  const paidTimestampsRef = React.useRef<Map<string, number>>(new Map());
+
+  // When a visit becomes paid, add it to recentlyPaid and set timer to remove
+  React.useEffect(() => {
+    allVisits.forEach((v) => {
+      if (v.paymentStatus === "Đã thanh toán" && !paidTimestampsRef.current.has(v.id)) {
+        paidTimestampsRef.current.set(v.id, Date.now());
+        setRecentlyPaidIds((prev) => new Set([...prev, v.id]));
+
+        // Auto-remove after 5 minutes
+        setTimeout(() => {
+          paidTimestampsRef.current.delete(v.id);
+          setRecentlyPaidIds((prev) => {
+            const next = new Set(prev);
+            next.delete(v.id);
+            return next;
+          });
+        }, 5 * 60 * 1000);
+      }
+    });
+  }, [allVisits]);
+
   // Filter logic for timeline
   const filteredVisits = allVisits.filter((v) => {
     const pName = v.patientName?.toLowerCase() || "";
@@ -1417,7 +1472,12 @@ export default function SchedulePage() {
 
     const matchStatus = statusFilter === "Tất cả" || v.status === statusFilter;
 
-    return matchQuery && matchStatus;
+    // Show recently paid visits (green, 5 min), hide completed/paid older
+    const isCompleted = v.status === "Đã hoàn tất";
+    const isRecentlyPaid = v.paymentStatus === "Đã thanh toán" && recentlyPaidIds.has(v.id);
+    const isPaidOld = v.paymentStatus === "Đã thanh toán" && !recentlyPaidIds.has(v.id);
+
+    return matchQuery && matchStatus && !isCompleted && !isPaidOld;
   });
 
   return (
@@ -1656,6 +1716,7 @@ export default function SchedulePage() {
                           patientList={patientList}
                           allVisits={allVisits}
                           visitTypes={visitTypes}
+                          isRecentlyPaid={recentlyPaidIds.has(visit.id)}
                         />
                       ))}
                     </div>
@@ -1664,30 +1725,36 @@ export default function SchedulePage() {
               })}
             </div>
           </div>
-          <div className="bg-surface-secondary/40 px-12 py-8 border-t border-hairline flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex flex-wrap items-center gap-10">
-              <div className="flex items-center gap-4">
-                <div className="w-3 h-3 rounded-full bg-primary shadow-[0_0_10px_rgba(24,190,102,0.5)]" />
-                <span className="text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.2em]">
+          <div className="bg-surface-secondary/40 px-6 py-3 border-t border-hairline flex items-center justify-between gap-4">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_rgba(24,190,102,0.5)]" />
+                <span className="text-[9px] font-black text-on-surface-tertiary uppercase tracking-widest">
                   Đang thực hiện
                 </span>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="w-3 h-3 rounded-full bg-white border border-hairline shadow-sm" />
-                <span className="text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.2em]">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-white border border-hairline shadow-sm" />
+                <span className="text-[9px] font-black text-on-surface-tertiary uppercase tracking-widest">
                   Khung giờ trống
                 </span>
               </div>
-              <div className="flex items-center gap-4 opacity-50">
-                <div className="w-3 h-3 rounded-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.3)]" />
-                <span className="text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.2em]">
-                  Nhân sự bận ca ngoài
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                <span className="text-[9px] font-black text-on-surface-tertiary uppercase tracking-widest">
+                  Đã thanh toán (5 phút)
+                </span>
+              </div>
+              <div className="flex items-center gap-2 opacity-50">
+                <div className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.3)]" />
+                <span className="text-[9px] font-black text-on-surface-tertiary uppercase tracking-widest">
+                  Nhân sự bận
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-4 bg-white px-6 py-3 rounded-2xl border border-hairline shadow-sm text-[11px] font-black text-primary-strong uppercase tracking-[0.25em] animate-pulse">
-              <div className="w-2 h-2 rounded-full bg-primary" />
-              Đang đồng bộ hệ thống
+            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-hairline shadow-sm text-[9px] font-black text-primary-strong uppercase tracking-widest animate-pulse">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+              Đang đồng bộ
             </div>
           </div>
         </div>

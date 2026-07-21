@@ -1,3 +1,4 @@
+
 # PLAYWRIGHT_SUMMARY.md — MintCare Automation Test Execution Summary
 
 **Ngày:** 2026-07-16  
