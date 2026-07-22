@@ -14,6 +14,7 @@ import servicesRouter from "./routes/services";
 import departmentsRouter from "./routes/departments";
 import rolesRouter from "./routes/roles";
 import positionsRouter from "./routes/positions";
+import notificationsRouter from "./routes/notifications";
 import { requireAuth, requireAdmin } from "./middleware/auth";
 
 dotenv.config();
@@ -39,7 +40,7 @@ app.use(
         callback(new Error(`CORS blocked: ${origin}`));
       }
     },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
   }),
 );
@@ -78,6 +79,9 @@ app.use("/api/logs", requireAuth, requireAdmin, logsRouter);
 app.use("/api/reports", requireAuth, requireAdmin, reportsRouter);
 app.use("/api/users", requireAuth, requireAdmin, usersRouter);
 app.use("/api/payments", requireAuth, requireAdmin, paymentsRouter);
+
+// Notifications — Admin thấy tất cả, customer thấy của mình
+app.use("/api/notifications", notificationsRouter);
 
 // Endpoint kiểm tra trạng thái hoạt động
 app.get("/health", (req, res) => {

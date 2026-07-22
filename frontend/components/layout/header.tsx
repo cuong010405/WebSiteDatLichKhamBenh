@@ -50,6 +50,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { API_URL, authFetch } from "@/lib/api";
+
+interface NotificationLog {
+  id: string;
+  userId?: string;
+  visitId?: string;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+  time: string;
+  userName?: string;
+  userEmail?: string;
+}
 
 export function Header() {
   const { user, login, register, logout } = useAuth();
@@ -73,6 +88,45 @@ export function Header() {
   const [helpPhone, setHelpPhone] = React.useState("");
   const [helpMessage, setHelpMessage] = React.useState("");
   const [helpSubmitted, setHelpSubmitted] = React.useState(false);
+
+  // Notification Popover State for Admin
+  const [notifOpen, setNotifOpen] = React.useState(false);
+  const [notifications, setNotifications] = React.useState<NotificationLog[]>([]);
+  const notifRef = React.useRef<HTMLDivElement>(null);
+
+  const fetchNotifications = React.useCallback(() => {
+    if (user?.role === "admin") {
+      authFetch(`${API_URL}/notifications`)
+        .then((res) => (res.ok ? res.json() : []))
+        .then((data) => {
+          if (Array.isArray(data)) setNotifications(data);
+        })
+        .catch(() => {});
+    }
+  }, [user]);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await authFetch(`${API_URL}/notifications/mark-all-read`, { method: "PATCH" });
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } catch {}
+  };
+
+  React.useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 8000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  React.useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const handleSubmitHelp = (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,10 +202,93 @@ export function Header() {
         </motion.div>
 
         <div className="flex items-center gap-2">
-          <button className="relative w-11 h-11 rounded-2xl hover:bg-surface-secondary flex items-center justify-center transition-colors group">
-            <Bell className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-            <span className="absolute top-3 right-3 w-2 h-2 bg-primary rounded-full border-2 border-white shadow-sm"></span>
-          </button>
+          {/* Notifications Bell Dropdown */}
+          <div ref={notifRef} className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                setNotifOpen(!notifOpen);
+                if (!notifOpen) fetchNotifications();
+              }}
+              className="relative w-11 h-11 rounded-2xl hover:bg-surface-secondary flex items-center justify-center transition-colors group cursor-pointer"
+            >
+              <Bell className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+              {notifications.some((n) => !n.isRead) && (
+                <span className="absolute top-2 right-2 min-w-[18px] h-[18px] flex items-center justify-center bg-rose-500 text-white text-[9px] font-black rounded-full border-2 border-white shadow-sm px-0.5 animate-pulse">
+                  {notifications.filter((n) => !n.isRead).length > 9 ? "9+" : notifications.filter((n) => !n.isRead).length}
+                </span>
+              )}
+            </button>
+
+            <AnimatePresence>
+              {notifOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-14 w-80 md:w-[400px] bg-white border border-slate-200 rounded-[28px] shadow-2xl z-[120] overflow-hidden text-left text-slate-900"
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                      <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Thông báo khách hàng</h4>
+                      <span className="text-[10px] font-bold text-white bg-rose-500 px-2 py-0.5 rounded-full">
+                        {notifications.filter((n) => !n.isRead).length} mới
+                      </span>
+                    </div>
+                    {notifications.some((n) => !n.isRead) && (
+                      <button
+                        type="button"
+                        onClick={handleMarkAllRead}
+                        className="text-[10px] font-bold text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                      >
+                        Đọc tất cả
+                      </button>
+                    )}
+                  </div>
+
+                  {/* List */}
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
+                    {notifications.length > 0 ? (
+                      notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          className={`px-5 py-4 hover:bg-slate-50 transition-all cursor-default ${!n.isRead ? "bg-rose-50/40" : ""}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${!n.isRead ? "bg-rose-500" : "bg-slate-200"}`} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <span className="text-[11px] font-black text-slate-900 leading-snug">{n.title}</span>
+                                <span className="text-[9px] font-mono font-bold text-slate-400 shrink-0">{n.time}</span>
+                              </div>
+                              <p className="text-[11px] font-medium text-slate-600 leading-relaxed">{n.message}</p>
+                              {n.userName && (
+                                <p className="text-[10px] font-bold text-slate-400 mt-1">👤 {n.userName}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-10 text-center text-xs font-bold text-slate-400">
+                        🔔 Chưa có thông báo mới nào
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  {notifications.length > 0 && (
+                    <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 text-center">
+                      <span className="text-[10px] font-bold text-slate-400">{notifications.length} thông báo tổng cộng</span>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           <div className="h-6 w-px bg-hairline mx-3"></div>
 

@@ -141,6 +141,42 @@ router.put("/:id", async (req: Request, res: Response) => {
       data: updateData,
     });
 
+    // Đồng bộ sang các bản ghi Bệnh nhân (Patient) tương ứng trong SQL Server
+    try {
+      const visitsWithPatient = await db.visit.findMany({
+        where: { UserId: id, PatientId: { not: null } },
+        select: { PatientId: true },
+      });
+      const patientIds = Array.from(new Set(visitsWithPatient.map((v) => v.PatientId).filter(Boolean))) as string[];
+
+      const patientsByName = await db.patient.findMany({
+        where: {
+          OR: [
+            { Name: existing.FullName },
+            { Name: updated.FullName },
+          ],
+        },
+        select: { Id: true },
+      });
+      const allPatientIds = Array.from(new Set([...patientIds, ...patientsByName.map((p) => p.Id)]));
+
+      if (allPatientIds.length > 0) {
+        const patientUpdateData: any = {};
+        if (fullName) patientUpdateData.Name = updated.FullName;
+        if (updated.Age !== null && updated.Age !== undefined) patientUpdateData.Age = updated.Age;
+        if (updated.Gender) patientUpdateData.Gender = updated.Gender;
+
+        if (Object.keys(patientUpdateData).length > 0) {
+          await db.patient.updateMany({
+            where: { Id: { in: allPatientIds } },
+            data: patientUpdateData,
+          });
+        }
+      }
+    } catch (syncErr) {
+      console.warn("Lỗi đồng bộ user update sang Patient record:", syncErr);
+    }
+
     return res.json({
       id: updated.Id,
       email: updated.Email,

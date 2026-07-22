@@ -21,6 +21,8 @@ import {
   Clock,
   User,
   CalendarDays,
+  Printer,
+  X,
 } from "lucide-react";
 
 interface PaymentVisit {
@@ -75,6 +77,100 @@ export default function AdminPayPage() {
   const [saving, setSaving] = React.useState(false);
   const [toast, setToast] = React.useState<{ msg: string; type: "ok" | "err" } | null>(null);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [activePrintPayment, setActivePrintPayment] = React.useState<PaymentRecord | null>(null);
+  
+  const handlePrintInvoice = (payment: PaymentRecord) => {
+    setActivePrintPayment(payment);
+  };
+
+  const triggerBrowserPrint = () => {
+    if (!activePrintPayment) return;
+    const printContent = document.getElementById("printable-invoice-area")?.innerHTML;
+    
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>In hóa đơn #${activePrintPayment.id}</title>
+            <style>
+              body { font-family: sans-serif; padding: 40px; color: #333; }
+              .header { text-align: center; margin-bottom: 30px; }
+              .logo { font-size: 24px; font-weight: 900; color: #2563EB; }
+              .title { font-size: 18px; font-weight: bold; margin-top: 10px; text-transform: uppercase; }
+              .details { margin-bottom: 30px; border-bottom: 1px dashed #ccc; padding-bottom: 20px; }
+              .details p { margin: 8px 0; font-size: 14px; }
+              .details span { font-weight: bold; }
+              .footer { text-align: center; margin-top: 50px; font-size: 12px; color: #777; }
+              @media print {
+                body { padding: 0; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div class="logo">MINTCARE</div>
+              <div class="title">HÓA ĐƠN THANH TOÁN (TẠM TÍNH)</div>
+              <p>Mã hóa đơn: HD-${activePrintPayment.id}</p>
+            </div>
+            <div class="details">
+              <p>Khách hàng: <span>${activePrintPayment.patientName || activePrintPayment.userName || "—"}</span></p>
+              <p>Dịch vụ: <span>${activePrintPayment.visitType}</span></p>
+              <p>Chuyên gia: <span>${activePrintPayment.staffName}</span></p>
+              <p>Thời gian khám: <span>${activePrintPayment.visitDate ? `${activePrintPayment.visitDate} ` : ""}${activePrintPayment.visitTime}</span></p>
+              <p>Phương thức thanh toán: <span>${activePrintPayment.method}</span></p>
+              ${activePrintPayment.note ? `<p>Ghi chú: <span>${activePrintPayment.note}</span></p>` : ""}
+            </div>
+            <div style="text-align: right; font-size: 18px; font-weight: bold; margin-top: 20px;">
+              Tổng thanh toán: ${parseFloat(activePrintPayment.amount).toLocaleString("vi-VN")}đ
+            </div>
+            <div class="footer">
+              <p>Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!</p>
+              <p>Hệ thống hỗ trợ chăm sóc sức khỏe tại nhà thông minh</p>
+            </div>
+            <script>
+              window.onload = function() {
+                window.print();
+                setTimeout(function() { window.close(); }, 500);
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  };
+
+  const handleDownloadTxtInvoice = (p: PaymentRecord) => {
+    const content = `
+=============================================
+         HÓA ĐƠN THANH TOÁN DỊCH VỤ
+                  MINTCARE
+=============================================
+Mã hóa đơn: HD-${p.id}
+Thời gian in: ${new Date().toLocaleString("vi-VN")}
+---------------------------------------------
+Thông tin khách hàng:
+- Họ tên: ${p.patientName || p.userName || "—"}
+- Dịch vụ: ${p.visitType}
+- Chuyên gia thực hiện: ${p.staffName}
+- Thời gian khám: ${p.visitDate ? `${p.visitDate} ` : ""}${p.visitTime}
+---------------------------------------------
+Chi tiết thanh toán:
+- Số tiền: ${parseFloat(p.amount).toLocaleString("vi-VN")} VNĐ
+- Phương thức: ${p.method}
+- Ghi chú: ${p.note || "Không có"}
+=============================================
+Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
+    `.trim();
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `hoa-don-${p.id}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const showToast = (msg: string, type: "ok" | "err" = "ok") => {
     setToast({ msg, type });
@@ -486,14 +582,25 @@ export default function AdminPayPage() {
                         <p className="text-[9px] text-slate-300 mt-1">
                           {new Date(p.createdAt).toLocaleDateString("vi-VN")}
                         </p>
-                        <button
-                          suppressHydrationWarning
-                          onClick={() => handleDelete(p.id)}
-                          disabled={deletingId === p.id}
-                          className="mt-1.5 w-7 h-7 rounded-xl bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-400 hover:text-red-600 transition-all opacity-0 group-hover:opacity-100 ml-auto disabled:opacity-50"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                        <div className="flex gap-1.5 justify-end mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
+                          <button
+                            suppressHydrationWarning
+                            onClick={() => handlePrintInvoice(p)}
+                            className="w-7 h-7 rounded-xl bg-blue-50 hover:bg-blue-100 flex items-center justify-center text-blue-500 hover:text-blue-700 transition-all cursor-pointer"
+                            title="In hóa đơn"
+                          >
+                            <Printer className="w-3 h-3" />
+                          </button>
+                          <button
+                            suppressHydrationWarning
+                            onClick={() => handleDelete(p.id)}
+                            disabled={deletingId === p.id}
+                            className="w-7 h-7 rounded-xl bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-400 hover:text-red-600 transition-all disabled:opacity-50 cursor-pointer"
+                            title="Xóa hóa đơn"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </motion.div>
@@ -503,6 +610,84 @@ export default function AdminPayPage() {
           </div>
         </div>
       </div>
+
+      {/* Invoice Print Modal */}
+      <AnimatePresence>
+        {activePrintPayment && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[60] flex items-center justify-center p-4"
+            onClick={(e) => { if (e.target === e.currentTarget) setActivePrintPayment(null); }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 flex flex-col p-6 text-slate-850"
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+                <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-blue-600" />
+                  Hóa đơn tạm tính
+                </h3>
+                <button
+                  onClick={() => setActivePrintPayment(null)}
+                  className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Printable Preview Area */}
+              <div id="printable-invoice-area" className="py-6 space-y-4 text-left text-slate-800">
+                <div className="text-center pb-4 border-b border-dashed border-slate-200">
+                  <p className="text-lg font-black text-blue-600">MINTCARE PORTAL</p>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">Phiếu Thanh Toán Dịch Vụ</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Số: HD-{activePrintPayment.id}</p>
+                </div>
+
+                <div className="space-y-2 text-xs font-semibold text-slate-600">
+                  <p>Khách hàng: <span className="font-black text-slate-800">{activePrintPayment.patientName || activePrintPayment.userName || "—"}</span></p>
+                  <p>Dịch vụ: <span className="font-black text-slate-800">{activePrintPayment.visitType}</span></p>
+                  <p>Chuyên gia: <span className="font-black text-slate-800">{activePrintPayment.staffName}</span></p>
+                  <p>Thời gian: <span className="font-black text-slate-800">{activePrintPayment.visitDate ? `${activePrintPayment.visitDate} ` : ""}{activePrintPayment.visitTime}</span></p>
+                  <div className="h-px bg-slate-100 my-2" />
+                  <p>Phương thức: <span className="font-black text-slate-800">{activePrintPayment.method}</span></p>
+                  {activePrintPayment.note && <p>Ghi chú: <span className="italic text-slate-500">"{activePrintPayment.note}"</span></p>}
+                </div>
+
+                <div className="border-t border-dashed border-slate-200 pt-4 text-right">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tổng tiền</p>
+                  <p className="text-2xl font-black text-blue-600 mt-1">
+                    {parseFloat(activePrintPayment.amount).toLocaleString("vi-VN")}đ
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-4 border-t border-slate-100">
+                <Button
+                  onClick={() => handleDownloadTxtInvoice(activePrintPayment)}
+                  variant="outline"
+                  className="flex-1 rounded-xl h-11 text-xs font-black uppercase tracking-wider"
+                >
+                  Tải file text
+                </Button>
+                <Button
+                  onClick={triggerBrowserPrint}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-11 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  In hóa đơn
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

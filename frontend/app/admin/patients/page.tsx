@@ -133,7 +133,7 @@ function AddPatientDialog({ onAdd, staff, prefilled, open: controlledOpen, onOpe
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState(prefilled?.name || "");
   const [ageStr, setAgeStr] = React.useState("");
-  const [gender, setGender] = React.useState<"Nam" | "Nữ">("Nam");
+  const [gender, setGender] = React.useState<"Nam" | "Nữ" | "Khác">("Nam");
   const [summary, setSummary] = React.useState(prefilled?.summary || "");
   const [assignedStaff, setAssignedStaff] = React.useState<string[]>([]);
   const [success, setSuccess] = React.useState(false);
@@ -300,28 +300,18 @@ function AddPatientDialog({ onAdd, staff, prefilled, open: controlledOpen, onOpe
                       <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">
                         Giới tính
                       </Label>
-                      <Select
-                        value={gender}
-                        onValueChange={(val) => setGender(val as "Nam" | "Nữ")}
-                      >
-                        <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-10 bg-white font-bold text-xs shadow-none text-slate-800">
-                          <SelectValue placeholder="Chọn giới tính..." />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                          <SelectItem
-                            value="Nam"
-                            className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"
-                          >
-                            Nam
-                          </SelectItem>
-                          <SelectItem
-                            value="Nữ"
-                            className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"
-                          >
-                            Nữ
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="relative">
+                        <select
+                          value={gender}
+                          onChange={(e) => setGender(e.target.value as "Nam" | "Nữ" | "Khác")}
+                          className="w-full rounded-xl border border-slate-200 h-10 bg-white font-bold text-xs text-slate-800 px-3 pr-8 appearance-none outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer hover:border-slate-300"
+                        >
+                          <option value="Nam">👨 Nam</option>
+                          <option value="Nữ">👩 Nữ</option>
+                          <option value="Khác">🧑 Khác</option>
+                        </select>
+                        <svg className="w-3.5 h-3.5 text-blue-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                      </div>
                     </div>
                   </div>
 
@@ -405,7 +395,7 @@ function EditPatientDialog({
 }: EditPatientDialogProps) {
   const [name, setName] = React.useState("");
   const [ageStr, setAgeStr] = React.useState("");
-  const [gender, setGender] = React.useState<"Nam" | "Nữ">("Nam");
+  const [gender, setGender] = React.useState<"Nam" | "Nữ" | "Khác">("Nam");
   const [status, setStatus] = React.useState<
     "Đang điều trị" | "Chờ tái khám" | "Đã xuất viện" | "Chờ duyệt"
   >("Đang điều trị");
@@ -505,28 +495,18 @@ function EditPatientDialog({
                 <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">
                   Giới tính
                 </Label>
-                <Select
-                  value={gender}
-                  onValueChange={(val) => setGender(val as "Nam" | "Nữ")}
-                >
-                  <SelectTrigger className="w-full rounded-xl border border-slate-200 h-10 bg-white font-bold text-xs shadow-none text-slate-800">
-                    <SelectValue placeholder="Chọn giới tính..." />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                    <SelectItem
-                      value="Nam"
-                      className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"
-                    >
-                      Nam
-                    </SelectItem>
-                    <SelectItem
-                      value="Nữ"
-                      className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"
-                    >
-                      Nữ
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                  <select
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value as "Nam" | "Nữ" | "Khác")}
+                    className="w-full rounded-xl border border-slate-200 h-10 bg-white font-bold text-xs text-slate-800 px-3 pr-8 appearance-none outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer hover:border-slate-300"
+                  >
+                    <option value="Nam">👨 Nam</option>
+                    <option value="Nữ">👩 Nữ</option>
+                    <option value="Khác">🧑 Khác</option>
+                  </select>
+                  <svg className="w-3.5 h-3.5 text-blue-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                </div>
               </div>
               <div className="space-y-2 text-left">
                 <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">

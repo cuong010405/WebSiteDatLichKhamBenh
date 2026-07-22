@@ -32,6 +32,7 @@ interface AuthContextType {
     fullName: string;
     phone?: string;
   }) => Promise<AuthUser>;
+  updateUser: (updatedData: Partial<AuthUser>) => void;
   logout: () => void;
 }
 
@@ -227,6 +228,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateUser = (updatedData: Partial<AuthUser>) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      const updated = { ...prev, ...updatedData };
+      try {
+        localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(updated));
+        const users = loadLocalUsers();
+        const idx = users.findIndex(
+          (u) => u.id === prev.id || u.email === prev.email
+        );
+        if (idx !== -1) {
+          users[idx] = { ...users[idx], ...updatedData };
+          saveLocalUsers(users);
+        }
+      } catch (e) {
+        console.error("Failed to sync updated user to storage:", e);
+      }
+      return updated;
+    });
+  };
+
   const logout = () => {
     localStorage.removeItem("mintcare_token");
     localStorage.removeItem("mintcare_user");
@@ -236,7 +258,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, loading, login, register, logout }}
+      value={{ user, token, loading, login, register, updateUser, logout }}
     >
       {children}
     </AuthContext.Provider>

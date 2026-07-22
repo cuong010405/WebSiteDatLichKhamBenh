@@ -20,6 +20,8 @@ export async function registerUser(data: {
   fullName: string;
   phone?: string;
   role?: string;
+  age?: number;
+  gender?: string;
 }) {
   const email = data.email.toLowerCase().trim();
 
@@ -48,6 +50,8 @@ export async function registerUser(data: {
       FullName: data.fullName.trim(),
       Phone: data.phone?.trim() || null,
       Role: role,
+      Age: data.age ? Number(data.age) : null,
+      Gender: data.gender || null,
     },
   });
 

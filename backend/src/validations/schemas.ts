@@ -35,7 +35,7 @@ export const patientSchema = z.object({
   id: z.string().min(1, "Mã bệnh nhân là bắt buộc"),
   name: z.string().min(2, "Tên bệnh nhân phải có ít nhất 2 ký tự"),
   age: z.number().int().min(0, "Tuổi không hợp lệ"),
-  gender: z.enum(["Nam", "Nữ"]),
+  gender: z.enum(["Nam", "Nữ", "Khác"]),
   lastVisit: z.string().min(1, "Ngày khám gần nhất là bắt buộc"),
   lastVisitTime: z.string().min(1, "Giờ khám gần nhất là bắt buộc"),
   status: z

@@ -31,7 +31,7 @@ export interface Patient {
   id: string;
   name: string;
   age: number;
-  gender: "Nam" | "Nữ";
+  gender: "Nam" | "Nữ" | "Khác";
   lastVisit: string;
   lastVisitTime: string;
   status: PatientStatus;

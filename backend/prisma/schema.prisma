@@ -78,16 +78,17 @@ model PatientStaff {
 }
 
 model User {
-  Id           String    @id @default(uuid()) @db.NVarChar(50)
-  Email        String    @unique @db.NVarChar(200)
-  PasswordHash String    @db.NVarChar(500)
-  FullName     String    @db.NVarChar(200)
-  Phone        String?   @db.NVarChar(30)
-  Role         String    @default("customer") @db.NVarChar(20)
+  Id           String         @id @default(uuid()) @db.NVarChar(50)
+  Email        String         @unique @db.NVarChar(200)
+  PasswordHash String         @db.NVarChar(500)
+  FullName     String         @db.NVarChar(200)
+  Phone        String?        @db.NVarChar(30)
+  Role         String         @default("customer") @db.NVarChar(20)
   Age          Int?
-  Gender       String?   @db.NVarChar(20)
-  CreatedAt    DateTime  @default(now()) @db.DateTime
+  Gender       String?        @db.NVarChar(20)
+  CreatedAt    DateTime       @default(now()) @db.DateTime
   Visit        Visit[]
+  Notification Notification[]
 }
 
 model Payment {
@@ -131,4 +132,18 @@ model Position {
   Name        String  @db.NVarChar(200)
   Description String? @db.NVarChar(Max)
   Active      Boolean @default(true)
+}
+
+model Notification {
+  Id         String    @id @default(uuid()) @db.NVarChar(50)
+  UserId     String?   @db.NVarChar(50)
+  VisitId    String?   @db.NVarChar(50)
+  Type       String    @db.NVarChar(100)
+  Title      String    @db.NVarChar(300)
+  Message    String    @db.NVarChar(Max)
+  IsRead     Boolean   @default(false)
+  CreatedAt  DateTime  @default(now()) @db.DateTime
+  User       User?     @relation(fields: [UserId], references: [Id], onUpdate: NoAction, map: "FK_Notification_User")
+
+  @@map("Notification")
 }

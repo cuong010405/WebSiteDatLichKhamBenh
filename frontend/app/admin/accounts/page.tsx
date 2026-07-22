@@ -54,6 +54,8 @@ interface AccountUser {
   fullName: string;
   phone: string | null;
   role: "admin" | "customer";
+  age?: number | null;
+  gender?: string | null;
   createdAt: string;
 }
 
@@ -74,6 +76,8 @@ export default function AccountsPage() {
   const [email, setEmail] = React.useState("");
   const [fullName, setFullName] = React.useState("");
   const [phone, setPhone] = React.useState("");
+  const [ageStr, setAgeStr] = React.useState("");
+  const [gender, setGender] = React.useState("Nam");
   const [role, setRole] = React.useState<"admin" | "customer">("customer");
   const [password, setPassword] = React.useState("");
   const [showPass, setShowPass] = React.useState(false);
@@ -103,7 +107,15 @@ export default function AccountsPage() {
       const res = await authFetch(`${API_URL}/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, fullName, phone, role }),
+        body: JSON.stringify({
+          email,
+          password,
+          fullName,
+          phone,
+          role,
+          age: parseInt(ageStr) || null,
+          gender: gender || null,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Thêm tài khoản thất bại");
@@ -127,7 +139,15 @@ export default function AccountsPage() {
       const res = await authFetch(`${API_URL}/users/${selectedUser.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, fullName, phone, role, password: password || undefined }),
+        body: JSON.stringify({
+          email,
+          fullName,
+          phone,
+          role,
+          password: password || undefined,
+          age: parseInt(ageStr) || null,
+          gender: gender || null,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Cập nhật thất bại");
@@ -163,6 +183,8 @@ export default function AccountsPage() {
     setEmail("");
     setFullName("");
     setPhone("");
+    setAgeStr("");
+    setGender("Nam");
     setRole("customer");
     setPassword("");
     setErrorMsg("");
@@ -174,6 +196,8 @@ export default function AccountsPage() {
     setEmail(u.email);
     setFullName(u.fullName);
     setPhone(u.phone || "");
+    setAgeStr(u.age ? String(u.age) : "");
+    setGender(u.gender || "Nam");
     setRole(u.role);
     setPassword("");
     setIsOpenEdit(true);
@@ -257,6 +281,29 @@ export default function AccountsPage() {
                   <div className="space-y-2 text-left">
                     <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Số điện thoại</Label>
                     <Input type="tel" placeholder="0901234567" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2 text-left">
+                      <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Tuổi</Label>
+                      <Input type="number" placeholder="VD: 35" value={ageStr} onChange={(e) => setAgeStr(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                    </div>
+
+                    <div className="space-y-2 text-left">
+                      <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Giới tính</Label>
+                      <div className="relative">
+                        <select
+                          value={gender}
+                          onChange={(e) => setGender(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs text-slate-800 px-3 pr-8 appearance-none outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer hover:border-slate-300"
+                        >
+                          <option value="Nam">👨 Nam</option>
+                          <option value="Nữ">👩 Nữ</option>
+                          <option value="Khác">🧑 Khác</option>
+                        </select>
+                        <svg className="w-3.5 h-3.5 text-blue-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="space-y-2 text-left">
@@ -360,7 +407,14 @@ export default function AccountsPage() {
                           </div>
                           <div>
                             <p className="font-bold text-slate-950 text-sm leading-none">{u.fullName}</p>
-                            <p className="text-[10px] text-slate-400 font-mono mt-1">ID: {u.id}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              {(u.gender || u.age) && (
+                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60">
+                                  {[u.gender?.toUpperCase(), u.age ? `${u.age} TUỔI` : null].filter(Boolean).join(" • ")}
+                                </span>
+                              )}
+                              <span className="text-[10px] text-slate-400 font-mono">ID: {u.id}</span>
+                            </div>
                           </div>
                         </div>
                       </TableCell>
@@ -452,6 +506,29 @@ export default function AccountsPage() {
                 <div className="space-y-2 text-left">
                   <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Số điện thoại</Label>
                   <Input type="tel" placeholder="0901234567" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Tuổi</Label>
+                    <Input type="number" placeholder="VD: 35" value={ageStr} onChange={(e) => setAgeStr(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                  </div>
+
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Giới tính</Label>
+                    <div className="relative">
+                      <select
+                        value={gender}
+                        onChange={(e) => setGender(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs text-slate-800 px-3 pr-8 appearance-none outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer hover:border-slate-300"
+                      >
+                        <option value="Nam">👨 Nam</option>
+                        <option value="Nữ">👩 Nữ</option>
+                        <option value="Khác">🧑 Khác</option>
+                      </select>
+                      <svg className="w-3.5 h-3.5 text-blue-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-2 text-left">

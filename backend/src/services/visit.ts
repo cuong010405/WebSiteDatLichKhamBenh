@@ -61,13 +61,19 @@ async function ensurePatientForVisit(visitId: string) {
 
   // If we now have a PatientId (either existing or pre-linked), update their status and info
   if (targetPatientId) {
+    const patientUpdateData: any = {
+      Status: "Đang điều trị",
+      LastVisit: visit.Date || new Date().toLocaleDateString("vi-VN"),
+      LastVisitTime: visit.Time || new Date().toLocaleTimeString("vi-VN"),
+    };
+    if (visit.User) {
+      if (visit.User.FullName) patientUpdateData.Name = visit.User.FullName;
+      if (visit.User.Age !== null && visit.User.Age !== undefined) patientUpdateData.Age = visit.User.Age;
+      if (visit.User.Gender) patientUpdateData.Gender = visit.User.Gender;
+    }
     await db.patient.update({
       where: { Id: targetPatientId },
-      data: {
-        Status: "Đang điều trị",
-        LastVisit: visit.Date || new Date().toLocaleDateString("vi-VN"),
-        LastVisitTime: visit.Time || new Date().toLocaleTimeString("vi-VN"),
-      },
+      data: patientUpdateData,
     });
 
     // Assign staff to patient if not already linked
