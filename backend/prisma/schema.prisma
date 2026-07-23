@@ -84,9 +84,11 @@ model User {
   FullName     String         @db.NVarChar(200)
   Phone        String?        @db.NVarChar(30)
   Role         String         @default("customer") @db.NVarChar(20)
-  Age          Int?
-  Gender       String?        @db.NVarChar(20)
-  CreatedAt    DateTime       @default(now()) @db.DateTime
+  Age             Int?
+  Gender          String?        @db.NVarChar(20)
+  Address         String?        @db.NVarChar(500)
+  MedicalHistory  String?        @db.NVarChar(Max)
+  CreatedAt       DateTime       @default(now()) @db.DateTime
   Visit        Visit[]
   Notification Notification[]
 }

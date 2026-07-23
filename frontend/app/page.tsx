@@ -775,8 +775,8 @@ export default function BookingPage() {
         name: user.fullName,
         phone: user.phone || "Chưa cập nhật",
         email: user.email,
-        address: "Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM",
-        summary: "Hồ sơ cá nhân tự động đồng bộ từ tài khoản hệ thống.",
+        address: user.address || "",
+        summary: user.medicalHistory || "",
         age: user.age ?? 35,
         gender: user.gender ?? "Nam",
       });
@@ -885,6 +885,8 @@ export default function BookingPage() {
             phone: editPhone,
             age: parseInt(editAge) || null,
             gender: editGender,
+            address: editAddress,
+            medicalHistory: editSummary,
           }),
         });
         if (!res.ok) throw new Error("Cập nhật thất bại");
@@ -900,6 +902,8 @@ export default function BookingPage() {
             phone: data.phone,
             age: data.age,
             gender: data.gender,
+            address: data.address,
+            medicalHistory: data.medicalHistory,
           }));
         }
       } catch (err) {
@@ -915,6 +919,8 @@ export default function BookingPage() {
         phone: editPhone,
         age: parseInt(editAge) || null,
         gender: editGender,
+        address: editAddress,
+        medicalHistory: editSummary,
       });
     }
 

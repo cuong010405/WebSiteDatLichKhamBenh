@@ -5,6 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { API_URL, authFetch } from "@/lib/api";
 import { useLoading } from "@/lib/loading-context";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,7 +31,13 @@ import {
   CalendarDays,
   Printer,
   X,
+  Search,
+  Download,
+  ShieldAlert,
+  AlertTriangle,
 } from "lucide-react";
+import { formatCurrencyInput, parseCurrencyNumber } from "@/lib/utils/format";
+import { exportToExcel } from "@/lib/utils/export";
 
 interface PaymentVisit {
   id: string;
@@ -77,7 +91,32 @@ export default function AdminPayPage() {
   const [saving, setSaving] = React.useState(false);
   const [toast, setToast] = React.useState<{ msg: string; type: "ok" | "err" } | null>(null);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null);
   const [activePrintPayment, setActivePrintPayment] = React.useState<PaymentRecord | null>(null);
+  const [searchQuery, setSearchQuery] = React.useState("");
+
+  const filteredPayments = React.useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return payments;
+    return payments.filter((p) => {
+      const patient = (p.patientName || p.userName || "").toLowerCase();
+      const service = (p.visitType || "").toLowerCase();
+      const staff = (p.staffName || "").toLowerCase();
+      const note = (p.note || "").toLowerCase();
+      const method = (p.method || "").toLowerCase();
+      const status = (p.status || "").toLowerCase();
+      const id = (p.id || "").toLowerCase();
+      return (
+        patient.includes(query) ||
+        service.includes(query) ||
+        staff.includes(query) ||
+        note.includes(query) ||
+        method.includes(query) ||
+        status.includes(query) ||
+        id.includes(query)
+      );
+    });
+  }, [payments, searchQuery]);
   
   const handlePrintInvoice = (payment: PaymentRecord) => {
     setActivePrintPayment(payment);
@@ -232,7 +271,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
     if (selectedVisitId) {
       const visit = pendingVisits.find((v) => v.id === selectedVisitId);
       if (visit) {
-        setPaymentAmount(visit.paymentAmount || getPriceByVisitType(visit.type));
+        setPaymentAmount(formatCurrencyInput(visit.paymentAmount || getPriceByVisitType(visit.type)));
         if (visit.paymentMethod) {
           setPaymentMethod(visit.paymentMethod);
         }
@@ -242,12 +281,31 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
     }
   }, [selectedVisitId, pendingVisits]);
 
+  const handleExportReport = () => {
+    const reportData = payments.map((p) => ({
+      "Mã Hóa Đơn": `HD-${p.id}`,
+      "Dịch Vụ": p.visitType,
+      "Bệnh Nhân / Khách Hàng": p.patientName || p.userName || "—",
+      "Bác Sĩ / Chuyên Gia": p.staffName,
+      "Số Tiền (VNĐ)": parseCurrencyNumber(p.amount).toLocaleString("vi-VN"),
+      "Phương Thức": p.method,
+      "Trạng Thái": p.status,
+      "Ngày Tạo": p.createdAt ? new Date(p.createdAt).toLocaleDateString("vi-VN") : "—",
+      "Ghi Chú": p.note || "Không có",
+    }));
+    exportToExcel(
+      reportData,
+      `Bao-Cao-Thu-Chi-${new Date().toISOString().split("T")[0]}.xls`,
+      "BÁO CÁO THU CHI THỦ QUỸ & HÓA ĐƠN"
+    );
+  };
+
   const handleSubmit = async () => {
     if (!selectedVisitId || !paymentAmount) return;
 
     // Validate amount is a positive number
-    const amountNum = parseFloat(paymentAmount);
-    if (isNaN(amountNum) || amountNum <= 0) {
+    const amountNum = parseCurrencyNumber(paymentAmount);
+    if (amountNum <= 0) {
       showToast("Số tiền thanh toán không hợp lệ", "err");
       return;
     }
@@ -259,7 +317,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
         method: "POST",
         body: JSON.stringify({
           visitId: selectedVisitId,
-          amount: paymentAmount,
+          amount: String(amountNum),
           method: paymentMethod,
           note: paymentNote,
         }),
@@ -282,7 +340,6 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
   };
 
   const handleDelete = async (paymentId: string) => {
-    if (!confirm("Xóa hóa đơn này? Lịch hẹn sẽ trở về trạng thái Đã xác nhận.")) return;
     setDeletingId(paymentId);
     show("Đang xóa hóa đơn...")
     try {
@@ -294,6 +351,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
       showToast(e?.message || "Lỗi xóa hóa đơn", "err");
     } finally {
       setDeletingId(null);
+      setPendingDeleteId(null);
       hide();
     }
   };
@@ -475,10 +533,10 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
               <div className="space-y-1.5">
                 <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Số tiền (VNĐ)</Label>
                 <Input
-                  type="number"
+                  type="text"
                   value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  placeholder="VD: 500000"
+                  onChange={(e) => setPaymentAmount(formatCurrencyInput(e.target.value))}
+                  placeholder="VD: 500.000"
                   className="rounded-2xl border-slate-200 h-11 font-semibold"
                 />
               </div>
@@ -517,18 +575,47 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
         {/* Right: Invoice history */}
         <div className="lg:col-span-3">
           <div className="bg-white border border-hairline rounded-[32px] shadow-xs overflow-hidden">
-            <div className="p-6 border-b border-hairline flex items-center justify-between">
+            <div className="p-6 border-b border-hairline flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h2 className="text-base font-black text-foreground">Lịch sử hóa đơn</h2>
-                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{payments.length} hóa đơn đã lưu</p>
+                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                  {searchQuery ? `${filteredPayments.length}/${payments.length} hóa đơn` : `${payments.length} hóa đơn đã lưu`}
+                </p>
               </div>
-              <button
-                onClick={fetchPayments}
-                suppressHydrationWarning
-                className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-              >
-                <RefreshCw className={cn("w-3.5 h-3.5 text-slate-400", loadingPayments && "animate-spin")} />
-              </button>
+              <div className="flex items-center gap-3 flex-1 max-w-sm ml-auto">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Tìm tên, dịch vụ, ghi chú, trạng thái..."
+                    className="pl-9 pr-8 h-9 text-xs font-semibold rounded-full border-slate-200 focus:border-blue-500 bg-slate-50/50"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={handleExportReport}
+                  className="w-8 h-8 rounded-full border border-emerald-200 bg-emerald-50 flex items-center justify-center hover:bg-emerald-100 transition-colors shrink-0"
+                  title="Xuất báo cáo CSV"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-600" />
+                </button>
+                <button
+                  onClick={fetchPayments}
+                  suppressHydrationWarning
+                  className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors shrink-0"
+                  title="Làm mới"
+                >
+                  <RefreshCw className={cn("w-3.5 h-3.5 text-slate-400", loadingPayments && "animate-spin")} />
+                </button>
+              </div>
             </div>
             <div className="divide-y divide-hairline max-h-[600px] overflow-y-auto">
               {loadingPayments ? (
@@ -538,73 +625,104 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                     <div className="h-3 bg-slate-50 rounded w-1/3" />
                   </div>
                 ))
-              ) : payments.length === 0 ? (
+              ) : filteredPayments.length === 0 ? (
                 <div className="py-16 text-center">
                   <Receipt className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-                  <p className="text-sm font-bold text-slate-400">Chưa có hóa đơn nào</p>
+                  <p className="text-sm font-bold text-slate-400">
+                    {searchQuery ? "Không tìm thấy hóa đơn phù hợp" : "Chưa có hóa đơn nào"}
+                  </p>
                 </div>
               ) : (
-                payments.map((p, i) => (
-                  <motion.div
-                    key={p.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: i * 0.04 }}
-                    className="p-5 hover:bg-slate-50/50 transition-all group"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 text-emerald-600">
-                          {methodIcon[p.method] ?? <Banknote className="w-4 h-4" />}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-black text-slate-800 truncate">{p.visitType}</p>
-                          <p className="text-[10px] text-slate-500 font-semibold flex items-center gap-1 mt-0.5">
-                            <User className="w-3 h-3 shrink-0" />
-                            {p.patientName || p.userName || "—"}
-                          </p>
-                          {p.visitDate && (
-                            <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1 mt-0.5">
-                              <CalendarDays className="w-3 h-3 shrink-0" />
-                              {p.visitDate} · {p.visitTime}
+                filteredPayments.map((p, i) => {
+                  const isCancelled = p.status === "Đã hủy";
+                  return (
+                    <motion.div
+                      key={p.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: i * 0.04 }}
+                      className={cn(
+                        "p-5 transition-all group",
+                        isCancelled ? "bg-red-50/20 hover:bg-red-50/40" : "hover:bg-slate-50/50"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                          <div
+                            className={cn(
+                              "w-10 h-10 rounded-2xl flex items-center justify-center shrink-0",
+                              isCancelled
+                                ? "bg-red-50 border border-red-100 text-red-500"
+                                : "bg-emerald-50 border border-emerald-100 text-emerald-600"
+                            )}
+                          >
+                            {methodIcon[p.method] ?? <Banknote className="w-4 h-4" />}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-black text-slate-800 truncate">{p.visitType}</p>
+                              {isCancelled && (
+                                <span className="px-2 py-0.5 text-[9px] font-black bg-red-100 text-red-600 rounded-full shrink-0">
+                                  Đã hủy
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-slate-500 font-semibold flex items-center gap-1 mt-0.5">
+                              <User className="w-3 h-3 shrink-0" />
+                              {p.patientName || p.userName || "—"}
                             </p>
-                          )}
-                          {p.note && (
-                            <p className="text-[10px] text-slate-400 italic mt-1 truncate">"{p.note}"</p>
+                            {p.visitDate && (
+                              <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1 mt-0.5">
+                                <CalendarDays className="w-3 h-3 shrink-0" />
+                                {p.visitDate} · {p.visitTime}
+                              </p>
+                            )}
+                            {p.note && (
+                              <p className={cn("text-[10px] italic mt-1 truncate", isCancelled ? "text-red-400 font-medium" : "text-slate-400")}>
+                                "{p.note}"
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p
+                            className={cn(
+                              "text-base font-black",
+                              isCancelled ? "text-red-500 line-through" : "text-emerald-600"
+                            )}
+                          >
+                            {parseFloat(p.amount || "0").toLocaleString("vi-VN")}đ
+                          </p>
+                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{p.method}</span>
+                          <p className="text-[9px] text-slate-300 mt-1">
+                            {p.createdAt ? new Date(p.createdAt).toLocaleDateString("vi-VN") : "—"}
+                          </p>
+                          {!isCancelled && (
+                            <div className="flex gap-1.5 justify-end mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
+                              <button
+                                suppressHydrationWarning
+                                onClick={() => handlePrintInvoice(p)}
+                                className="w-7 h-7 rounded-xl bg-blue-50 hover:bg-blue-100 flex items-center justify-center text-blue-500 hover:text-blue-700 transition-all cursor-pointer"
+                                title="In hóa đơn"
+                              >
+                                <Printer className="w-3 h-3" />
+                              </button>
+                              <button
+                                suppressHydrationWarning
+                                onClick={() => setPendingDeleteId(p.id)}
+                                disabled={deletingId === p.id}
+                                className="w-7 h-7 rounded-xl bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-400 hover:text-red-600 transition-all disabled:opacity-50 cursor-pointer"
+                                title="Xóa hóa đơn"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-base font-black text-emerald-600">
-                          {parseFloat(p.amount).toLocaleString("vi-VN")}đ
-                        </p>
-                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{p.method}</span>
-                        <p className="text-[9px] text-slate-300 mt-1">
-                          {new Date(p.createdAt).toLocaleDateString("vi-VN")}
-                        </p>
-                        <div className="flex gap-1.5 justify-end mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
-                          <button
-                            suppressHydrationWarning
-                            onClick={() => handlePrintInvoice(p)}
-                            className="w-7 h-7 rounded-xl bg-blue-50 hover:bg-blue-100 flex items-center justify-center text-blue-500 hover:text-blue-700 transition-all cursor-pointer"
-                            title="In hóa đơn"
-                          >
-                            <Printer className="w-3 h-3" />
-                          </button>
-                          <button
-                            suppressHydrationWarning
-                            onClick={() => handleDelete(p.id)}
-                            disabled={deletingId === p.id}
-                            className="w-7 h-7 rounded-xl bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-400 hover:text-red-600 transition-all disabled:opacity-50 cursor-pointer"
-                            title="Xóa hóa đơn"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))
+                    </motion.div>
+                  );
+                })
               )}
             </div>
           </div>
@@ -688,6 +806,53 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!pendingDeleteId} onOpenChange={(v) => { if (!v) setPendingDeleteId(null); }}>
+        <DialogContent className="sm:max-w-[400px] rounded-[24px] border border-red-100 shadow-2xl p-0 overflow-hidden bg-white">
+          <div className="h-1.5 w-full bg-gradient-to-r from-red-400 to-rose-500" />
+          <div className="p-7">
+            <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-4 mb-4 text-left">
+              <div className="w-11 h-11 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-500 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">
+                  Xóa hóa đơn?
+                </DialogTitle>
+                <DialogDescription className="text-slate-500 mt-1.5 text-[11px] font-semibold">
+                  Lịch hẹn sẽ trở về trạng thái Đã xác nhận. Hành động này không thể hoàn tác.
+                </DialogDescription>
+              </div>
+            </DialogHeader>
+            <div className="bg-red-50/80 border border-red-100 rounded-xl p-4 space-y-1 mb-6 text-left">
+              <p className="text-xs font-black text-slate-800 uppercase tracking-tight">
+                Hóa đơn #{pendingDeleteId}
+              </p>
+              <p className="text-[10px] font-bold text-slate-500">
+                Thanh toán sẽ bị hủy & lịch hẹn phục hồi
+              </p>
+            </div>
+            <DialogFooter className="flex-col sm:flex-col gap-2">
+              <Button
+                onClick={() => pendingDeleteId && handleDelete(pendingDeleteId)}
+                disabled={!!deletingId}
+                className="w-full rounded-xl h-11 text-xs font-black uppercase tracking-[0.15em] bg-gradient-to-r from-red-500 to-rose-600 text-white hover:opacity-95 shadow-md shadow-red-200 border-b-2 border-white/10 active:border-b-0 active:translate-y-0.5"
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-2" />
+                {deletingId ? "Đang xóa..." : "Xóa hóa đơn"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setPendingDeleteId(null)}
+                className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50"
+              >
+                Hủy bỏ
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

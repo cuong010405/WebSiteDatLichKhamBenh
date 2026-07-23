@@ -36,7 +36,18 @@ async function ensurePatientForVisit(visitId: string) {
   });
 
   if (!visit) return;
-  if (visit.Status !== "Đã xác nhận") return;
+
+  // Determine patient status based on visit state
+  let patientStatus = "Chờ khám";
+  if (visit.PaymentStatus === "Đã thanh toán" || visit.Status === "Đã hoàn tất") {
+    patientStatus = "Khám hoàn thành";
+  } else if (visit.Status === "Đã xác nhận" || visit.Status === "Đang thực hiện") {
+    patientStatus = "Đang điều trị";
+  } else if (visit.Status === "Chờ duyệt") {
+    patientStatus = "Chờ khám";
+  } else if (visit.Status === "Đã hủy") {
+    patientStatus = "Đã hủy";
+  }
 
   // Check if this User already has an associated Patient record from previous visits
   let targetPatientId = visit.PatientId;
@@ -62,7 +73,7 @@ async function ensurePatientForVisit(visitId: string) {
   // If we now have a PatientId (either existing or pre-linked), update their status and info
   if (targetPatientId) {
     const patientUpdateData: any = {
-      Status: "Đang điều trị",
+      Status: patientStatus,
       LastVisit: visit.Date || new Date().toLocaleDateString("vi-VN"),
       LastVisitTime: visit.Time || new Date().toLocaleTimeString("vi-VN"),
     };
@@ -116,7 +127,44 @@ async function ensurePatientForVisit(visitId: string) {
     }
   }
 
-  // Generate unique patient ID — use crypto.randomUUID to prevent collision
+  // Check if Patient already exists with matching name
+  let existingPatient = await db.patient.findFirst({
+    where: { Name: patientName },
+  });
+
+  if (existingPatient) {
+    await db.patient.update({
+      where: { Id: existingPatient.Id },
+      data: {
+        Status: patientStatus,
+        LastVisit: visit.Date || existingPatient.LastVisit,
+        LastVisitTime: visit.Time || existingPatient.LastVisitTime,
+      },
+    });
+    await db.visit.update({
+      where: { Id: visitId },
+      data: { PatientId: existingPatient.Id },
+    });
+    if (visit.StaffId) {
+      const link = await db.patientStaff.findFirst({
+        where: {
+          PatientId: existingPatient.Id,
+          StaffId: visit.StaffId,
+        },
+      });
+      if (!link) {
+        await db.patientStaff.create({
+          data: {
+            PatientId: existingPatient.Id,
+            StaffId: visit.StaffId,
+          },
+        });
+      }
+    }
+    return;
+  }
+
+  // Generate unique patient ID
   const shortId = crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase();
   const newPatientId = `BN-${shortId}`;
 
@@ -128,7 +176,7 @@ async function ensurePatientForVisit(visitId: string) {
       Gender: patientGender,
       LastVisit: visit.Date || new Date().toLocaleDateString("vi-VN"),
       LastVisitTime: visit.Time || new Date().toLocaleTimeString("vi-VN"),
-      Status: "Đang điều trị",
+      Status: patientStatus,
       Summary: patientSummary,
     },
   });
@@ -158,11 +206,10 @@ async function ensurePatientForVisit(visitId: string) {
   });
 }
 
-// Sync tất cả visit "Đã xác nhận" chưa có patient → tạo patient tương ứng
+// Sync tất cả visit chưa có patient + cập nhật lại toàn bộ trạng thái bệnh nhân cũ theo lịch hẹn mới nhất
 export async function syncPatientsForVisits(): Promise<number> {
-  const confirmedVisits = await db.visit.findMany({
+  const unlinkedVisits = await db.visit.findMany({
     where: {
-      Status: "Đã xác nhận",
       PatientId: null,
       UserId: { not: null },
     },
@@ -170,7 +217,7 @@ export async function syncPatientsForVisits(): Promise<number> {
   });
 
   let count = 0;
-  for (const visit of confirmedVisits) {
+  for (const visit of unlinkedVisits) {
     try {
       await ensurePatientForVisit(visit.Id);
       count++;
@@ -178,7 +225,53 @@ export async function syncPatientsForVisits(): Promise<number> {
       console.error(`[syncPatientsForVisits] Lỗi xử lý visit ${visit.Id}:`, err?.message ?? err);
     }
   }
-  console.log(`[syncPatientsForVisits] Đồng bộ thành công ${count}/${confirmedVisits.length} visits.`);
+
+  // Cập nhật lại toàn bộ bệnh nhân trong CSDL theo trạng thái lịch hẹn mới nhất
+  const allPatients = await db.patient.findMany({
+    include: {
+      Visit: {
+        orderBy: { Date: "desc" },
+      },
+    },
+  });
+
+  const allVisitsWithUser = await db.visit.findMany({
+    include: { User: true },
+    orderBy: { Date: "desc" },
+  });
+
+  for (const patient of allPatients) {
+    let latestVisit = patient.Visit && patient.Visit.length > 0 ? patient.Visit[0] : null;
+
+    if (!latestVisit) {
+      latestVisit = allVisitsWithUser.find(
+        (v) => (v.User && v.User.FullName === patient.Name) || v.PatientId === patient.Id
+      ) || null;
+    }
+
+    if (latestVisit) {
+      let targetStatus = "Chờ khám";
+      if (latestVisit.PaymentStatus === "Đã thanh toán" || latestVisit.Status === "Đã hoàn tất") {
+        targetStatus = "Khám hoàn thành";
+      } else if (latestVisit.Status === "Đã xác nhận" || latestVisit.Status === "Đang thực hiện") {
+        targetStatus = "Đang điều trị";
+      } else if (latestVisit.Status === "Chờ duyệt") {
+        targetStatus = "Chờ khám";
+      } else if (latestVisit.Status === "Đã hủy") {
+        targetStatus = "Đã hủy";
+      }
+
+      await db.patient.update({
+        where: { Id: patient.Id },
+        data: {
+          Status: targetStatus,
+          LastVisit: latestVisit.Date || patient.LastVisit,
+          LastVisitTime: latestVisit.Time || patient.LastVisitTime,
+        },
+      }).catch((err) => console.warn(`Lỗi cập nhật patient ${patient.Id}:`, err));
+    }
+  }
+
   return count;
 }
 
@@ -242,12 +335,127 @@ export async function getVisitById(id: string) {
   });
 
   if (!visit) return null;
-
   return mapVisitToUI(visit);
+}
+
+function parseMinutes(t: string): number {
+  if (!t) return 0;
+  const timePart = t.split(" - ")[0].trim();
+  const [h, m] = timePart.split(":").map(Number);
+  return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+}
+
+function parseDurationMinutes(d: string): number {
+  if (!d) return 60;
+  const hours = parseFloat(String(d).replace("h", ""));
+  return isNaN(hours) || hours <= 0 ? 60 : hours * 60;
+}
+
+export async function checkVisitOverlap(params: {
+  staffId?: string;
+  userId?: string | null;
+  date?: string | null;
+  startTime?: string | null;
+  time?: string | null;
+  duration?: string | null;
+  excludeVisitId?: string;
+}) {
+  const { staffId, userId, date, startTime, time, duration, excludeVisitId } = params;
+
+  // 1. Check max 3 visits per specialist per day rule
+  if (staffId && date) {
+    const staffVisitCount = await db.visit.count({
+      where: {
+        StaffId: staffId,
+        Date: date,
+        Status: { not: "Đã hủy" },
+        ...(excludeVisitId ? { Id: { not: excludeVisitId } } : {}),
+      },
+    });
+
+    if (staffVisitCount >= 3) {
+      const staffMember = await db.staff.findUnique({
+        where: { Id: staffId },
+        select: { Name: true },
+      });
+      const staffName = staffMember?.Name || "chuyên gia";
+      throw new Error(
+        `Giới hạn lịch trực: Chuyên gia ${staffName} đã có đủ 3 ca khám trong ngày ${date}. Không thể nhận thêm lịch mới!`
+      );
+    }
+  }
+
+  const timeStr = startTime || time || "";
+  if (!timeStr) return; // No time specified, skip overlap check
+
+  const startNew = parseMinutes(timeStr);
+  const durNew = parseDurationMinutes(duration || "1h");
+  const endNew = startNew + durNew;
+
+  // Build query to fetch active visits on the same date (excluding cancelled visits)
+  const where: any = {
+    Status: { not: "Đã hủy" },
+  };
+  if (date) {
+    where.Date = date;
+  }
+  if (excludeVisitId) {
+    where.Id = { not: excludeVisitId };
+  }
+
+  // Fetch relevant visits for staff or user
+  const ORs: any[] = [];
+  if (staffId) ORs.push({ StaffId: staffId });
+  if (userId) ORs.push({ UserId: userId });
+  if (ORs.length === 0) return;
+  where.OR = ORs;
+
+  const existingVisits = await db.visit.findMany({
+    where,
+    include: {
+      Staff: { select: { Name: true } },
+      User: { select: { FullName: true } },
+    },
+  });
+
+  for (const ex of existingVisits) {
+    const exTimeStr = ex.StartTime || ex.Time || "";
+    if (!exTimeStr) continue;
+
+    const startEx = parseMinutes(exTimeStr);
+    const durEx = parseDurationMinutes(ex.Duration || "1h");
+    const endEx = startEx + durEx;
+
+    // Check interval intersection: startNew < endEx AND startEx < endNew
+    if (startNew < endEx && startEx < endNew) {
+      if (staffId && ex.StaffId === staffId) {
+        const staffName = ex.Staff?.Name || "chuyên gia";
+        throw new Error(
+          `Trùng lịch: Chuyên gia ${staffName} đã có ca trực (${exTimeStr}) trong ngày này. Vui lòng chọn khung giờ khác!`
+        );
+      }
+      if (userId && ex.UserId === userId) {
+        throw new Error(
+          `Trùng lịch: Bạn đã có một lịch khám khác (${exTimeStr}) trong ngày này. Vui lòng chọn khung giờ khác!`
+        );
+      }
+    }
+  }
 }
 
 export async function createVisit(data: z.infer<typeof visitSchema>) {
   const validated = visitSchema.parse(data);
+
+  // Check overlap before creating
+  await checkVisitOverlap({
+    staffId: validated.staffId,
+    userId: validated.userId,
+    date: validated.date,
+    startTime: validated.startTime,
+    time: validated.time,
+    duration: validated.duration,
+  });
+
   const createData: any = {
     Id: validated.id,
     Type: validated.type,
@@ -306,9 +514,7 @@ export async function createVisit(data: z.infer<typeof visitSchema>) {
       },
     },
   });
-  if (created.Status === "Đã xác nhận") {
-    await ensurePatientForVisit(created.Id);
-  }
+  await ensurePatientForVisit(created.Id);
   const refreshed = await db.visit.findUnique({
     where: { Id: created.Id },
     include: {
@@ -325,6 +531,22 @@ export async function updateVisit(
   data: Partial<z.infer<typeof visitSchema>>,
 ) {
   const { id: _id, ...rest } = data;
+
+  // Check overlap if updating time/staff and status is not cancelled
+  if (rest.status !== "Đã hủy" && (rest.staffId || rest.startTime || rest.time || rest.duration)) {
+    const existing = await db.visit.findUnique({ where: { Id: id } });
+    if (existing && existing.Status !== "Đã hủy") {
+      await checkVisitOverlap({
+        staffId: rest.staffId || existing.StaffId,
+        userId: rest.userId !== undefined ? rest.userId : existing.UserId,
+        date: rest.date !== undefined ? rest.date : existing.Date,
+        startTime: rest.startTime || rest.time || existing.StartTime || existing.Time,
+        duration: rest.duration || existing.Duration,
+        excludeVisitId: id,
+      });
+    }
+  }
+
   const dbData: any = {};
   if (rest.type !== undefined) dbData.Type = rest.type;
   if (rest.patientId !== undefined) {
@@ -380,9 +602,9 @@ export async function updateVisit(
       },
     },
   });
-  if (updated.Status === "Đã xác nhận") {
-    await ensurePatientForVisit(updated.Id);
-  }
+  
+  await ensurePatientForVisit(updated.Id);
+
   const refreshed = await db.visit.findUnique({
     where: { Id: updated.Id },
     include: {

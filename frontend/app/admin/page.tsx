@@ -12,7 +12,7 @@ import { useAuth } from "@/lib/auth-context"
 
 export default function Home() {
   const { user } = useAuth()
-  const displayName = user?.fullName?.split(" ").slice(-1)[0] || "Admin"
+  const displayName = user?.fullName || "Admin"
   return (
     <div className="relative isolate min-h-screen overflow-x-hidden">
       {/* Dynamic Background Elements */}

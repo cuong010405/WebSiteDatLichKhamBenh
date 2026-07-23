@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { API_URL, authFetch } from "@/lib/api"
 import { useLoading } from "@/lib/loading-context"
+import { formatCurrencyInput, parseCurrencyNumber } from "@/lib/utils/format"
 
 interface Service {
   id: string
@@ -73,7 +74,7 @@ function AddServiceDialog({ onAdd }: { onAdd: (s: Service) => Promise<boolean> }
       id: `svc-${Date.now()}`,
       name,
       description,
-      price: parseInt(price, 10),
+      price: parseCurrencyNumber(price),
       duration,
       type,
       active: true,
@@ -174,11 +175,11 @@ function AddServiceDialog({ onAdd }: { onAdd: (s: Service) => Promise<boolean> }
                     <div className="space-y-2 text-left">
                       <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Giá (VNĐ) <span className="text-red-400">*</span></label>
                       <Input
-                        type="number"
+                        type="text"
                         value={price}
-                        onChange={(e) => setPrice(e.target.value)}
+                        onChange={(e) => setPrice(formatCurrencyInput(e.target.value))}
                         required
-                        placeholder="VD: 200000"
+                        placeholder="VD: 500.000"
                         className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all"
                       />
                     </div>
@@ -246,20 +247,20 @@ function EditServiceDialog({
 }) {
   const [name, setName] = React.useState(service.name)
   const [description, setDescription] = React.useState(service.description)
-  const [price, setPrice] = React.useState(String(service.price))
+  const [price, setPrice] = React.useState(formatCurrencyInput(service.price))
   const [duration, setDuration] = React.useState(service.duration)
   const [type, setType] = React.useState(service.type)
 
   React.useEffect(() => {
     if (open) {
       setName(service.name); setDescription(service.description)
-      setPrice(String(service.price)); setDuration(service.duration); setType(service.type)
+      setPrice(formatCurrencyInput(service.price)); setDuration(service.duration); setType(service.type)
     }
   }, [open, service])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSave({ ...service, name, description, price: parseInt(price, 10), duration, type })
+    onSave({ ...service, name, description, price: parseCurrencyNumber(price), duration, type })
     onOpenChange(false)
   }
 
@@ -292,7 +293,7 @@ function EditServiceDialog({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2 text-left">
                 <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Giá (VNĐ)</label>
-                <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} required className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                <Input type="text" value={price} onChange={(e) => setPrice(formatCurrencyInput(e.target.value))} required className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
               </div>
               <div className="space-y-2 text-left">
                 <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Thời lượng</label>

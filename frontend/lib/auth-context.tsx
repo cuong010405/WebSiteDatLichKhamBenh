@@ -15,6 +15,8 @@ interface AuthUser {
   role: "admin" | "customer";
   age?: number | null;
   gender?: string | null;
+  address?: string | null;
+  medicalHistory?: string | null;
 }
 
 interface LocalStoredUser extends AuthUser {

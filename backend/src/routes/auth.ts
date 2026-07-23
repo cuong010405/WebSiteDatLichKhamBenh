@@ -85,7 +85,7 @@ router.put("/profile", async (req: Request, res: Response) => {
     return res.status(401).json({ error: "Token không hợp lệ hoặc đã hết hạn" });
   }
 
-  const { fullName, phone, age, gender } = req.body;
+  const { fullName, phone, age, gender, address, medicalHistory } = req.body;
 
   try {
     const user = await db.user.findUnique({ where: { Id: payload.id } });
@@ -100,6 +100,8 @@ router.put("/profile", async (req: Request, res: Response) => {
         Phone: phone !== undefined ? (phone?.trim() || null) : user.Phone,
         Age: age !== undefined ? (age ? parseInt(String(age)) : null) : user.Age,
         Gender: gender !== undefined ? gender : user.Gender,
+        Address: address !== undefined ? (address?.trim() || null) : user.Address,
+        MedicalHistory: medicalHistory !== undefined ? (medicalHistory?.trim() || null) : user.MedicalHistory,
       },
     });
 
@@ -147,6 +149,8 @@ router.put("/profile", async (req: Request, res: Response) => {
       role: updated.Role,
       age: updated.Age,
       gender: updated.Gender,
+      address: updated.Address,
+      medicalHistory: updated.MedicalHistory,
     });
   } catch (err: any) {
     console.error("PUT /api/auth/profile error:", err);

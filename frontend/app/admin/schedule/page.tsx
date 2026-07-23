@@ -41,6 +41,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Visit, VisitStatus, Staff, Patient } from "@/lib/types";
 import { API_URL, authFetch } from "@/lib/api";
 import { useLoading } from "@/lib/loading-context";
+import { formatVietnameseDate } from "@/lib/utils/format";
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8);
 
@@ -1239,6 +1240,9 @@ export default function SchedulePage() {
   const [visitTypes, setVisitTypes] = React.useState<string[]>(DEFAULT_VISIT_TYPES);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string>("Tất cả");
+  const [selectedDate, setSelectedDate] = React.useState<string>(
+    new Date().toISOString().split("T")[0]
+  );
   const [paymentDialogOpen, setPaymentDialogOpen] = React.useState(false);
   const [selectedPaymentVisit, setSelectedPaymentVisit] =
     React.useState<string>("");
@@ -1344,10 +1348,15 @@ export default function SchedulePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newVisit),
       });
-      const created = await r.json();
-      setAllVisits((prev) => [...prev, created]);
-    } catch (err) {
+      const resData = await r.json();
+      if (!r.ok) {
+        alert(resData.error || "Lỗi tạo lịch trực!");
+        return;
+      }
+      setAllVisits((prev) => [...prev, resData]);
+    } catch (err: any) {
       console.error("[SchedulePage] Lỗi tạo lịch trực:", err);
+      alert(err.message || "Lỗi tạo lịch trực!");
     } finally {
       hide();
     }
@@ -1361,10 +1370,15 @@ export default function SchedulePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updated),
       });
-      const saved = await r.json();
-      setAllVisits((prev) => prev.map((v) => (v.id === saved.id ? saved : v)));
-    } catch (err) {
+      const resData = await r.json();
+      if (!r.ok) {
+        alert(resData.error || "Lỗi cập nhật lịch trực!");
+        return;
+      }
+      setAllVisits((prev) => prev.map((v) => (v.id === resData.id ? resData : v)));
+    } catch (err: any) {
       console.error("[SchedulePage] Lỗi cập nhật lịch trực:", err);
+      alert(err.message || "Lỗi cập nhật lịch trực!");
     } finally {
       hide();
     }
@@ -1472,24 +1486,26 @@ export default function SchedulePage() {
 
     const matchStatus = statusFilter === "Tất cả" || v.status === statusFilter;
 
-    // Show recently paid visits (green, 5 min), hide completed/paid older
-    const isCompleted = v.status === "Đã hoàn tất";
-    const isRecentlyPaid = v.paymentStatus === "Đã thanh toán" && recentlyPaidIds.has(v.id);
+    // Filter by selected date if visit has a Date field
+    const matchDate = !v.date || !selectedDate || v.date === selectedDate;
+
+    // Hide only cancelled visits and old paid status updates (keep completed visits visible)
+    const isCancelled = v.status === "Đã hủy";
     const isPaidOld = v.paymentStatus === "Đã thanh toán" && !recentlyPaidIds.has(v.id);
 
-    return matchQuery && matchStatus && !isCompleted && !isPaidOld;
+    return matchQuery && matchStatus && matchDate && !isCancelled && !isPaidOld;
   });
 
   return (
-    <div className="p-10 max-w-7xl mx-auto w-full space-y-16 pb-32">
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-10">
+    <div className="p-10 max-w-7xl mx-auto w-full space-y-5 pb-32">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           className="text-left"
         >
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-3">
             <div className="flex items-center gap-2 bg-surface-tinted px-3.5 py-2 rounded-full border border-primary/10 shadow-sm">
               <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
               <span className="eyebrow text-[10px] font-black uppercase tracking-widest text-primary-strong">
@@ -1506,7 +1522,48 @@ export default function SchedulePage() {
             Chuyên gia
           </h1>
         </motion.div>
+      </div>
 
+      {/* Control Bar: Date Navigator (Left) + Duyệt Lịch Hẹn (Right) aligned horizontally */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-1">
+        {/* Date Navigator Bar */}
+        <div className="flex items-center gap-3 bg-white p-2 rounded-[24px] border border-hairline shadow-xl shadow-black/[0.03] flex-wrap">
+          <span className="px-3.5 py-2 bg-primary/10 text-primary rounded-full text-xs font-black tracking-wider border border-primary/20 flex items-center gap-1.5">
+            📅 {formatVietnameseDate(selectedDate)}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => {
+                const d = new Date(selectedDate);
+                d.setDate(d.getDate() - 1);
+                setSelectedDate(d.toISOString().split("T")[0]);
+              }}
+              className="w-8 h-8 rounded-full border border-hairline bg-white hover:bg-slate-50 flex items-center justify-center transition-all text-slate-600 text-base font-black shadow-xs cursor-pointer"
+              title="Ngày trước"
+            >‹</button>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="text-xs font-bold border border-hairline rounded-xl px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-xs"
+            />
+            <button
+              onClick={() => {
+                const d = new Date(selectedDate);
+                d.setDate(d.getDate() + 1);
+                setSelectedDate(d.toISOString().split("T")[0]);
+              }}
+              className="w-8 h-8 rounded-full border border-hairline bg-white hover:bg-slate-50 flex items-center justify-center transition-all text-slate-600 text-base font-black shadow-xs cursor-pointer"
+              title="Ngày tiếp"
+            >›</button>
+            <button
+              onClick={() => setSelectedDate(new Date().toISOString().split("T")[0])}
+              className="px-3.5 h-8 rounded-full border border-primary/30 bg-primary/10 text-primary text-[10px] font-black hover:bg-primary/20 transition-all uppercase tracking-wider shadow-xs cursor-pointer"
+            >Hôm nay</button>
+          </div>
+        </div>
+
+        {/* Duyệt Lịch Hẹn Button */}
         <div className="flex items-center gap-3 bg-white p-1.5 rounded-[24px] border border-hairline shadow-xl shadow-black/[0.03]">
           <ApproveVisitsDialog
             pendingVisits={allVisits.filter((v) => v.status === "Chờ duyệt")}
@@ -1514,39 +1571,6 @@ export default function SchedulePage() {
             onReject={handleReject}
             staffList={staffList}
           />
-          <div className="w-px h-6 bg-hairline" />
-          <div className="flex bg-surface-secondary rounded-[16px] p-1 border border-hairline/50">
-            {(["day", "week", "month"] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={cn(
-                  "px-4 py-2 text-[9px] font-black uppercase tracking-widest rounded-[12px] transition-all duration-300",
-                  view === v
-                    ? "bg-white text-primary shadow-lg shadow-black/[0.08] scale-105"
-                    : "text-on-surface-tertiary hover:bg-white/50",
-                )}
-              >
-                {v === "day" ? "Ngày" : v === "week" ? "Tuần" : "Tháng"}
-              </button>
-            ))}
-          </div>
-          <div className="w-px h-6 bg-hairline" />
-          <SessionFormDialog
-            mode="create"
-            onSave={handleCreateSession}
-            staffList={staffList}
-            patientList={patientList}
-            allVisits={allVisits}
-            visitTypes={visitTypes}
-            trigger={
-              <Button className="bg-primary text-white rounded-full px-8 py-3 font-black text-sm flex items-center gap-3 hover:opacity-95 transition-all shadow-2xl shadow-primary/20 h-14 uppercase tracking-widest border-b-4 border-white/10 active:border-b-0 active:translate-y-1">
-                <CalendarPlus className="w-5 h-5" /> Phân công ca trực
-              </Button>
-            }
-          />
-
-
         </div>
       </div>
 

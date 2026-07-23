@@ -745,18 +745,20 @@ function PatientRow({
             className={cn(
               "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] border transition-all duration-300",
               patient.status === "Đang điều trị"
-                ? "bg-primary text-white border-primary shadow-lg shadow-primary/20"
-                : patient.status === "Chờ duyệt"
-                  ? "bg-slate-100 text-slate-700 border-slate-200"
-                  : patient.status === "Chờ tái khám"
-                    ? "bg-amber-100 text-amber-800 border-amber-200"
-                    : "bg-slate-100 text-slate-700 border-slate-200",
+                ? "bg-emerald-500 text-white border-emerald-600 shadow-md shadow-emerald-500/20"
+                : patient.status === "Chờ khám" || patient.status === "Chờ duyệt"
+                  ? "bg-amber-500 text-white border-amber-600 shadow-md shadow-amber-500/20"
+                  : patient.status === "Khám hoàn thành" || patient.status === "Khám xong" || patient.status === "Đã hoàn tất"
+                    ? "bg-blue-600 text-white border-blue-700 shadow-md shadow-blue-600/20"
+                    : patient.status === "Đã hủy"
+                      ? "bg-rose-500 text-white border-rose-600"
+                      : "bg-slate-100 text-slate-700 border-slate-200",
             )}
           >
             {patient.status === "Đang điều trị" && (
               <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
             )}
-            {patient.status}
+            {patient.status === "Chờ duyệt" ? "Chờ khám" : patient.status}
           </span>
         </TableCell>
         <TableCell className="px-8 py-6 text-right">
@@ -1122,7 +1124,10 @@ export default function PatientsPage() {
       (p.summary &&
         p.summary.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const matchStatus = statusFilter === "Tất cả" || p.status === statusFilter;
+    const matchStatus =
+      statusFilter === "Tất cả" ||
+      p.status === statusFilter ||
+      (statusFilter === "Chờ khám" && p.status === "Chờ duyệt");
 
     return matchQuery && matchStatus;
   });
@@ -1238,10 +1243,10 @@ export default function PatientsPage() {
           <div className="flex bg-slate-100 rounded-[20px] p-1 border border-hairline/60">
             {[
               "Tất cả",
-              "Chờ duyệt",
+              "Chờ khám",
               "Đang điều trị",
-              "Chờ tái khám",
-              "Đã xuất viện",
+              "Khám hoàn thành",
+              "Đã hủy",
             ].map((status) => (
               <button
                 key={status}

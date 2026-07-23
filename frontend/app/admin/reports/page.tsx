@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   XAxis,
   YAxis,
@@ -25,6 +25,9 @@ import {
   ArrowDownRight,
   FileText,
   Clock,
+  CheckCircle2,
+  AlertCircle,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -33,6 +36,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { API_URL, authFetch } from "@/lib/api";
+import { exportToExcel, exportToWord } from "@/lib/utils/export";
+import { formatCurrencyInput, parseCurrencyNumber } from "@/lib/utils/format";
 
 const DEPT_COLORS = ["#18BE66", "#16A34A", "#18181B", "#E4E4E7"];
 
@@ -182,6 +187,7 @@ const recentReports = [
 
 export interface PaymentVisit {
   id: string;
+  type?: string;
   patientName: string;
   staffName: string;
   time: string;
@@ -196,6 +202,8 @@ export default function ReportsPage() {
   const [stats, setStats] = React.useState<ReportStats | null>(null);
   const [staffList, setStaffList] = React.useState<StaffEntry[]>([]);
   const [pendingVisits, setPendingVisits] = React.useState<PaymentVisit[]>([]);
+  const [allVisits, setAllVisits] = React.useState<PaymentVisit[]>([]);
+  const [paymentTab, setPaymentTab] = React.useState<"pending" | "all">("pending");
   const [selectedPaymentVisitId, setSelectedPaymentVisitId] =
     React.useState<string>("");
   const [paymentMethod, setPaymentMethod] = React.useState("Tiền mặt");
@@ -203,9 +211,13 @@ export default function ReportsPage() {
   const [paymentNote, setPaymentNote] = React.useState("");
   const [loading, setLoading] = React.useState(true);
   const [savingPayment, setSavingPayment] = React.useState(false);
-  const [paymentMessage, setPaymentMessage] = React.useState<string | null>(
-    null,
-  );
+  const [paymentMessage, setPaymentMessage] = React.useState<string | null>(null);
+  const [toast, setToast] = React.useState<{ msg: string; type: "ok" | "err" } | null>(null);
+
+  const showToast = (msg: string, type: "ok" | "err") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const fetchJson = async (url: string) => {
     const response = await authFetch(url);
@@ -227,17 +239,19 @@ export default function ReportsPage() {
       fetchJson(`${API_URL}/reports`),
       fetchJson(`${API_URL}/staff`),
       fetchJson(`${API_URL}/visits?${visitParams.toString()}`),
+      fetchJson(`${API_URL}/visits`),
     ])
-      .then(([reportData, staff, visits]) => {
+      .then(([reportData, staff, pendingVs, allVs]) => {
         setStats(reportData);
         setStaffList(Array.isArray(staff) ? staff : []);
-        setPendingVisits(Array.isArray(visits) ? visits : []);
+        setPendingVisits(Array.isArray(pendingVs) ? pendingVs : []);
+        setAllVisits(Array.isArray(allVs) ? allVs : []);
         if (
           !selectedPaymentVisitId &&
-          Array.isArray(visits) &&
-          visits.length > 0
+          Array.isArray(pendingVs) &&
+          pendingVs.length > 0
         ) {
-          setSelectedPaymentVisitId(visits[0].id);
+          setSelectedPaymentVisitId(pendingVs[0].id);
         }
       })
       .catch((err) => console.error("[ReportsPage] Lỗi tải dữ liệu báo cáo:", err))
@@ -247,6 +261,62 @@ export default function ReportsPage() {
   React.useEffect(() => {
     refreshReportData();
   }, [refreshReportData]);
+
+  const handleExportVisits = () => {
+    try {
+      const source = allVisits.length > 0 ? allVisits : pendingVisits;
+      const data = source.map((v) => ({
+        "Mã lịch hẹn": v.id || "—",
+        "Bệnh Nhân": v.patientName || "—",
+        "Chuyên Gia": v.staffName || "—",
+        "Khung Giờ": v.time || "—",
+        "Dịch Vụ": v.type || v.status || "—",
+        "Phương Thức TT": v.paymentMethod || "—",
+        "Số Tiền (VNĐ)": v.paymentAmount
+          ? parseCurrencyNumber(v.paymentAmount).toLocaleString("vi-VN")
+          : "—",
+        "Ghi Chú": v.paymentNote || "Không có",
+        "Trạng Thái lịch hẹn": v.status || "—",
+        "Trạng Thái TT": v.paymentStatus || "—",
+      }));
+      exportToExcel(
+        data,
+        `Bao-Cao-Lich-Hen-${new Date().toISOString().split("T")[0]}.xls`,
+        "BÁO CÁO VẬN HÀNH LÂM SÀNG & QUẢN LÝ LỊCH HẸN"
+      );
+      showToast(`Đã xuất ${data.length} lịch hẹn sang Excel thành công!`, "ok");
+    } catch (e: any) {
+      showToast(e?.message || "Không thể xuất báo cáo", "err");
+    }
+  };
+
+  const handleExportWord = () => {
+    try {
+      const source = allVisits.length > 0 ? allVisits : pendingVisits;
+      const data = source.map((v) => ({
+        "Mã lịch": v.id || "—",
+        "Bệnh Nhân": v.patientName || "—",
+        "Chuyên Gia": v.staffName || "—",
+        "Khung Giờ": v.time || "—",
+        "Dịch Vụ": v.type || v.status || "—",
+        "Phương Thức": v.paymentMethod || "—",
+        "Số Tiền": v.paymentAmount
+          ? parseCurrencyNumber(v.paymentAmount).toLocaleString("vi-VN") + "đ"
+          : "—",
+        "Ghi Chú": v.paymentNote || "Không có",
+        "Trạng Thái": v.status || "—",
+        "Thanh Toán": v.paymentStatus || "—",
+      }));
+      exportToWord(
+        data,
+        `Bao-Cao-Lam-Sang-${new Date().toISOString().split("T")[0]}.doc`,
+        "BÁO CÁO VẬN HÀNH LÂM SÀNG & LỊCH HẸN"
+      );
+      showToast(`Đã xuất ${data.length} lịch hẹn sang Word (.doc) thành công!`, "ok");
+    } catch (e: any) {
+      showToast(e?.message || "Không thể xuất báo cáo Word", "err");
+    }
+  };
 
   // Build chart data from real stats
   const visitData =
@@ -290,6 +360,32 @@ export default function ReportsPage() {
 
   return (
     <div className="p-10 max-w-7xl mx-auto w-full space-y-12">
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className={cn(
+              "fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl text-sm font-bold border",
+              toast.type === "ok"
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : "bg-red-50 text-red-700 border-red-200"
+            )}
+          >
+            {toast.type === "ok" ? (
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 shrink-0" />
+            )}
+            {toast.msg}
+            <button onClick={() => setToast(null)} className="ml-1 opacity-50 hover:opacity-100">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Hero Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <motion.div
@@ -317,16 +413,25 @@ export default function ReportsPage() {
             Phân tích chuyên sâu về hiệu suất đội ngũ y tế, lưu lượng bệnh nhân và các chỉ số hài lòng trong thời gian thực.
           </p>
         </motion.div>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-2.5 shrink-0">
           <Button
             variant="outline"
-            className="rounded-full px-6 border-hairline bg-white h-12 text-sm font-semibold flex items-center gap-2 shadow-sm hover:shadow-md transition-all"
+            className="rounded-full px-4 border-hairline bg-white h-11 text-xs font-semibold flex items-center gap-2 shadow-xs hover:shadow-sm transition-all cursor-pointer shrink-0"
           >
             <CalendarIcon className="w-4 h-4 text-primary" /> Hôm nay{" "}
             <ChevronDown className="w-3 h-3 opacity-50" />
           </Button>
-          <Button className="bg-action text-white rounded-full px-8 h-12 text-sm font-bold flex items-center gap-2 hover:opacity-90 shadow-lg shadow-action/10">
-            <Download className="w-4 h-4" /> Xuất báo cáo
+          <Button
+            onClick={handleExportVisits}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-5 h-11 text-xs font-bold flex items-center gap-2 shadow-md shadow-emerald-600/20 transition-all cursor-pointer shrink-0"
+          >
+            <Download className="w-4 h-4" /> Xuất Excel (.csv)
+          </Button>
+          <Button
+            onClick={handleExportWord}
+            className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-5 h-11 text-xs font-bold flex items-center gap-2 shadow-md shadow-blue-600/20 transition-all cursor-pointer shrink-0"
+          >
+            <FileText className="w-4 h-4" /> Xuất Word (.doc)
           </Button>
         </div>
       </div>
@@ -599,9 +704,38 @@ export default function ReportsPage() {
           </div>
 
           <div className="mt-8">
-            <div className="text-xs uppercase tracking-[0.2em] font-black text-slate-400 mb-4">
-              Danh sách ca chờ thanh toán
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <div className="text-xs uppercase tracking-[0.2em] font-black text-slate-400">
+                {paymentTab === "pending"
+                  ? "Danh sách ca chờ thanh toán"
+                  : "Danh sách tất cả các ca"}
+              </div>
+              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl w-fit">
+                <button
+                  onClick={() => setPaymentTab("pending")}
+                  className={cn(
+                    "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                    paymentTab === "pending"
+                      ? "bg-white text-slate-900 shadow-xs"
+                      : "text-slate-500 hover:text-slate-900"
+                  )}
+                >
+                  Ca chờ thanh toán ({pendingVisits.length})
+                </button>
+                <button
+                  onClick={() => setPaymentTab("all")}
+                  className={cn(
+                    "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                    paymentTab === "all"
+                      ? "bg-white text-slate-900 shadow-xs"
+                      : "text-slate-500 hover:text-slate-900"
+                  )}
+                >
+                  Xem tất cả ({allVisits.length})
+                </button>
+              </div>
             </div>
+
             <div className="space-y-3">
               {loading ? (
                 Array.from({ length: 3 }).map((_, idx) => (
@@ -610,35 +744,68 @@ export default function ReportsPage() {
                     className="h-20 rounded-[24px] bg-slate-100 animate-pulse"
                   />
                 ))
-              ) : pendingVisits.length > 0 ? (
-                pendingVisits.map((visit) => (
-                  <div
-                    key={visit.id}
-                    className="rounded-[28px] border border-slate-200 p-4 bg-slate-50"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-bold text-foreground">
-                          {visit.patientName}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {visit.staffName} • {visit.time}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
-                          Trạng thái
-                        </p>
-                        <p className="text-sm font-black text-slate-900">
-                          {visit.status}
-                        </p>
+              ) : (paymentTab === "pending" ? pendingVisits : allVisits).length > 0 ? (
+                (paymentTab === "pending" ? pendingVisits : allVisits).map((visit) => {
+                  const isPaid = visit.paymentStatus === "Đã thanh toán";
+                  return (
+                    <div
+                      key={visit.id}
+                      className="rounded-[28px] border border-slate-200 p-4 bg-slate-50 hover:bg-white hover:shadow-sm transition-all"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold text-foreground">
+                              {visit.patientName || "Chưa có tên BN"}
+                            </p>
+                            <span className="font-mono text-[9px] font-bold text-slate-400 bg-slate-200/60 px-2 py-0.5 rounded-md">
+                              #{visit.id?.slice(-6)}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            {visit.staffName} • {visit.time} {visit.type ? `• ${visit.type}` : ""}
+                          </p>
+                        </div>
+                        <div className="flex items-center sm:items-end justify-between sm:justify-center flex-row sm:flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider",
+                                visit.status === "Đã hủy"
+                                  ? "bg-red-100 text-red-700"
+                                  : visit.status === "Chờ duyệt"
+                                    ? "bg-amber-100 text-amber-800"
+                                    : "bg-emerald-100 text-emerald-800"
+                              )}
+                            >
+                              {visit.status}
+                            </span>
+                            <span
+                              className={cn(
+                                "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider",
+                                isPaid
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-slate-200 text-slate-600"
+                              )}
+                            >
+                              {visit.paymentStatus || "Chưa TT"}
+                            </span>
+                          </div>
+                          {visit.paymentAmount && (
+                            <p className="text-xs font-black text-slate-800 font-mono">
+                              {parseCurrencyNumber(visit.paymentAmount).toLocaleString("vi-VN")}đ
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <p className="text-center text-xs text-slate-500 uppercase tracking-[0.2em] py-12">
-                  Không có ca chờ thanh toán
+                  {paymentTab === "pending"
+                    ? "Không có ca chờ thanh toán"
+                    : "Không có ca khám nào"}
                 </p>
               )}
             </div>

@@ -5,22 +5,53 @@ import { z } from "zod";
 export async function getPatientList() {
   const patients = await db.patient.findMany({
     include: {
-      PatientStaff: true
+      PatientStaff: true,
+      Visit: {
+        orderBy: { Date: "desc" },
+      },
     },
     orderBy: { Name: "asc" },
   });
 
-  return patients.map((p) => ({
-    id: p.Id,
-    name: p.Name,
-    age: p.Age,
-    gender: p.Gender,
-    lastVisit: p.LastVisit ?? "",
-    lastVisitTime: p.LastVisitTime ?? "",
-    status: p.Status ?? "Đang điều trị",
-    summary: p.Summary ?? "",
-    assignedStaff: p.PatientStaff.map((ps) => ps.StaffId),
-  }));
+  const allVisitsWithUser = await db.visit.findMany({
+    include: { User: true },
+    orderBy: { Date: "desc" },
+  });
+
+  return patients.map((p) => {
+    let latestVisit = p.Visit && p.Visit.length > 0 ? p.Visit[0] : null;
+
+    if (!latestVisit) {
+      latestVisit = allVisitsWithUser.find(
+        (v) => (v.User && v.User.FullName === p.Name) || v.PatientId === p.Id
+      ) || null;
+    }
+
+    let derivedStatus = p.Status ?? "Chờ khám";
+    if (latestVisit) {
+      if (latestVisit.PaymentStatus === "Đã thanh toán" || latestVisit.Status === "Đã hoàn tất") {
+        derivedStatus = "Khám hoàn thành";
+      } else if (latestVisit.Status === "Đã xác nhận" || latestVisit.Status === "Đang thực hiện") {
+        derivedStatus = "Đang điều trị";
+      } else if (latestVisit.Status === "Chờ duyệt") {
+        derivedStatus = "Chờ khám";
+      } else if (latestVisit.Status === "Đã hủy") {
+        derivedStatus = "Đã hủy";
+      }
+    }
+
+    return {
+      id: p.Id,
+      name: p.Name,
+      age: p.Age,
+      gender: p.Gender,
+      lastVisit: latestVisit?.Date || p.LastVisit || "",
+      lastVisitTime: latestVisit?.Time || p.LastVisitTime || "",
+      status: derivedStatus,
+      summary: p.Summary ?? "",
+      assignedStaff: p.PatientStaff.map((ps) => ps.StaffId),
+    };
+  });
 }
 
 export async function getPatientById(id: string) {

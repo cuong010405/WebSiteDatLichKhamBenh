@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { Calendar, Clock, ChevronRight, Activity, Thermometer, Heart, Pill, ClipboardList, User, RefreshCw } from "lucide-react"
 import { visits as mockVisits } from "@/lib/mock-data"
 import { motion } from "framer-motion"
@@ -35,19 +36,23 @@ export function TodayVisits() {
         return res.json();
       })
       .then((data) => {
-        const formatted = data.map((b: any) => ({
-          ...b,
-          icon: iconMap[b.type] || Activity,
-        }));
-        // Admin thấy TẤT CẢ - kể cả Chờ duyệt
+        const formatted = data
+          .filter((b: any) => b.status !== "Đã hủy")
+          .map((b: any) => ({
+            ...b,
+            icon: iconMap[b.type] || Activity,
+          }));
+        // Admin thấy TẤT CẢ ngoại trừ ca đã hủy
         setVisits(formatted);
       })
       .catch((err) => {
         console.warn("Không kết nối được API, sử dụng dữ liệu mẫu:", err);
-        const formattedMock = mockVisits.map((v: any) => ({
-          ...v,
-          icon: iconMap[v.type] || Activity,
-        }));
+        const formattedMock = mockVisits
+          .filter((v: any) => v.status !== "Đã hủy")
+          .map((v: any) => ({
+            ...v,
+            icon: iconMap[v.type] || Activity,
+          }));
         setVisits(formattedMock);
       })
       .finally(() => setLoading(false));
@@ -94,7 +99,7 @@ export function TodayVisits() {
               <p className="text-sm font-bold text-slate-400">Không có lịch khám nào</p>
             </div>
           ) : (
-            visits.map((visit, i) => {
+            visits.slice(0, 3).map((visit, i) => {
               const Icon = visit.icon
               const isOngoing = visit.status === "Đang thực hiện"
               const isPending = visit.status === "Chờ duyệt"
@@ -189,9 +194,11 @@ export function TodayVisits() {
           )}
         </div>
         <div className="p-5 bg-surface-secondary/20 border-t border-hairline">
-          <Button variant="outline" className="w-full text-xs font-bold text-primary-strong h-12 hover:bg-white rounded-[20px] transition-all border-hairline shadow-sm flex items-center justify-center gap-2 group">
-            Xem lịch trình đầy đủ <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </Button>
+          <Link href="/admin/schedule" className="block w-full">
+            <Button variant="outline" className="w-full text-xs font-bold text-primary-strong h-12 hover:bg-white rounded-[20px] transition-all border-hairline shadow-sm flex items-center justify-center gap-2 group cursor-pointer">
+              Xem lịch trình đầy đủ <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
         </div>
       </div>
     </section>
