@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 import { API_URL, authFetch } from "@/lib/api";
 import { exportToExcel, exportToWord } from "@/lib/utils/export";
 import { formatCurrencyInput, parseCurrencyNumber } from "@/lib/utils/format";
+import { Pagination } from "@/components/ui/pagination";
 
 const DEPT_COLORS = ["#18BE66", "#16A34A", "#18181B", "#E4E4E7"];
 
@@ -204,6 +205,8 @@ export default function ReportsPage() {
   const [pendingVisits, setPendingVisits] = React.useState<PaymentVisit[]>([]);
   const [allVisits, setAllVisits] = React.useState<PaymentVisit[]>([]);
   const [paymentTab, setPaymentTab] = React.useState<"pending" | "all">("pending");
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const VISITS_PER_PAGE = 4;
   const [selectedPaymentVisitId, setSelectedPaymentVisitId] =
     React.useState<string>("");
   const [paymentMethod, setPaymentMethod] = React.useState("Tiền mặt");
@@ -712,7 +715,10 @@ export default function ReportsPage() {
               </div>
               <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl w-fit">
                 <button
-                  onClick={() => setPaymentTab("pending")}
+                  onClick={() => {
+                    setPaymentTab("pending");
+                    setCurrentPage(1);
+                  }}
                   className={cn(
                     "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
                     paymentTab === "pending"
@@ -723,7 +729,10 @@ export default function ReportsPage() {
                   Ca chờ thanh toán ({pendingVisits.length})
                 </button>
                 <button
-                  onClick={() => setPaymentTab("all")}
+                  onClick={() => {
+                    setPaymentTab("all");
+                    setCurrentPage(1);
+                  }}
                   className={cn(
                     "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
                     paymentTab === "all"
@@ -736,79 +745,102 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            <div className="space-y-3">
-              {loading ? (
-                Array.from({ length: 3 }).map((_, idx) => (
-                  <div
-                    key={idx}
-                    className="h-20 rounded-[24px] bg-slate-100 animate-pulse"
-                  />
-                ))
-              ) : (paymentTab === "pending" ? pendingVisits : allVisits).length > 0 ? (
-                (paymentTab === "pending" ? pendingVisits : allVisits).map((visit) => {
-                  const isPaid = visit.paymentStatus === "Đã thanh toán";
-                  return (
-                    <div
-                      key={visit.id}
-                      className="rounded-[28px] border border-slate-200 p-4 bg-slate-50 hover:bg-white hover:shadow-sm transition-all"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-bold text-foreground">
-                              {visit.patientName || "Chưa có tên BN"}
-                            </p>
-                            <span className="font-mono text-[9px] font-bold text-slate-400 bg-slate-200/60 px-2 py-0.5 rounded-md">
-                              #{visit.id?.slice(-6)}
-                            </span>
+            {(() => {
+              const activeList = paymentTab === "pending" ? pendingVisits : allVisits;
+              const totalPages = Math.ceil(activeList.length / VISITS_PER_PAGE) || 1;
+              const paginatedVisits = activeList.slice(
+                (currentPage - 1) * VISITS_PER_PAGE,
+                currentPage * VISITS_PER_PAGE
+              );
+
+              return (
+                <>
+                  <div className="space-y-3">
+                    {loading ? (
+                      Array.from({ length: 4 }).map((_, idx) => (
+                        <div
+                          key={idx}
+                          className="h-20 rounded-[24px] bg-slate-100 animate-pulse"
+                        />
+                      ))
+                    ) : paginatedVisits.length > 0 ? (
+                      paginatedVisits.map((visit) => {
+                        const isPaid = visit.paymentStatus === "Đã thanh toán";
+                        return (
+                          <div
+                            key={visit.id}
+                            className="rounded-[28px] border border-slate-200 p-4 bg-slate-50 hover:bg-white hover:shadow-sm transition-all"
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-bold text-foreground">
+                                    {visit.patientName || "Chưa có tên BN"}
+                                  </p>
+                                  <span className="font-mono text-[9px] font-bold text-slate-400 bg-slate-200/60 px-2 py-0.5 rounded-md">
+                                    #{visit.id?.slice(-6)}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">
+                                  {visit.staffName} • {visit.time} {visit.type ? `• ${visit.type}` : ""}
+                                </p>
+                              </div>
+                              <div className="flex items-center sm:items-end justify-between sm:justify-center flex-row sm:flex-col gap-2">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={cn(
+                                      "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider",
+                                      visit.status === "Đã hủy"
+                                        ? "bg-red-100 text-red-700"
+                                        : visit.status === "Chờ duyệt"
+                                          ? "bg-amber-100 text-amber-800"
+                                          : "bg-emerald-100 text-emerald-800"
+                                    )}
+                                  >
+                                    {visit.status}
+                                  </span>
+                                  <span
+                                    className={cn(
+                                      "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider",
+                                      isPaid
+                                        ? "bg-blue-100 text-blue-800"
+                                        : "bg-slate-200 text-slate-600"
+                                    )}
+                                  >
+                                    {visit.paymentStatus || "Chưa TT"}
+                                  </span>
+                                </div>
+                                {visit.paymentAmount && (
+                                  <p className="text-xs font-black text-slate-800 font-mono">
+                                    {parseCurrencyNumber(visit.paymentAmount).toLocaleString("vi-VN")}đ
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
-                            {visit.staffName} • {visit.time} {visit.type ? `• ${visit.type}` : ""}
-                          </p>
-                        </div>
-                        <div className="flex items-center sm:items-end justify-between sm:justify-center flex-row sm:flex-col gap-2">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={cn(
-                                "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider",
-                                visit.status === "Đã hủy"
-                                  ? "bg-red-100 text-red-700"
-                                  : visit.status === "Chờ duyệt"
-                                    ? "bg-amber-100 text-amber-800"
-                                    : "bg-emerald-100 text-emerald-800"
-                              )}
-                            >
-                              {visit.status}
-                            </span>
-                            <span
-                              className={cn(
-                                "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider",
-                                isPaid
-                                  ? "bg-blue-100 text-blue-800"
-                                  : "bg-slate-200 text-slate-600"
-                              )}
-                            >
-                              {visit.paymentStatus || "Chưa TT"}
-                            </span>
-                          </div>
-                          {visit.paymentAmount && (
-                            <p className="text-xs font-black text-slate-800 font-mono">
-                              {parseCurrencyNumber(visit.paymentAmount).toLocaleString("vi-VN")}đ
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-center text-xs text-slate-500 uppercase tracking-[0.2em] py-12">
+                        {paymentTab === "pending"
+                          ? "Không có ca chờ thanh toán"
+                          : "Không có ca khám nào"}
+                      </p>
+                    )}
+                  </div>
+
+                  {activeList.length > VISITS_PER_PAGE && (
+                    <div className="mt-4 flex justify-center">
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={(page) => setCurrentPage(page)}
+                      />
                     </div>
-                  );
-                })
-              ) : (
-                <p className="text-center text-xs text-slate-500 uppercase tracking-[0.2em] py-12">
-                  {paymentTab === "pending"
-                    ? "Không có ca chờ thanh toán"
-                    : "Không có ca khám nào"}
-                </p>
-              )}
-            </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </Card>
       </div>

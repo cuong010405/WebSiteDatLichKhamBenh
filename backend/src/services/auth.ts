@@ -71,6 +71,8 @@ export async function registerUser(data: {
       role: user.Role,
       age: user.Age,
       gender: user.Gender,
+      address: user.Address,
+      medicalHistory: user.MedicalHistory,
     },
   };
 }
@@ -112,6 +114,8 @@ export async function loginUser(data: { email: string; password: string }) {
       role: user.Role,
       age: user.Age,
       gender: user.Gender,
+      address: user.Address,
+      medicalHistory: user.MedicalHistory,
     },
   };
 }

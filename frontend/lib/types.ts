@@ -13,6 +13,17 @@ export type VisitStatus =
   | "Đã hủy"
   | "Chờ duyệt";
 
+export interface StaffLicense {
+  id: string;
+  staffId: string;
+  licenseNumber: string;
+  issuedBy: string;
+  issuedDate: string;
+  expiryDate?: string | null;
+  specialty?: string | null;
+  note?: string | null;
+}
+
 export interface Staff {
   id: string;
   name: string;
@@ -25,6 +36,7 @@ export interface Staff {
   avatar: string;
   available: boolean;
   isNew?: boolean;
+  licenses?: StaffLicense[];
 }
 
 export interface Patient {
@@ -42,22 +54,28 @@ export interface Patient {
 export interface Visit {
   id: string;
   type: string;
-  patientId: string;
-  patientName: string;
+  patientId?: string | null;
+  patientName?: string | null;
   staffId: string;
-  staffName?: string;
-  userId?: string;
-  userName?: string;
-  date?: string;
+  staffName?: string | null;
+  userId?: string | null;
+  userName?: string | null;
+  userPhone?: string | null;
+  userEmail?: string | null;
+  userAge?: number | null;
+  userGender?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  date?: string | null;
   time: string;
-  startTime?: string;
-  endTime?: string;
+  startTime?: string | null;
+  endTime?: string | null;
   duration: string;
   status: VisitStatus;
-  paymentMethod?: string;
-  paymentAmount?: string;
-  paymentNote?: string;
-  paymentStatus?: string;
+  paymentMethod?: string | null;
+  paymentAmount?: string | null;
+  paymentNote?: string | null;
+  paymentStatus?: string | null;
   icon?: ElementType;
 }
 

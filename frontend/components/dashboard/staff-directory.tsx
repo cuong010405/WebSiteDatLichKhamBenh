@@ -39,15 +39,19 @@ export function StaffDirectory() {
   React.useEffect(() => {
     fetch(`${API_URL}/staff`)
       .then((res) => {
-        if (!res.ok) throw new Error("API error")
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
         return res.json()
       })
       .then((data) => {
-        setStaff(data)
+        if (Array.isArray(data) && data.length > 0) {
+          setStaff(data)
+        } else {
+          setStaff(mockStaff as any[])
+        }
         setLoading(false)
       })
-      .catch((err) => {
-        console.warn("Không kết nối được API, dùng dữ liệu mẫu:", err)
+      .catch(() => {
+        // Backend chưa sẵn sàng, dùng dữ liệu mẫu
         setStaff(mockStaff as any[])
         setLoading(false)
       })

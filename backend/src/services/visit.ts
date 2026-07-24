@@ -4,12 +4,21 @@ import { visitSchema } from "../validations/schemas";
 import { z } from "zod";
 
 function mapVisitToUI(v: any) {
+  const notesContent = v.Notes || (v.PaymentNote?.startsWith("Lý do hủy:") ? "" : v.PaymentNote) || "";
+  const addressContent = v.Address || v.User?.Address || "Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM";
+
   return {
     id: v.Id,
     type: v.Type ?? "",
     patientId: v.PatientId,
     userId: v.UserId,
     userName: v.User?.FullName ?? "",
+    userPhone: v.User?.Phone ?? "",
+    userEmail: v.User?.Email ?? "",
+    userAge: v.User?.Age ?? v.Patient?.Age ?? null,
+    userGender: v.User?.Gender ?? v.Patient?.Gender ?? "",
+    address: addressContent,
+    notes: notesContent,
     staffId: v.StaffId,
     date: v.Date ?? "",
     time: v.Time ?? "",
@@ -37,17 +46,7 @@ async function ensurePatientForVisit(visitId: string) {
 
   if (!visit) return;
 
-  // Determine patient status based on visit state
-  let patientStatus = "Chờ khám";
-  if (visit.PaymentStatus === "Đã thanh toán" || visit.Status === "Đã hoàn tất") {
-    patientStatus = "Khám hoàn thành";
-  } else if (visit.Status === "Đã xác nhận" || visit.Status === "Đang thực hiện") {
-    patientStatus = "Đang điều trị";
-  } else if (visit.Status === "Chờ duyệt") {
-    patientStatus = "Chờ khám";
-  } else if (visit.Status === "Đã hủy") {
-    patientStatus = "Đã hủy";
-  }
+  // Determine patient status – will be recalculated properly below for existing patients
 
   // Check if this User already has an associated Patient record from previous visits
   let targetPatientId = visit.PatientId;
@@ -72,10 +71,39 @@ async function ensurePatientForVisit(visitId: string) {
 
   // If we now have a PatientId (either existing or pre-linked), update their status and info
   if (targetPatientId) {
+    // Re-fetch ALL visits for this patient to pick the correct status (active > completed)
+    const allPatientVisits = await db.visit.findMany({
+      where: {
+        OR: [
+          { PatientId: targetPatientId },
+          ...(visit.UserId ? [{ UserId: visit.UserId }] : []),
+        ],
+      },
+      orderBy: [{ Date: "desc" }, { Id: "desc" }],
+    });
+
+    const activeVisit = allPatientVisits.find((v) =>
+      v.Status === "Chờ duyệt" || v.Status === "Đã xác nhận" || v.Status === "Đang thực hiện"
+    );
+    const referenceVisit = activeVisit || allPatientVisits[0] || visit;
+
+    let patientStatus = "Chờ khám";
+    if (referenceVisit.PaymentStatus === "Đã thanh toán" || referenceVisit.Status === "Đã hoàn tất") {
+      patientStatus = "Khám hoàn thành";
+    } else if (referenceVisit.Status === "Đã xác nhận" || referenceVisit.Status === "Đang thực hiện") {
+      patientStatus = "Đang điều trị";
+    } else if (referenceVisit.Status === "Chờ duyệt") {
+      patientStatus = "Chờ khám";
+    } else if (referenceVisit.Status === "Đã hủy") {
+      // All visits cancelled — only set "Đã hủy" if every visit is cancelled
+      const hasNonCancelledVisit = allPatientVisits.some((v) => v.Status !== "Đã hủy");
+      patientStatus = hasNonCancelledVisit ? "Chờ khám" : "Đã hủy";
+    }
+
     const patientUpdateData: any = {
       Status: patientStatus,
-      LastVisit: visit.Date || new Date().toLocaleDateString("vi-VN"),
-      LastVisitTime: visit.Time || new Date().toLocaleTimeString("vi-VN"),
+      LastVisit: referenceVisit.Date || visit.Date || new Date().toLocaleDateString("vi-VN"),
+      LastVisitTime: referenceVisit.Time || visit.Time || new Date().toLocaleTimeString("vi-VN"),
     };
     if (visit.User) {
       if (visit.User.FullName) patientUpdateData.Name = visit.User.FullName;
@@ -132,18 +160,46 @@ async function ensurePatientForVisit(visitId: string) {
     where: { Name: patientName },
   });
 
-  if (existingPatient) {
-    await db.patient.update({
-      where: { Id: existingPatient.Id },
-      data: {
-        Status: patientStatus,
-        LastVisit: visit.Date || existingPatient.LastVisit,
-        LastVisitTime: visit.Time || existingPatient.LastVisitTime,
+  // Helper: derive patient status from all their visits, prioritizing active visits
+  const derivePatientStatus = async (patientId: string, userId?: string | null): Promise<string> => {
+    const allVisits = await db.visit.findMany({
+      where: {
+        OR: [
+          { PatientId: patientId },
+          ...(userId ? [{ UserId: userId }] : []),
+        ],
       },
+      orderBy: [{ Date: "desc" }, { Id: "desc" }],
     });
+    const ACTIVE = ["Chờ duyệt", "Đã xác nhận", "Đang thực hiện"];
+    const activeV = allVisits.find((v) => ACTIVE.includes(v.Status || ""));
+    const ref = activeV || allVisits[0];
+    if (!ref) return "Chờ khám";
+    if (ref.Status === "Chờ duyệt") return "Chờ khám";
+    if (ref.Status === "Đã xác nhận" || ref.Status === "Đang thực hiện") return "Đang điều trị";
+    if (ref.Status === "Đã hoàn tất" || ref.PaymentStatus === "Đã thanh toán") return "Khám hoàn thành";
+    if (ref.Status === "Đã hủy") {
+      const hasOther = allVisits.some((v) => v.Status !== "Đã hủy");
+      return hasOther ? "Chờ khám" : "Đã hủy";
+    }
+    return "Chờ khám";
+  };
+
+  if (existingPatient) {
+    // Link this visit to the existing patient first
     await db.visit.update({
       where: { Id: visitId },
       data: { PatientId: existingPatient.Id },
+    });
+    // Then recalculate status from all visits
+    const resolvedStatus = await derivePatientStatus(existingPatient.Id, visit.UserId);
+    await db.patient.update({
+      where: { Id: existingPatient.Id },
+      data: {
+        Status: resolvedStatus,
+        LastVisit: visit.Date || existingPatient.LastVisit,
+        LastVisitTime: visit.Time || existingPatient.LastVisitTime,
+      },
     });
     if (visit.StaffId) {
       const link = await db.patientStaff.findFirst({
@@ -164,9 +220,19 @@ async function ensurePatientForVisit(visitId: string) {
     return;
   }
 
-  // Generate unique patient ID
+  // Generate unique patient ID for brand-new patient
   const shortId = crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase();
   const newPatientId = `BN-${shortId}`;
+
+  // Status for a brand-new patient is based solely on the current visit
+  let newPatientStatus = "Chờ khám";
+  if (visit.Status === "Đã xác nhận" || visit.Status === "Đang thực hiện") {
+    newPatientStatus = "Đang điều trị";
+  } else if (visit.Status === "Đã hoàn tất" || visit.PaymentStatus === "Đã thanh toán") {
+    newPatientStatus = "Khám hoàn thành";
+  } else if (visit.Status === "Đã hủy") {
+    newPatientStatus = "Đã hủy";
+  }
 
   await db.patient.create({
     data: {
@@ -176,7 +242,7 @@ async function ensurePatientForVisit(visitId: string) {
       Gender: patientGender,
       LastVisit: visit.Date || new Date().toLocaleDateString("vi-VN"),
       LastVisitTime: visit.Time || new Date().toLocaleTimeString("vi-VN"),
-      Status: patientStatus,
+      Status: newPatientStatus,
       Summary: patientSummary,
     },
   });
@@ -230,46 +296,56 @@ export async function syncPatientsForVisits(): Promise<number> {
   const allPatients = await db.patient.findMany({
     include: {
       Visit: {
-        orderBy: { Date: "desc" },
+        orderBy: [{ Date: "desc" }, { Id: "desc" }],
       },
     },
   });
 
   const allVisitsWithUser = await db.visit.findMany({
     include: { User: true },
-    orderBy: { Date: "desc" },
+    orderBy: [{ Date: "desc" }, { Id: "desc" }],
   });
 
   for (const patient of allPatients) {
-    let latestVisit = patient.Visit && patient.Visit.length > 0 ? patient.Visit[0] : null;
+    // Prioritize active visits over completed/cancelled ones
+    const visits = patient.Visit && patient.Visit.length > 0 ? patient.Visit : [];
 
-    if (!latestVisit) {
-      latestVisit = allVisitsWithUser.find(
+    // Find best-match visit from linked user visits if none linked
+    let allVisitsForPatient = [...visits];
+    if (allVisitsForPatient.length === 0) {
+      const fromUser = allVisitsWithUser.filter(
         (v) => (v.User && v.User.FullName === patient.Name) || v.PatientId === patient.Id
-      ) || null;
+      );
+      allVisitsForPatient = fromUser;
     }
 
-    if (latestVisit) {
-      let targetStatus = "Chờ khám";
-      if (latestVisit.PaymentStatus === "Đã thanh toán" || latestVisit.Status === "Đã hoàn tất") {
-        targetStatus = "Khám hoàn thành";
-      } else if (latestVisit.Status === "Đã xác nhận" || latestVisit.Status === "Đang thực hiện") {
-        targetStatus = "Đang điều trị";
-      } else if (latestVisit.Status === "Chờ duyệt") {
-        targetStatus = "Chờ khám";
-      } else if (latestVisit.Status === "Đã hủy") {
-        targetStatus = "Đã hủy";
-      }
+    if (allVisitsForPatient.length === 0) continue;
 
-      await db.patient.update({
-        where: { Id: patient.Id },
-        data: {
-          Status: targetStatus,
-          LastVisit: latestVisit.Date || patient.LastVisit,
-          LastVisitTime: latestVisit.Time || patient.LastVisitTime,
-        },
-      }).catch((err) => console.warn(`Lỗi cập nhật patient ${patient.Id}:`, err));
+    // Pick active visit first, then fall back to latest by date+id
+    const ACTIVE_STATUSES = ["Chờ duyệt", "Đã xác nhận", "Đang thực hiện"];
+    const activeVisit = allVisitsForPatient.find((v) => ACTIVE_STATUSES.includes(v.Status || ""));
+    const latestVisit = activeVisit || allVisitsForPatient[0];
+
+    let targetStatus = "Chờ khám";
+    if (latestVisit.Status === "Chờ duyệt") {
+      targetStatus = "Chờ khám";
+    } else if (latestVisit.Status === "Đã xác nhận" || latestVisit.Status === "Đang thực hiện") {
+      targetStatus = "Đang điều trị";
+    } else if (latestVisit.Status === "Đã hoàn tất" || latestVisit.PaymentStatus === "Đã thanh toán") {
+      targetStatus = "Khám hoàn thành";
+    } else if (latestVisit.Status === "Đã hủy") {
+      const hasNonCancelled = allVisitsForPatient.some((v) => v.Status !== "Đã hủy");
+      targetStatus = hasNonCancelled ? "Chờ khám" : "Đã hủy";
     }
+
+    await db.patient.update({
+      where: { Id: patient.Id },
+      data: {
+        Status: targetStatus,
+        LastVisit: latestVisit.Date || patient.LastVisit,
+        LastVisitTime: latestVisit.Time || patient.LastVisitTime,
+      },
+    }).catch((err) => console.warn(`Lỗi cập nhật patient ${patient.Id}:`, err));
   }
 
   return count;
@@ -303,16 +379,16 @@ export async function getVisitList(
     where,
     include: {
       Patient: {
-        select: { Name: true },
+        select: { Name: true, Age: true, Gender: true, Summary: true },
       },
       Staff: {
         select: { Name: true },
       },
       User: {
-        select: { FullName: true },
+        select: { FullName: true, Phone: true, Email: true, Address: true, Age: true, Gender: true, MedicalHistory: true },
       },
     },
-    orderBy: { Id: "asc" },
+    orderBy: { Id: "desc" },
   });
 
   return visits.map(mapVisitToUI);
@@ -323,13 +399,13 @@ export async function getVisitById(id: string) {
     where: { Id: id },
     include: {
       Patient: {
-        select: { Name: true },
+        select: { Name: true, Age: true, Gender: true, Summary: true },
       },
       Staff: {
         select: { Name: true },
       },
       User: {
-        select: { FullName: true },
+        select: { FullName: true, Phone: true, Email: true, Address: true, Age: true, Gender: true, MedicalHistory: true },
       },
     },
   });
@@ -386,14 +462,15 @@ export async function checkVisitOverlap(params: {
   }
 
   const timeStr = startTime || time || "";
-  if (!timeStr) return; // No time specified, skip overlap check
+  if (!timeStr || !staffId) return; // Skip overlap check if no time or staff specified
 
   const startNew = parseMinutes(timeStr);
   const durNew = parseDurationMinutes(duration || "1h");
   const endNew = startNew + durNew;
 
-  // Build query to fetch active visits on the same date (excluding cancelled visits)
+  // Build query to fetch active visits FOR THIS SPECIFIC STAFF MEMBER on the same date
   const where: any = {
+    StaffId: staffId,
     Status: { not: "Đã hủy" },
   };
   if (date) {
@@ -403,18 +480,10 @@ export async function checkVisitOverlap(params: {
     where.Id = { not: excludeVisitId };
   }
 
-  // Fetch relevant visits for staff or user
-  const ORs: any[] = [];
-  if (staffId) ORs.push({ StaffId: staffId });
-  if (userId) ORs.push({ UserId: userId });
-  if (ORs.length === 0) return;
-  where.OR = ORs;
-
   const existingVisits = await db.visit.findMany({
     where,
     include: {
       Staff: { select: { Name: true } },
-      User: { select: { FullName: true } },
     },
   });
 
@@ -428,17 +497,10 @@ export async function checkVisitOverlap(params: {
 
     // Check interval intersection: startNew < endEx AND startEx < endNew
     if (startNew < endEx && startEx < endNew) {
-      if (staffId && ex.StaffId === staffId) {
-        const staffName = ex.Staff?.Name || "chuyên gia";
-        throw new Error(
-          `Trùng lịch: Chuyên gia ${staffName} đã có ca trực (${exTimeStr}) trong ngày này. Vui lòng chọn khung giờ khác!`
-        );
-      }
-      if (userId && ex.UserId === userId) {
-        throw new Error(
-          `Trùng lịch: Bạn đã có một lịch khám khác (${exTimeStr}) trong ngày này. Vui lòng chọn khung giờ khác!`
-        );
-      }
+      const staffName = ex.Staff?.Name || "chuyên gia";
+      throw new Error(
+        `Trùng lịch: Chuyên gia ${staffName} đã có ca trực (${exTimeStr}) trong ngày này. Vui lòng chọn khung giờ khác!`
+      );
     }
   }
 }
@@ -495,22 +557,35 @@ export async function createVisit(data: z.infer<typeof visitSchema>) {
   }
   if (validated.paymentNote !== undefined) {
     createData.PaymentNote = validated.paymentNote;
+  } else if (validated.notes) {
+    createData.PaymentNote = validated.notes;
   }
   if (validated.paymentStatus !== undefined) {
     createData.PaymentStatus = validated.paymentStatus;
+  }
+
+  if (validated.userId && validated.address) {
+    try {
+      await db.user.update({
+        where: { Id: validated.userId },
+        data: { Address: validated.address.trim() },
+      });
+    } catch (uErr) {
+      console.warn("Lỗi cập nhật User Address trong createVisit:", uErr);
+    }
   }
 
   const created = await db.visit.create({
     data: createData,
     include: {
       Patient: {
-        select: { Name: true },
+        select: { Name: true, Age: true, Gender: true, Summary: true },
       },
       Staff: {
         select: { Name: true },
       },
       User: {
-        select: { FullName: true },
+        select: { FullName: true, Phone: true, Email: true, Address: true, Age: true, Gender: true, MedicalHistory: true },
       },
     },
   });
@@ -518,9 +593,9 @@ export async function createVisit(data: z.infer<typeof visitSchema>) {
   const refreshed = await db.visit.findUnique({
     where: { Id: created.Id },
     include: {
-      Patient: { select: { Name: true } },
+      Patient: { select: { Name: true, Age: true, Gender: true, Summary: true } },
       Staff: { select: { Name: true } },
-      User: { select: { FullName: true } },
+      User: { select: { FullName: true, Phone: true, Email: true, Address: true, Age: true, Gender: true, MedicalHistory: true } },
     },
   });
   return mapVisitToUI(refreshed);
@@ -592,13 +667,13 @@ export async function updateVisit(
     data: dbData,
     include: {
       Patient: {
-        select: { Name: true },
+        select: { Name: true, Age: true, Gender: true, Summary: true },
       },
       Staff: {
         select: { Name: true },
       },
       User: {
-        select: { FullName: true },
+        select: { FullName: true, Phone: true, Email: true, Address: true, Age: true, Gender: true, MedicalHistory: true },
       },
     },
   });
@@ -608,9 +683,9 @@ export async function updateVisit(
   const refreshed = await db.visit.findUnique({
     where: { Id: updated.Id },
     include: {
-      Patient: { select: { Name: true } },
+      Patient: { select: { Name: true, Age: true, Gender: true, Summary: true } },
       Staff: { select: { Name: true } },
-      User: { select: { FullName: true } },
+      User: { select: { FullName: true, Phone: true, Email: true, Address: true, Age: true, Gender: true, MedicalHistory: true } },
     },
   });
   return mapVisitToUI(refreshed);

@@ -15,6 +15,9 @@ import {
   Trash2,
   X,
   AlertTriangle,
+  MapPin,
+  FileText,
+  Phone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,7 +44,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Visit, VisitStatus, Staff, Patient } from "@/lib/types";
 import { API_URL, authFetch } from "@/lib/api";
 import { useLoading } from "@/lib/loading-context";
-import { formatVietnameseDate } from "@/lib/utils/format";
+import { formatVietnameseDate, parseCurrencyNumber } from "@/lib/utils/format";
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8);
 
@@ -80,6 +83,22 @@ function isOverlapping(
   return start1 < end2 && start2 < end1;
 }
 
+// Flexible helper to match visits to staff members by ID or Name
+function isStaffMatch(person: Staff, staffId?: string, staffName?: string): boolean {
+  if (!person) return false;
+  const pId = String(person.id || "").trim().toLowerCase();
+  const pName = String(person.name || "").trim().toLowerCase();
+
+  const sId = String(staffId || "").trim().toLowerCase();
+  const sName = String(staffName || "").trim().toLowerCase();
+
+  if (sId && pId && sId === pId) return true;
+  if (sName && pName && sName === pName) return true;
+  if (sId && pName && sId === pName) return true;
+
+  return false;
+}
+
 const DEFAULT_VISIT_TYPES = [
   "Kiểm tra sức khỏe định kỳ",
   "Vật lý trị liệu",
@@ -95,6 +114,8 @@ const DURATION_OPTIONS = [
   { value: "1h", label: "1 Giờ" },
   { value: "1.5h", label: "1.5 Giờ" },
   { value: "2h", label: "2 Giờ" },
+  { value: "2.5h", label: "2.5 Giờ" },
+  { value: "3h", label: "3 Giờ" },
 ];
 
 interface SessionFormDialogProps {
@@ -108,6 +129,7 @@ interface SessionFormDialogProps {
   patientList: Patient[];
   allVisits: Visit[];
   visitTypes?: string[];
+  selectedDate?: string;
 }
 
 function SessionFormDialog({
@@ -121,6 +143,7 @@ function SessionFormDialog({
   patientList,
   allVisits,
   visitTypes = DEFAULT_VISIT_TYPES,
+  selectedDate,
 }: SessionFormDialogProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
@@ -137,14 +160,21 @@ function SessionFormDialog({
 
   React.useEffect(() => {
     if (open) {
-      setStaffId(visit?.staffId ?? "");
-      setPatientId(visit?.patientId ?? "");
+      const matchedStaff = staffList.find((s) => isStaffMatch(s, visit?.staffId, (visit as any)?.staffName));
+      setStaffId(matchedStaff?.id ?? visit?.staffId ?? "");
+
+      const matchedPatient = patientList.find(
+        (p) => String(p.id).toLowerCase() === String(visit?.patientId).toLowerCase() ||
+               p.name.toLowerCase() === visit?.patientName?.toLowerCase()
+      );
+      setPatientId(matchedPatient?.id ?? visit?.patientId ?? "");
+
       setStartTime(visit?.startTime ?? "08:00");
       setDuration(visit?.duration ?? "1h");
       setVisitType(visit?.type ?? "");
       setErrorMsg("");
     }
-  }, [open, visit]);
+  }, [open, visit, staffList, patientList]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,11 +194,12 @@ function SessionFormDialog({
       return;
     }
 
-    // 2. Overlap Check for the same staff member
+    // 2. Overlap Check for the same staff member on the same date
     const hasOverlap = allVisits.some(
       (v) =>
         v.id !== visit?.id &&
         v.staffId === staffId &&
+        (!selectedDate || !v.date || v.date === selectedDate) &&
         isOverlapping(
           { startTime: v.startTime || "08:00", duration: v.duration },
           { startTime, duration },
@@ -289,7 +320,11 @@ function SessionFormDialog({
                   required
                 >
                   <SelectTrigger className="w-full rounded-xl border border-slate-200 h-11 min-h-[44px] max-h-[44px] bg-white font-bold text-xs shadow-none text-slate-800 transition-all">
-                    <SelectValue placeholder="Chọn nhân viên..." />
+                    <span className="truncate">
+                      {staffList.find((s) => isStaffMatch(s, staffId, (visit as any)?.staffName))?.name ||
+                        (visit as any)?.staffName ||
+                        "Chọn nhân viên..."}
+                    </span>
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
                     {staffList.map((s) => {
@@ -318,7 +353,11 @@ function SessionFormDialog({
                   required
                 >
                   <SelectTrigger className="w-full rounded-xl border border-slate-200 h-11 min-h-[44px] max-h-[44px] bg-white font-bold text-xs shadow-none text-slate-800 transition-all">
-                    <SelectValue placeholder="Chọn bệnh nhân..." />
+                    <span className="truncate">
+                      {patientList.find((p) => String(p.id).toLowerCase() === String(patientId).toLowerCase() || p.name.toLowerCase() === visit?.patientName?.toLowerCase())?.name ||
+                        visit?.patientName ||
+                        "Chọn bệnh nhân..."}
+                    </span>
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
                     {patientList.map((p) => (
@@ -490,9 +529,31 @@ function ApproveVisitsDialog({
 }: {
   pendingVisits: Visit[];
   onApprove: (id: string) => void;
-  onReject: (id: string) => void;
+  onReject: (id: string, reason?: string) => void;
   staffList: Staff[];
 }) {
+  const [rejectingVisitId, setRejectingVisitId] = React.useState<string | null>(null);
+  const [selectedReason, setSelectedReason] = React.useState("Lịch làm việc của chuyên gia bận / quá tải ca trực");
+  const [customReason, setCustomReason] = React.useState("");
+
+  const PRESET_REASONS = [
+    "Lịch làm việc của chuyên gia bận / quá tải ca trực",
+    "Khung giờ yêu cầu trùng với ca khám khác",
+    "Thông tin bệnh nhân chưa đầy đủ hoặc không hợp lệ",
+    "Dịch vụ không đáp ứng tại thời điểm này",
+    "Khác (Tự nhập lý do bên dưới)",
+  ];
+
+  const handleConfirmReject = (id: string) => {
+    const finalReason =
+      selectedReason === "Khác (Tự nhập lý do bên dưới)"
+        ? customReason.trim() || "Phòng khám chưa sắp xếp được lịch phù hợp"
+        : selectedReason;
+    onReject(id, finalReason);
+    setRejectingVisitId(null);
+    setCustomReason("");
+  };
+
   return (
     <Dialog>
       <DialogTrigger
@@ -538,56 +599,120 @@ function ApproveVisitsDialog({
               </DialogDescription>
             </div>
           </DialogHeader>
-          <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+          <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
             {pendingVisits.length > 0 ? (
               pendingVisits.map((visit) => (
-                <motion.div
-                  key={visit.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="p-4 bg-amber-50/60 rounded-2xl border border-amber-100/80 space-y-3"
-                >
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="flex-1 text-left min-w-0">
-                      <span className="font-mono text-[8px] font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-200">
-                        #{visit.id}
-                      </span>
-                      <h4 className="font-black text-xs uppercase text-slate-800 leading-none mt-2 truncate">
-                        {visit.type}
-                      </h4>
-                      <p className="text-[10px] text-slate-500 font-bold mt-1">
-                        BN: {visit.patientName}
-                      </p>
-                      <p className="text-[10px] text-slate-500 font-bold mt-1">
-                        KH: {visit.userName || "Khách"}
-                      </p>
-                      <p className="text-[10px] text-indigo-600 font-black uppercase tracking-wider mt-0.5">
-                        CG:{" "}
-                        {staffList.find((s) => s.id === visit.staffId)?.name ||
-                          "Chuyên gia"}
-                      </p>
+                <div key={visit.id}>
+                  {rejectingVisitId === visit.id ? (
+                    <div className="p-4 bg-rose-50 rounded-2xl border border-rose-200 space-y-3 text-left">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-rose-800 uppercase tracking-wider">
+                          Chọn lý do từ chối #{visit.id}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setRejectingVisitId(null)}
+                          className="text-rose-400 hover:text-rose-600 text-xs font-bold cursor-pointer"
+                        >
+                          ✕ Hủy
+                        </button>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {PRESET_REASONS.map((r) => (
+                          <label
+                            key={r}
+                            className={cn(
+                              "flex items-center gap-2.5 p-2 rounded-xl border text-[11px] font-bold cursor-pointer transition-all",
+                              selectedReason === r
+                                ? "bg-white border-rose-400 text-rose-900 shadow-xs"
+                                : "bg-white/60 border-rose-100 text-slate-600 hover:bg-white"
+                            )}
+                          >
+                            <input
+                              type="radio"
+                              name={`reason-${visit.id}`}
+                              checked={selectedReason === r}
+                              onChange={() => setSelectedReason(r)}
+                              className="accent-rose-600 w-3.5 h-3.5 cursor-pointer"
+                            />
+                            <span>{r}</span>
+                          </label>
+                        ))}
+                      </div>
+
+                      {selectedReason === "Khác (Tự nhập lý do bên dưới)" && (
+                        <Input
+                          value={customReason}
+                          onChange={(e) => setCustomReason(e.target.value)}
+                          placeholder="Nhập lý do cụ thể gửi bệnh nhân..."
+                          className="text-xs bg-white border-rose-200 h-9 rounded-xl focus:ring-rose-400"
+                        />
+                      )}
+
+                      <div className="flex gap-2 pt-1">
+                        <Button
+                          onClick={() => handleConfirmReject(visit.id)}
+                          className="w-full bg-rose-600 hover:bg-rose-700 text-white text-[9px] font-black uppercase tracking-widest rounded-xl h-9 shadow-sm"
+                        >
+                          Xác nhận từ chối
+                        </Button>
+                      </div>
                     </div>
-                    <span className="text-[10px] font-mono font-black text-slate-500 bg-white border border-slate-200 px-2 py-1 rounded-lg shrink-0">
-                      {visit.time}
-                    </span>
-                  </div>
-                  <div className="flex gap-2 pt-1 border-t border-amber-100">
-                    <Button
-                      onClick={() => onApprove(visit.id)}
-                      className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-[9px] font-black uppercase tracking-widest rounded-xl h-9 shadow-sm"
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="p-4 bg-amber-50/60 rounded-2xl border border-amber-100/80 space-y-3"
                     >
-                      <CheckCircle2 className="w-3 h-3 mr-1.5" /> Phê duyệt
-                    </Button>
-                    <Button
-                      onClick={() => onReject(visit.id)}
-                      variant="outline"
-                      className="flex-1 text-rose-500 border-rose-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-[9px] font-black uppercase tracking-widest rounded-xl h-9 shadow-none"
-                    >
-                      <X className="w-3 h-3 mr-1.5" /> Từ chối
-                    </Button>
-                  </div>
-                </motion.div>
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="flex-1 text-left min-w-0">
+                          <span className="font-mono text-[8px] font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-200">
+                            #{visit.id}
+                          </span>
+                          <h4 className="font-black text-xs uppercase text-slate-800 leading-none mt-2 truncate">
+                            {visit.type}
+                          </h4>
+                          <p className="text-[10px] text-slate-500 font-bold mt-1">
+                            BN: {visit.patientName}
+                          </p>
+                          <p className="text-[10px] text-slate-500 font-bold mt-1">
+                            KH: {visit.userName || "Khách"}
+                          </p>
+                          <p className="text-[10px] text-indigo-600 font-black uppercase tracking-wider mt-0.5">
+                            CG:{" "}
+                            {staffList.find((s) => isStaffMatch(s, visit.staffId, (visit as any).staffName))?.name ||
+                              (visit as any).staffName ||
+                              "Chuyên gia"}
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-mono font-black text-slate-500 bg-white border border-slate-200 px-2 py-1 rounded-lg shrink-0">
+                          {visit.time}
+                        </span>
+                      </div>
+                      <div className="flex gap-2 pt-1 border-t border-amber-100">
+                        <Button
+                          onClick={() => onApprove(visit.id)}
+                          className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-[9px] font-black uppercase tracking-widest rounded-xl h-9 shadow-sm"
+                        >
+                          <CheckCircle2 className="w-3 h-3 mr-1.5" /> Phê duyệt
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            setRejectingVisitId(visit.id);
+                            setSelectedReason("Lịch làm việc của chuyên gia bận / quá tải ca trực");
+                            setCustomReason("");
+                          }}
+                          variant="outline"
+                          className="flex-1 text-rose-500 border-rose-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-[9px] font-black uppercase tracking-widest rounded-xl h-9 shadow-none"
+                        >
+                          <X className="w-3 h-3 mr-1.5" /> Từ chối
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
               ))
             ) : (
               <div className="text-center py-12 space-y-3 bg-white">
@@ -820,21 +945,23 @@ function SessionCard({
   staffName,
   onEdit,
   onDelete,
+  onStatusChange,
   staffList,
   patientList,
   allVisits,
   visitTypes = DEFAULT_VISIT_TYPES,
-  isRecentlyPaid = false,
+  selectedDate,
 }: {
   visit: Visit;
   staffName?: string;
   onEdit: (v: Visit) => void;
   onDelete: (id: string) => void;
+  onStatusChange?: (id: string, status: VisitStatus) => void;
   staffList: Staff[];
   patientList: Patient[];
   allVisits: Visit[];
   visitTypes?: string[];
-  isRecentlyPaid?: boolean;
+  selectedDate?: string;
 }) {
   const left = getPositionPercent(visit.startTime || "08:00");
   const width = getWidthPercent(visit.duration);
@@ -842,9 +969,7 @@ function SessionCard({
   const isPending = visit.status === "Chờ duyệt";
   const isConfirmed = visit.status === "Đã xác nhận";
   const isCompleted = visit.status === "Đã hoàn tất";
-  const statusColor = isRecentlyPaid
-    ? "bg-emerald-500 text-white"
-    : isOngoing
+  const statusColor = isOngoing
       ? "bg-primary text-white"
       : isPending
         ? "bg-slate-100 text-slate-500"
@@ -934,7 +1059,7 @@ function SessionCard({
                       statusColor,
                     )}
                   >
-                    {isRecentlyPaid ? "ĐÃ THANH TOÁN" : visit.status}
+                    {visit.status}
                   </span>
                 </div>
                 <p className="text-[9px] text-on-surface-tertiary font-bold mt-1.5 uppercase tracking-wider">
@@ -968,22 +1093,7 @@ function SessionCard({
                     </p>
                   </div>
                 </div>
-                {/* Người đặt qua app */}
-                {visit.userId && (
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6 h-6 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0">
-                      <svg className="w-3 h-3 text-indigo-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <path d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-[8px] text-indigo-400 font-black uppercase tracking-widest">📱 Đặt qua app</p>
-                      <p className="text-[12px] font-black text-indigo-600 leading-tight">
-                        {visit.userName || "Người dùng"}
-                      </p>
-                    </div>
-                  </div>
-                )}
+
                 <div className="flex items-center gap-2.5">
                   <div className="w-6 h-6 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
                     <svg
@@ -1036,6 +1146,52 @@ function SessionCard({
                     </div>
                   </div>
                 )}
+                {/* 📍 Địa chỉ khám tại nhà */}
+                <div className="flex items-start gap-2.5 pt-1">
+                  <div className="w-6 h-6 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                    <MapPin className="w-3 h-3 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-[8px] text-blue-500 font-black uppercase tracking-widest">
+                      📍 Địa chỉ khám tại nhà
+                    </p>
+                    <p className="text-[11px] font-bold text-slate-800 leading-tight">
+                      {(visit as any).address || "Chưa cập nhật địa chỉ"}
+                    </p>
+                  </div>
+                </div>
+                {/* 📞 Số điện thoại */}
+                {(visit as any).userPhone && (
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6 h-6 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+                      <Phone className="w-3 h-3 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="text-[8px] text-emerald-600 font-black uppercase tracking-widest">
+                        📞 Số điện thoại
+                      </p>
+                      <p className="text-[11px] font-bold text-slate-800 leading-tight">
+                        {(visit as any).userPhone}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {/* 📝 Mô tả triệu chứng / Ghi chú */}
+                {((visit as any).notes || (visit.paymentNote && !visit.paymentNote.startsWith("Lý do hủy:"))) && (
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-6 h-6 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <FileText className="w-3 h-3 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-[8px] text-amber-600 font-black uppercase tracking-widest">
+                        📝 Triệu chứng / Ghi chú
+                      </p>
+                      <p className="text-[11px] font-semibold text-slate-700 leading-tight">
+                        {(visit as any).notes || visit.paymentNote}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
               {isOngoing && (
                 <div className="mt-3 pt-3 border-t border-slate-100">
@@ -1061,17 +1217,17 @@ function SessionCard({
                   </div>
                 </div>
               )}
-              {isRecentlyPaid && (
+              {isCompleted && (
                 <div className="mt-3 pt-3 border-t border-emerald-200 bg-emerald-50 -mx-4 -mb-4 px-4 pb-3 rounded-b-xl">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     <div>
                       <p className="text-[8px] font-black text-emerald-700 uppercase tracking-widest">
-                        Đã thanh toán
+                        Đã hoàn tất
                       </p>
                       {visit.paymentAmount && (
                         <p className="text-[11px] font-black text-emerald-800">
-                          {parseFloat(visit.paymentAmount).toLocaleString("vi-VN")}đ
+                          {parseCurrencyNumber(visit.paymentAmount).toLocaleString("vi-VN")}đ
                           {visit.paymentMethod && (
                             <span className="text-[9px] font-bold text-emerald-600 ml-1">
                               ({visit.paymentMethod})
@@ -1083,29 +1239,44 @@ function SessionCard({
                   </div>
                 </div>
               )}
-              <div className="mt-3 pt-3 border-t border-slate-100 flex gap-2">
-                <Button
-                  onClick={() => {
-                    setHovered(false);
-                    setEditOpen(true);
-                  }}
-                  size="sm"
-                  variant="outline"
-                  className="flex-1 h-8 text-[9px] font-black uppercase tracking-widest rounded-xl border-blue-100 text-blue-600 hover:bg-blue-50 hover:border-blue-200"
-                >
-                  <Pencil className="w-3 h-3 mr-1" /> Sửa
-                </Button>
-                <Button
-                  onClick={() => {
-                    setHovered(false);
-                    setDeleteOpen(true);
-                  }}
-                  size="sm"
-                  variant="outline"
-                  className="flex-1 h-8 text-[9px] font-black uppercase tracking-widest rounded-xl border-red-100 text-red-500 hover:bg-red-50 hover:border-red-200"
-                >
-                  <Trash2 className="w-3 h-3 mr-1" /> Xóa
-                </Button>
+              {/* Status transition buttons */}
+              {isConfirmed && onStatusChange && (
+                <div className="mt-3 pt-3 border-t border-blue-100">
+                  <Button
+                    onClick={() => {
+                      setHovered(false);
+                      onStatusChange(visit.id, "Đã hoàn tất" as VisitStatus);
+                    }}
+                    size="sm"
+                    className="w-full h-8 text-[9px] font-black uppercase tracking-widest rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-95 shadow-sm"
+                  >
+                    <CheckCircle2 className="w-3 h-3 mr-1" /> Hoàn thành khám
+                  </Button>
+                </div>
+              )}
+              <div className="mt-3 pt-3 border-t border-slate-100">
+                {!isCompleted ? (
+                  <Button
+                    onClick={() => {
+                      setHovered(false);
+                      setEditOpen(true);
+                    }}
+                    size="sm"
+                    variant="outline"
+                    className="w-full h-8 text-[9px] font-black uppercase tracking-widest rounded-xl border-blue-100 text-blue-600 hover:bg-blue-50 hover:border-blue-200"
+                  >
+                    <Pencil className="w-3 h-3 mr-1" /> Sửa ca trực
+                  </Button>
+                ) : (
+                  <Button
+                    disabled
+                    size="sm"
+                    variant="outline"
+                    className="w-full h-8 text-[9px] font-black uppercase tracking-widest rounded-xl border-slate-200 text-slate-400 bg-slate-50 cursor-not-allowed opacity-60"
+                  >
+                    <Pencil className="w-3 h-3 mr-1" /> Sửa (Đã hoàn tất)
+                  </Button>
+                )}
               </div>
             </div>
             <div className="relative h-2" style={{ marginTop: "-1px" }}>
@@ -1131,17 +1302,15 @@ function SessionCard({
         onMouseLeave={handleMouseLeave}
         className={cn(
           "absolute h-[80px] top-1.5 rounded-[12px] p-2.5 flex flex-col justify-between cursor-pointer border shadow-sm text-left overflow-hidden",
-          isRecentlyPaid
-            ? "bg-emerald-50 border-emerald-400 text-emerald-800 ring-4 ring-emerald-100"
-            : isOngoing
-              ? "bg-white border-primary/40 text-foreground ring-4 ring-primary/5"
-              : isPending
-                ? "bg-slate-50/80 border-dashed border-slate-300 text-slate-400 opacity-80"
-                : isConfirmed
-                  ? "bg-white border-hairline text-foreground"
-                  : isCompleted
-                    ? "bg-emerald-50/60 border-emerald-200 text-foreground"
-                    : "bg-surface-secondary/50 border-hairline text-muted-foreground",
+          isOngoing
+            ? "bg-white border-primary/40 text-foreground ring-4 ring-primary/5"
+            : isPending
+              ? "bg-slate-50/80 border-dashed border-slate-300 text-slate-400 opacity-80"
+              : isConfirmed
+                ? "bg-white border-hairline text-foreground"
+                : isCompleted
+                  ? "bg-emerald-50/60 border-emerald-200 text-foreground"
+                  : "bg-surface-secondary/50 border-hairline text-muted-foreground",
         )}
         style={{
           left: `${left}%`,
@@ -1149,9 +1318,7 @@ function SessionCard({
           zIndex: hovered ? 50 : 10,
         }}
       >
-        {isRecentlyPaid && (
-          <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500 rounded-t-full shadow-[0_0_12px_rgba(16,185,129,0.6)]" />
-        )}
+
         {isOngoing && (
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary rounded-t-full shadow-[0_0_10px_rgba(24,190,102,0.5)]" />
         )}
@@ -1215,6 +1382,7 @@ function SessionCard({
         patientList={patientList}
         allVisits={allVisits}
         visitTypes={visitTypes}
+        selectedDate={selectedDate}
       />
       <DeleteDialog
         visit={visit}
@@ -1309,12 +1477,7 @@ export default function SchedulePage() {
     loadData();
   }, [loadData]);
 
-  React.useEffect(() => {
-    const interval = window.setInterval(() => {
-      loadData();
-    }, 12000);
-    return () => window.clearInterval(interval);
-  }, [loadData]);
+
 
   // Fetch service types from API
   React.useEffect(() => {
@@ -1415,13 +1578,54 @@ export default function SchedulePage() {
     }
   };
 
-  const handleReject = async (id: string) => {
-    show("Đang từ chối...")
+  const handleReject = async (id: string, reason?: string) => {
+    const visit = allVisits.find((v) => v.id === id);
+    const noteText = reason && reason.trim()
+      ? `Lý do hủy: ${reason.trim()}`
+      : "Lý do hủy: Phòng khám từ chối yêu cầu đặt lịch này (Lịch chuyên viên bận hoặc trùng khung giờ)";
+
+    show("Đang từ chối...");
     try {
-      const r = await authFetch(`${API_URL}/visits/${id}`, { method: "DELETE" });
-      if (r.ok) setAllVisits((prev) => prev.filter((v) => v.id !== id));
+      const r = await authFetch(`${API_URL}/visits/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...visit,
+          status: "Đã hủy",
+          paymentNote: noteText,
+        }),
+      });
+      const saved = await r.json();
+      if (r.ok) {
+        setAllVisits((prev) => prev.map((v) => (v.id === saved.id ? saved : v)));
+      }
     } catch (err) {
       console.error("Lỗi từ chối lịch:", err);
+    } finally {
+      hide();
+    }
+  };
+
+  const handleStatusChange = async (id: string, newStatus: VisitStatus) => {
+    const visit = allVisits.find((v) => v.id === id);
+    if (!visit) return;
+    show(`Đang cập nhật trạng thái...`);
+    try {
+      const r = await authFetch(`${API_URL}/visits/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...visit, status: newStatus }),
+      });
+      const saved = await r.json();
+      if (!r.ok) {
+        alert(saved.error || "Lỗi cập nhật trạng thái!");
+        return;
+      }
+      setAllVisits((prev) => prev.map((v) => (v.id === saved.id ? saved : v)));
+      // Sync patient status after visit status changes
+      authFetch(`${API_URL}/visits/sync-patients`, { method: "POST" }).catch(() => {});
+    } catch (err) {
+      console.error("Lỗi cập nhật trạng thái:", err);
     } finally {
       hide();
     }
@@ -1450,35 +1654,12 @@ export default function SchedulePage() {
 
   const confirmedVisits = allVisits.filter((v) => v.status === "Đã xác nhận");
 
-  // Track recently paid visits (show in green for 5 minutes)
-  const [recentlyPaidIds, setRecentlyPaidIds] = React.useState<Set<string>>(new Set());
-  const paidTimestampsRef = React.useRef<Map<string, number>>(new Map());
-
-  // When a visit becomes paid, add it to recentlyPaid and set timer to remove
-  React.useEffect(() => {
-    allVisits.forEach((v) => {
-      if (v.paymentStatus === "Đã thanh toán" && !paidTimestampsRef.current.has(v.id)) {
-        paidTimestampsRef.current.set(v.id, Date.now());
-        setRecentlyPaidIds((prev) => new Set([...prev, v.id]));
-
-        // Auto-remove after 5 minutes
-        setTimeout(() => {
-          paidTimestampsRef.current.delete(v.id);
-          setRecentlyPaidIds((prev) => {
-            const next = new Set(prev);
-            next.delete(v.id);
-            return next;
-          });
-        }, 5 * 60 * 1000);
-      }
-    });
-  }, [allVisits]);
 
   // Filter logic for timeline
   const filteredVisits = allVisits.filter((v) => {
     const pName = v.patientName?.toLowerCase() || "";
-    const staff = staffList.find((s) => s.id === v.staffId);
-    const sName = staff?.name?.toLowerCase() || "";
+    const staff = staffList.find((s) => isStaffMatch(s, v.staffId, (v as any).staffName));
+    const sName = staff?.name?.toLowerCase() || (v as any).staffName?.toLowerCase() || "";
     const type = v.type?.toLowerCase() || "";
     const query = searchQuery.toLowerCase();
     const matchQuery =
@@ -1489,11 +1670,10 @@ export default function SchedulePage() {
     // Filter by selected date if visit has a Date field
     const matchDate = !v.date || !selectedDate || v.date === selectedDate;
 
-    // Hide only cancelled visits and old paid status updates (keep completed visits visible)
+    // Hide only cancelled visits
     const isCancelled = v.status === "Đã hủy";
-    const isPaidOld = v.paymentStatus === "Đã thanh toán" && !recentlyPaidIds.has(v.id);
 
-    return matchQuery && matchStatus && matchDate && !isCancelled && !isPaidOld;
+    return matchQuery && matchStatus && matchDate && !isCancelled;
   });
 
   return (
@@ -1653,8 +1833,8 @@ export default function SchedulePage() {
                 ))}
               </div>
               {staffList.map((person, idx) => {
-                const staffVisits = filteredVisits.filter(
-                  (v) => v.staffId === person.id,
+                const staffVisits = filteredVisits.filter((v) =>
+                  isStaffMatch(person, v.staffId, (v as any).staffName),
                 );
                 return (
                   <React.Fragment key={person.id}>
@@ -1736,11 +1916,12 @@ export default function SchedulePage() {
                           staffName={person.name}
                           onEdit={handleEditSession}
                           onDelete={handleDeleteSession}
+                          onStatusChange={handleStatusChange}
                           staffList={staffList}
                           patientList={patientList}
                           allVisits={allVisits}
                           visitTypes={visitTypes}
-                          isRecentlyPaid={recentlyPaidIds.has(visit.id)}
+                          selectedDate={selectedDate}
                         />
                       ))}
                     </div>
@@ -1763,12 +1944,7 @@ export default function SchedulePage() {
                   Khung giờ trống
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                <span className="text-[9px] font-black text-on-surface-tertiary uppercase tracking-widest">
-                  Đã thanh toán (5 phút)
-                </span>
-              </div>
+
               <div className="flex items-center gap-2 opacity-50">
                 <div className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.3)]" />
                 <span className="text-[9px] font-black text-on-surface-tertiary uppercase tracking-widest">
@@ -1776,9 +1952,9 @@ export default function SchedulePage() {
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-hairline shadow-sm text-[9px] font-black text-primary-strong uppercase tracking-widest animate-pulse">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-              Đang đồng bộ
+            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-hairline shadow-sm text-[9px] font-black text-emerald-600 uppercase tracking-widest">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Hệ thống ổn định
             </div>
           </div>
         </div>

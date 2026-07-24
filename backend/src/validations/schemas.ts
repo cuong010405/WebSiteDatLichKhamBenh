@@ -69,6 +69,8 @@ export const visitSchema = z.object({
   paymentAmount: z.string().optional(),
   paymentNote: z.string().optional(),
   paymentStatus: z.enum(["Chưa thanh toán", "Đã thanh toán"]).optional(),
+  address: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
 });
 
 export const activityLogSchema = z.object({

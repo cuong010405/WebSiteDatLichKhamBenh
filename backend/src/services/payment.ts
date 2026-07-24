@@ -155,18 +155,24 @@ export async function createPayment(data: {
 }
 
 export async function deletePayment(id: string) {
+  if (id.startsWith("cancel-")) {
+    const visitId = id.replace("cancel-", "");
+    await db.visit.delete({ where: { Id: visitId } }).catch(() => {});
+    return { success: true };
+  }
+
   const payment = await db.payment.findUnique({ where: { Id: id } });
   if (!payment) throw new Error("Không tìm thấy hóa đơn");
 
-  // Revert visit payment status
+  // Revert visit payment status to cancelled so it won't show in pending payments
   await db.visit.update({
     where: { Id: payment.VisitId },
     data: {
-      PaymentStatus: "Chưa thanh toán",
+      PaymentStatus: "Đã hủy",
       PaymentMethod: null,
       PaymentAmount: null,
       PaymentNote: null,
-      Status: "Đã xác nhận",
+      Status: "Đã hủy",
     },
   });
 

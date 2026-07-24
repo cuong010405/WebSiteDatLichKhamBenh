@@ -6,7 +6,6 @@ import {
   ClipboardList,
   Stethoscope,
   History,
-  ChevronLeft,
   ChevronRight,
   Search,
   Filter,
@@ -56,6 +55,7 @@ import { Patient, Staff, Visit } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URL, authFetch } from "@/lib/api";
 import { useLoading } from "@/lib/loading-context";
+import { Pagination } from "@/components/ui/pagination";
 
 // Simple MultiSelect component for assigned staff
 function StaffMultiSelect({
@@ -746,12 +746,12 @@ function PatientRow({
               "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] border transition-all duration-300",
               patient.status === "Đang điều trị"
                 ? "bg-emerald-500 text-white border-emerald-600 shadow-md shadow-emerald-500/20"
-                : patient.status === "Chờ khám" || patient.status === "Chờ duyệt"
+                : patient.status === "Chờ duyệt"
                   ? "bg-amber-500 text-white border-amber-600 shadow-md shadow-amber-500/20"
-                  : patient.status === "Khám hoàn thành" || patient.status === "Khám xong" || patient.status === "Đã hoàn tất"
+                  : patient.status === "Đã xuất viện"
                     ? "bg-blue-600 text-white border-blue-700 shadow-md shadow-blue-600/20"
-                    : patient.status === "Đã hủy"
-                      ? "bg-rose-500 text-white border-rose-600"
+                    : patient.status === "Chờ tái khám"
+                      ? "bg-violet-500 text-white border-violet-600 shadow-md shadow-violet-500/20"
                       : "bg-slate-100 text-slate-700 border-slate-200",
             )}
           >
@@ -1019,7 +1019,7 @@ export default function PatientsPage() {
       .then((res) => { if (!res.ok) throw new Error(); return res.json(); })
       .then((data) => {
         const userVisits = Array.isArray(data)
-          ? data.filter((v: Visit) => v.userId)
+          ? data.filter((v: Visit) => v.userId).reverse()
           : [];
         setVisitList(userVisits);
       })
@@ -1132,7 +1132,7 @@ export default function PatientsPage() {
     return matchQuery && matchStatus;
   });
 
-  const ITEMS_PER_PAGE = 5;
+  const ITEMS_PER_PAGE = 4;
   const totalPages = Math.max(
     1,
     Math.ceil(filteredPatients.length / ITEMS_PER_PAGE),
@@ -1143,6 +1143,11 @@ export default function PatientsPage() {
     filteredPatients.length,
   );
   const paginatedPatients = filteredPatients.slice(startIndex, endIndex);
+
+  const [visitPage, setVisitPage] = React.useState(1);
+  const VISITS_PER_PAGE = 4;
+  const totalVisitPages = Math.max(1, Math.ceil(visitList.length / VISITS_PER_PAGE));
+  const paginatedVisits = visitList.slice((visitPage - 1) * VISITS_PER_PAGE, visitPage * VISITS_PER_PAGE);
 
   const exportToCSV = () => {
     const headers = [
@@ -1346,39 +1351,11 @@ export default function PatientsPage() {
               hồ sơ hệ thống
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            <Button
-              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              variant="outline"
-              size="icon"
-              className="h-12 w-12 rounded-2xl border-hairline bg-white shadow-md hover:bg-surface-secondary transition-all disabled:opacity-30 disabled:shadow-none"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </Button>
-            <div className="flex items-center gap-3 bg-white border border-hairline px-6 h-12 rounded-2xl shadow-md group">
-              <span className="text-sm font-black text-primary group-hover:scale-110 transition-transform">
-                {currentPage}
-              </span>
-              <span className="text-xs font-bold text-muted-foreground opacity-30">
-                /
-              </span>
-              <span className="text-xs font-bold text-on-surface-tertiary uppercase tracking-widest">
-                {totalPages}
-              </span>
-            </div>
-            <Button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-              }
-              disabled={currentPage === totalPages}
-              variant="outline"
-              size="icon"
-              className="h-12 w-12 rounded-2xl border-hairline bg-white shadow-md hover:bg-surface-secondary transition-all disabled:opacity-30 disabled:shadow-none"
-            >
-              <ChevronRight className="w-6 h-6 text-primary" />
-            </Button>
-          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </div>
       </div>
 
@@ -1415,7 +1392,7 @@ export default function PatientsPage() {
             </div>
           ) : (
             <div className="divide-y divide-hairline">
-              {visitList.map((v, i) => (
+              {paginatedVisits.map((v, i) => (
                 <motion.div
                   key={v.id}
                   initial={{ opacity: 0, x: -8 }}
@@ -1449,9 +1426,20 @@ export default function PatientsPage() {
                     </div>
                     <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
                       👤 {v.userName || "Người dùng"}
+                      {(v as any).userPhone && ` · 📞 ${(v as any).userPhone}`}
                       {v.date && ` · 📅 ${v.date}`}
                       {v.time && ` · 🕐 ${v.time}`}
                     </p>
+                    {(v as any).address && (
+                      <p className="text-[10px] text-blue-600 font-bold mt-0.5">
+                        📍 {(v as any).address}
+                      </p>
+                    )}
+                    {((v as any).notes || (v.paymentNote && !v.paymentNote.startsWith("Lý do hủy:"))) && (
+                      <p className="text-[10px] text-amber-700 font-medium mt-0.5 italic">
+                        📝 Triệu chứng/Ghi chú: {(v as any).notes || v.paymentNote}
+                      </p>
+                    )}
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Chuyên gia</p>
@@ -1469,6 +1457,15 @@ export default function PatientsPage() {
                   )}
                 </motion.div>
               ))}
+            </div>
+          )}
+          {visitList.length > VISITS_PER_PAGE && (
+            <div className="p-4 border-t border-hairline bg-slate-50/50 flex justify-center">
+              <Pagination
+                currentPage={visitPage}
+                totalPages={totalVisitPages}
+                onPageChange={setVisitPage}
+              />
             </div>
           )}
         </div>

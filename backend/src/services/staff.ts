@@ -15,6 +15,16 @@ function mapStaffToUI(s: any) {
     avatar: s.Avatar ?? "",
     available: s.Available,
     isNew: s.IsNew,
+    licenses: (s.StaffLicense ?? []).map((l: any) => ({
+      id: l.Id,
+      staffId: l.StaffId,
+      licenseNumber: l.LicenseNumber,
+      issuedBy: l.IssuedBy,
+      issuedDate: l.IssuedDate,
+      expiryDate: l.ExpiryDate ?? null,
+      specialty: l.Specialty ?? null,
+      note: l.Note ?? null,
+    })),
   };
 }
 
@@ -44,6 +54,7 @@ export async function getStaffList() {
 export async function getStaffById(id: string) {
   const s = await db.staff.findUnique({
     where: { Id: id },
+    include: { StaffLicense: true },
   });
   if (!s) return null;
   return mapStaffToUI(s);

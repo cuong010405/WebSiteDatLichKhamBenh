@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { formatCurrencyInput, parseCurrencyNumber } from "@/lib/utils/format";
 import { exportToExcel } from "@/lib/utils/export";
+import { Pagination } from "@/components/ui/pagination";
 
 interface PaymentVisit {
   id: string;
@@ -94,6 +95,8 @@ export default function AdminPayPage() {
   const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null);
   const [activePrintPayment, setActivePrintPayment] = React.useState<PaymentRecord | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [paymentPage, setPaymentPage] = React.useState(1);
+  const PAYMENTS_PER_PAGE = 4;
 
   const filteredPayments = React.useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -117,6 +120,16 @@ export default function AdminPayPage() {
       );
     });
   }, [payments, searchQuery]);
+
+  React.useEffect(() => {
+    setPaymentPage(1);
+  }, [searchQuery]);
+
+  const totalPaymentPages = Math.max(1, Math.ceil(filteredPayments.length / PAYMENTS_PER_PAGE));
+  const paginatedPayments = React.useMemo(() => {
+    const start = (paymentPage - 1) * PAYMENTS_PER_PAGE;
+    return filteredPayments.slice(start, start + PAYMENTS_PER_PAGE);
+  }, [filteredPayments, paymentPage]);
   
   const handlePrintInvoice = (payment: PaymentRecord) => {
     setActivePrintPayment(payment);
@@ -358,7 +371,8 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
 
   const selectedVisit = pendingVisits.find((v) => v.id === selectedVisitId);
 
-  const totalRevenue = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+  const paidPayments = React.useMemo(() => payments.filter((p) => p.status !== "Đã hủy"), [payments]);
+  const totalRevenue = React.useMemo(() => paidPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0), [paidPayments]);
 
   return (
     <div className="p-8 max-w-7xl mx-auto w-full space-y-10">
@@ -414,7 +428,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
       <div className="grid grid-cols-3 gap-4">
         {[
           { label: "Chờ thanh toán", value: loadingVisits ? "..." : pendingVisits.length, color: "text-amber-600", bg: "bg-amber-50 border-amber-200" },
-          { label: "Đã thanh toán", value: loadingPayments ? "..." : payments.length, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-200" },
+          { label: "Đã thanh toán", value: loadingPayments ? "..." : paidPayments.length, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-200" },
           { label: "Tổng doanh thu", value: loadingPayments ? "..." : totalRevenue.toLocaleString("vi-VN") + "đ", color: "text-blue-600", bg: "bg-blue-50 border-blue-200" },
         ].map((s) => (
           <div key={s.label} className={cn("rounded-3xl border p-6", s.bg)}>
@@ -617,7 +631,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                 </button>
               </div>
             </div>
-            <div className="divide-y divide-hairline max-h-[600px] overflow-y-auto">
+            <div className="divide-y divide-hairline [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {loadingPayments ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="p-5 animate-pulse">
@@ -633,7 +647,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                   </p>
                 </div>
               ) : (
-                filteredPayments.map((p, i) => {
+                paginatedPayments.map((p, i) => {
                   const isCancelled = p.status === "Đã hủy";
                   return (
                     <motion.div
@@ -725,6 +739,15 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                 })
               )}
             </div>
+            {filteredPayments.length > PAYMENTS_PER_PAGE && (
+              <div className="p-4 border-t border-hairline bg-slate-50/50 flex justify-center">
+                <Pagination
+                  currentPage={paymentPage}
+                  totalPages={totalPaymentPages}
+                  onPageChange={setPaymentPage}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -821,7 +844,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                   Xóa hóa đơn?
                 </DialogTitle>
                 <DialogDescription className="text-slate-500 mt-1.5 text-[11px] font-semibold">
-                  Lịch hẹn sẽ trở về trạng thái Đã xác nhận. Hành động này không thể hoàn tác.
+                  Hóa đơn và lịch hẹn tương ứng sẽ bị hủy. Hành động này không thể hoàn tác.
                 </DialogDescription>
               </div>
             </DialogHeader>
@@ -830,7 +853,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                 Hóa đơn #{pendingDeleteId}
               </p>
               <p className="text-[10px] font-bold text-slate-500">
-                Thanh toán sẽ bị hủy & lịch hẹn phục hồi
+                Lịch hẹn sẽ bị hủy và không còn xuất hiện trong danh sách Ca chờ thanh toán.
               </p>
             </div>
             <DialogFooter className="flex-col sm:flex-col gap-2">

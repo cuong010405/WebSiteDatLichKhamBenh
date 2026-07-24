@@ -56,6 +56,19 @@ const staffData = [
     isNew: false,
     available: true,
   },
+  {
+    id: "5",
+    name: "Đinh Quốc Cường",
+    role: "Chuyên gia Dinh dưỡng",
+    status: "Sẵn sàng",
+    department: "Nội khoa",
+    phone: "0344952358",
+    email: "cuong@mintcare.com",
+    location: "Đồng Tháp",
+    avatar: 'https://ui-avatars.com/api/?name=Dinh+Quoc+Cuong&background=10b981&color=fff&size=150&bold=true&rounded=true',
+    isNew: true,
+    available: true,
+  },
 ];
 
 const patientData = [
@@ -174,6 +187,7 @@ const logData = [
 
 async function main() {
   console.log("Bắt đầu dọn dẹp cơ sở dữ liệu cũ...");
+  await prisma.staffLicense.deleteMany();
   await prisma.activityLog.deleteMany();
   await prisma.visit.deleteMany();
   await prisma.patientStaff.deleteMany();
@@ -255,6 +269,96 @@ async function main() {
         Desc: l.desc,
         Time: l.time,
         Color: l.color,
+      },
+    });
+  }
+
+  console.log("Đang import dữ liệu chứng chỉ hành nghề...");
+  const licenseData = [
+    {
+      id: "lic-001",
+      staffId: "1",
+      licenseNumber: "001234/BYT-CCHN",
+      issuedBy: "Bộ Y tế",
+      issuedDate: "2020-05-15",
+      expiryDate: "2030-05-15",
+      specialty: "Điều dưỡng & Chăm sóc vết thương",
+      note: "Chứng chỉ hành nghề khám chữa bệnh chuyên khoa Điều dưỡng",
+    },
+    {
+      id: "lic-002",
+      staffId: "2",
+      licenseNumber: "005678/BYT-CCHN",
+      issuedBy: "Bộ Y tế",
+      issuedDate: "2019-08-20",
+      expiryDate: "2029-08-20",
+      specialty: "Phục hồi chức năng",
+      note: "Chứng chỉ Kỹ thuật viên Phục hồi chức năng",
+    },
+    {
+      id: "lic-003",
+      staffId: "3",
+      licenseNumber: "009012/BYT-CCHN",
+      issuedBy: "Sở Y tế TP.HCM",
+      issuedDate: "2021-03-10",
+      expiryDate: "2031-03-10",
+      specialty: "Điều dưỡng Lâm sàng",
+      note: "Chứng chỉ Điều dưỡng đa khoa",
+    },
+    {
+      id: "lic-004",
+      staffId: "4",
+      licenseNumber: "003456/BYT-CCHN",
+      issuedBy: "Bộ Y tế",
+      issuedDate: "2018-11-05",
+      expiryDate: "2028-11-05",
+      specialty: "Dinh dưỡng Lâm sàng",
+      note: "Chứng chỉ Bác sĩ / Chuyên gia Dinh dưỡng",
+    },
+    {
+      id: "lic-005",
+      staffId: "5",
+      licenseNumber: "007789/BYT-CCHN",
+      issuedBy: "Bộ Y tế",
+      issuedDate: "2022-01-10",
+      expiryDate: "2032-01-10",
+      specialty: "Dinh dưỡng & Tiết chế Lâm sàng",
+      note: "Chứng chỉ Chuyên gia Dinh dưỡng Cao cấp",
+    },
+  ];
+
+  for (const lic of licenseData) {
+    await prisma.staffLicense.create({
+      data: {
+        Id: lic.id,
+        StaffId: lic.staffId,
+        LicenseNumber: lic.licenseNumber,
+        IssuedBy: lic.issuedBy,
+        IssuedDate: lic.issuedDate,
+        ExpiryDate: lic.expiryDate,
+        Specialty: lic.specialty,
+        Note: lic.note,
+      },
+    });
+  }
+
+  // Seed ServiceType
+  const serviceTypeData = [
+    { id: "st-001", name: "Khám lâm sàng", description: "Dịch vụ khám và điều trị lâm sàng tại nhà", color: "blue", active: true },
+    { id: "st-002", name: "Phục hồi chức năng", description: "Phục hồi chức năng và vật lý trị liệu", color: "purple", active: true },
+    { id: "st-003", name: "Tư vấn dinh dưỡng", description: "Tư vấn và theo dõi chế độ dinh dưỡng", color: "green", active: true },
+    { id: "st-004", name: "Nha khoa", description: "Dịch vụ chăm sóc nha khoa tại nhà", color: "cyan", active: true },
+    { id: "st-005", name: "Sức khỏe tâm thần", description: "Hỗ trợ và tư vấn sức khỏe tâm thần", color: "amber", active: true },
+  ];
+
+  for (const st of serviceTypeData) {
+    await prisma.serviceType.create({
+      data: {
+        Id: st.id,
+        Name: st.name,
+        Description: st.description,
+        Color: st.color,
+        Active: st.active,
       },
     });
   }

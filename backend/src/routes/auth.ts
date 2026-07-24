@@ -66,6 +66,8 @@ router.get("/me", async (req: Request, res: Response) => {
       role: user.Role,
       age: user.Age,
       gender: user.Gender,
+      address: user.Address,
+      medicalHistory: user.MedicalHistory,
     });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });

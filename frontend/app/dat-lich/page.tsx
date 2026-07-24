@@ -30,6 +30,7 @@ import {
   Save,
   Eye,
   EyeOff,
+  Award,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { API_URL, authFetch } from "@/lib/api";
+import { Pagination } from "@/components/ui/pagination";
 
 interface StoredVisit {
   id: string;
@@ -55,6 +57,11 @@ interface StoredVisit {
   status: string;
   price: string;
   paymentMethod: string;
+  paymentStatus?: string;
+  address?: string;
+  notes?: string;
+  paymentNote?: string;
+  userPhone?: string;
 }
 
 interface StaffMember {
@@ -165,15 +172,28 @@ function NavUserMenu({ user, logout, onOpenSettings }: { user: any; logout: () =
               )}
 
               <button
-                onClick={() => { router.push("/"); setOpen(false); }}
+                onClick={() => { router.push("/dat-lich"); setOpen(false); }}
                 className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl hover:bg-blue-50 transition-all text-left group cursor-pointer"
               >
-                <div className="w-9 h-9 rounded-xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center transition-colors">
-                  <Home className="w-4 h-4 text-blue-600" />
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 group-hover:bg-emerald-100 flex items-center justify-center transition-colors">
+                  <CalendarPlus className="w-4 h-4 text-emerald-600" />
                 </div>
                 <div>
-                  <p className="text-xs font-black text-slate-800">Trang chủ</p>
-                  <p className="text-[10px] text-slate-400 font-semibold">Quay về trang chính</p>
+                  <p className="text-xs font-black text-slate-800">Đặt lịch khám</p>
+                  <p className="text-[10px] text-slate-400 font-semibold">Điền phiếu thông tin khám</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => { router.push("/lich-hen"); setOpen(false); }}
+                className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl hover:bg-blue-50 transition-all text-left group cursor-pointer"
+              >
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 group-hover:bg-indigo-100 flex items-center justify-center transition-colors">
+                  <Calendar className="w-4 h-4 text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-slate-800">Lịch hẹn của bạn</p>
+                  <p className="text-[10px] text-slate-400 font-semibold">Xem lịch sử đặt khám</p>
                 </div>
               </button>
 
@@ -212,6 +232,8 @@ export default function DatLichPage() {
   const [staff, setStaff] = React.useState<StaffMember[]>([]);
   const [services, setServices] = React.useState<ServiceItem[]>([]);
   const [myBookings, setMyBookings] = React.useState<StoredVisit[]>([]);
+  const [bookingPage, setBookingPage] = React.useState(1);
+  const BOOKINGS_PER_PAGE = 4;
 
   const [bookingStaffId, setBookingStaffId] = React.useState("");
   const [bookingServiceId, setBookingServiceId] = React.useState("");
@@ -220,6 +242,18 @@ export default function DatLichPage() {
   const [bookingPayment, setBookingPayment] = React.useState("Tiền mặt");
   const [bookingNotes, setBookingNotes] = React.useState("");
   const [qrConfirmed, setQrConfirmed] = React.useState(false);
+  const [staffLicenses, setStaffLicenses] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    if (!bookingStaffId) {
+      setStaffLicenses([]);
+      return;
+    }
+    fetch(`${API_URL}/licenses/${bookingStaffId}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => setStaffLicenses(Array.isArray(data) ? data : []))
+      .catch(() => setStaffLicenses([]));
+  }, [bookingStaffId]);
 
   const [toasts, setToasts] = React.useState<{ id: number; msg: string; type: "success" | "error" | "info" }[]>([]);
 
@@ -315,8 +349,14 @@ export default function DatLichPage() {
         age: user.age ?? 35,
         gender: user.gender ?? "Nam",
       });
+      if (user.address) {
+        setBookingAddress(user.address);
+      }
     }
   }, [user]);
+
+  // Booking form extra state
+  const [bookingAddress, setBookingAddress] = React.useState("Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM");
 
   // Profile modal states
   const [isProfileModalOpen, setIsProfileModalOpen] = React.useState(false);
@@ -493,6 +533,11 @@ export default function DatLichPage() {
           status: v.status,
           price: priceValue.toLocaleString("vi-VN") + " VNĐ",
           paymentMethod: v.paymentMethod || "Tiền mặt",
+          paymentStatus: v.paymentStatus,
+          address: v.address,
+          notes: v.notes,
+          paymentNote: v.paymentNote,
+          userPhone: v.userPhone,
         };
       });
       setMyBookings(formatted);
@@ -556,7 +601,20 @@ export default function DatLichPage() {
       duration,
       status: "Chờ duyệt",
       paymentMethod: bookingPayment,
+      address: bookingAddress,
+      notes: bookingNotes,
     };
+
+    if (bookingAddress && bookingAddress !== user?.address) {
+      authFetch(`${API_URL}/auth/profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: bookingAddress }),
+      }).catch(() => {});
+      if (updateUser) {
+        updateUser({ address: bookingAddress });
+      }
+    }
 
     if (bookingPayment === "Chuyển khoản" && qrConfirmed) {
       newVisitObj.paymentStatus = "Đã thanh toán";
@@ -777,39 +835,6 @@ Trạng thái: ${booking.status}
           </div>
         </motion.div>
 
-        {/* Stats Row */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="grid grid-cols-3 gap-4"
-        >
-          {[
-            { icon: Users, label: "Chuyên gia", value: `${staff.length}+`, color: "blue" },
-            { icon: Activity, label: "Dịch vụ", value: `${services.length}`, color: "sky" },
-            { icon: Stethoscope, label: "Lịch của tôi", value: `${myBookings.length}`, color: "indigo" },
-          ].map(({ icon: Icon, label, value, color }) => (
-            <div
-              key={label}
-              className={cn(
-                "bg-white/80 backdrop-blur-sm border rounded-[24px] p-5 flex items-center gap-4 shadow-sm",
-                color === "blue" ? "border-blue-100" : color === "sky" ? "border-sky-100" : "border-indigo-100"
-              )}
-            >
-              <div className={cn(
-                "w-11 h-11 rounded-2xl flex items-center justify-center shrink-0",
-                color === "blue" ? "bg-blue-50" : color === "sky" ? "bg-sky-50" : "bg-indigo-50"
-              )}>
-                <Icon className={cn("w-5 h-5", color === "blue" ? "text-blue-600" : color === "sky" ? "text-sky-600" : "text-indigo-600")} />
-              </div>
-              <div>
-                <p className="text-xl font-black text-blue-950">{value}</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
-              </div>
-            </div>
-          ))}
-        </motion.div>
-
         {/* Form + Preview Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
@@ -858,6 +883,36 @@ Trạng thái: ${booking.status}
                     })}
                   </SelectContent>
                 </Select>
+
+                {/* License Red Badge (Phiếu Chứng chỉ mộc đỏ) */}
+                {bookingStaffId && staffLicenses.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="relative p-3.5 rounded-2xl bg-gradient-to-br from-rose-50 via-red-50/50 to-rose-100/30 border border-rose-200 shadow-sm text-left overflow-hidden space-y-1.5"
+                  >
+                    {/* Stamp visual */}
+                    <div className="absolute top-2 right-2 w-9 h-9 rounded-full border border-dashed border-rose-500/40 bg-rose-100/60 flex flex-col items-center justify-center rotate-[-12deg] pointer-events-none">
+                      <Award className="w-3 h-3 text-rose-600" />
+                      <span className="text-[5px] font-black text-rose-700 uppercase">MỘC ĐỎ</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <Award className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                      <span className="text-[9px] font-black uppercase tracking-wider text-rose-800">
+                        Chứng chỉ hành nghề chính thức
+                      </span>
+                    </div>
+
+                    {staffLicenses.map((lic) => (
+                      <div key={lic.id} className="text-[10px] font-bold text-slate-700 space-y-0.5 border-t border-rose-200/60 pt-1.5">
+                        <p><span className="text-slate-400 font-semibold">Số CCHN:</span> <span className="font-mono text-rose-950 font-black">{lic.licenseNumber}</span></p>
+                        <p><span className="text-slate-400 font-semibold">Cấp bởi:</span> {lic.issuedBy} ({lic.issuedDate})</p>
+                        {lic.specialty && <p><span className="text-slate-400 font-semibold">Chuyên khoa:</span> {lic.specialty}</p>}
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -932,9 +987,10 @@ Trạng thái: ${booking.status}
                   Địa chỉ khám bệnh tại nhà
                 </Label>
                 <Input
-                  value={user.fullName ? "Hẻm 42 Công Quỳnh, Quận 1, TP. HCM" : ""}
-                  readOnly
-                  className="w-full rounded-2xl border-blue-100 h-12 bg-blue-50/40 font-bold text-sm shadow-none text-slate-600"
+                  value={bookingAddress}
+                  onChange={(e) => setBookingAddress(e.target.value)}
+                  placeholder="Nhập địa chỉ khám tại nhà (số nhà, đường, quận/huyện...)"
+                  className="w-full rounded-2xl border-blue-100 h-12 bg-white font-bold text-sm shadow-none text-slate-800 focus:ring-2 focus:ring-blue-600/20 hover:border-blue-200 transition-colors"
                 />
               </div>
 
@@ -1074,7 +1130,9 @@ Trạng thái: ${booking.status}
                   <div className="border-t border-blue-50 pt-5 mt-5">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Chi phí tạm tính</p>
                     <p className="text-3xl font-black text-blue-950 tracking-tighter">
-                      {(selectedService?.price || 0).toLocaleString("vi-VN")}
+                      {typeof selectedService?.price === "number"
+                        ? selectedService.price.toLocaleString("vi-VN")
+                        : parseFloat(String(selectedService?.price || "0").replace(/[^0-9.]/g, "")).toLocaleString("vi-VN")}
                       <span className="text-sm text-slate-400 ml-1">đ</span>
                     </p>
                     <p className="text-[10px] text-slate-400 mt-2">* Đã bao gồm VAT và chi phí di chuyển</p>
@@ -1112,130 +1170,6 @@ Trạng thái: ${booking.status}
           </motion.div>
         </div>
 
-        {/* Appointments List */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-        >
-          <div className="bg-white/80 backdrop-blur-sm border border-blue-100 rounded-[40px] p-8 shadow-xl shadow-blue-900/5">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-2xl bg-blue-50 flex items-center justify-center">
-                  <Calendar className="w-4 h-4 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-blue-950 uppercase tracking-wider">Lịch hẹn của bạn</h3>
-                  <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{myBookings.length} lịch đã đặt</p>
-                </div>
-              </div>
-              <button
-                onClick={fetchMyVisits}
-                className="w-9 h-9 rounded-2xl border border-blue-100 flex items-center justify-center hover:bg-blue-50 transition-colors group"
-              >
-                <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 transition-colors" />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {myBookings.length > 0 ? (
-                myBookings.map((booking, i) => {
-                  const isPending = booking.status === "Chờ duyệt";
-                  const isOngoing = booking.status === "Đang thực hiện";
-                  const isConfirmed = booking.status === "Đã xác nhận";
-                  const isCompleted = booking.status === "Đã hoàn tất";
-
-                  return (
-                    <motion.div
-                      key={booking.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      className={cn(
-                        "relative border rounded-[24px] p-5 transition-all duration-200",
-                        isOngoing
-                          ? "bg-white border-blue-200 ring-4 ring-blue-600/5 shadow-sm"
-                          : "bg-white/60 border-blue-50 hover:bg-white hover:border-blue-100 hover:shadow-sm"
-                      )}
-                    >
-                      {isOngoing && (
-                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 to-sky-500 rounded-t-[24px] shadow-[0_0_10px_rgba(37,99,235,0.4)]" />
-                      )}
-
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                        <div className="flex items-center gap-3">
-                          <span className={cn(
-                            "font-mono text-[9px] font-black px-2.5 py-1 rounded-lg border",
-                            isPending
-                              ? "bg-slate-50 text-slate-500 border-slate-200"
-                              : "bg-blue-50 text-blue-700 border-blue-200"
-                          )}>
-                            #LH-{booking.id}
-                          </span>
-                          <div>
-                            <h4 className="text-sm font-black text-blue-950">{booking.type}</h4>
-                            <p className="text-[10px] text-slate-400 font-bold">{booking.staffName}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleDownloadSlip(booking)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-100 text-[9px] font-black uppercase tracking-widest text-blue-500 hover:bg-blue-50 transition-colors"
-                          >
-                            <Download className="w-3 h-3" /> Phiếu
-                          </button>
-                          {isPending ? (
-                            <button
-                              onClick={() => openCancelModal(booking.id)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 text-[9px] font-black uppercase tracking-widest text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-3 h-3" /> Hủy
-                            </button>
-                          ) : booking.status === "Đã hủy" ? (
-                            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                              Đã hủy
-                            </span>
-                          ) : (
-                            <span
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 text-[9px] font-black uppercase tracking-widest text-emerald-600 cursor-not-allowed opacity-80"
-                              title="Lịch hẹn đã được Admin duyệt, không thể hủy"
-                            >
-                              <CheckCircle2 className="w-3 h-3" /> Đã duyệt (Không thể hủy)
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-4 mt-3 pt-3 border-t border-blue-50 text-[10px] font-bold text-slate-400">
-                        <span className="flex items-center gap-1.5"><Calendar className="w-3 h-3 text-blue-400" /> {booking.date}</span>
-                        <span className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-blue-400" /> {booking.time}</span>
-                        <span className="flex items-center gap-1.5"><CreditCard className="w-3 h-3 text-blue-400" /> {booking.price}</span>
-                        <span className={cn(
-                          "ml-auto px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest",
-                          isPending ? "bg-amber-50 text-amber-600 border border-amber-200" :
-                          isOngoing ? "bg-blue-600 text-white" :
-                          isConfirmed ? "bg-sky-50 text-sky-600 border border-sky-200" :
-                          "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                        )}>
-                          {booking.status}
-                        </span>
-                      </div>
-                    </motion.div>
-                  );
-                })
-              ) : (
-                <div className="py-20 text-center">
-                  <div className="w-16 h-16 rounded-[28px] bg-blue-50 flex items-center justify-center mx-auto mb-4">
-                    <Calendar className="w-7 h-7 text-blue-200" />
-                  </div>
-                  <p className="text-sm font-black text-slate-400">Bạn chưa có lịch hẹn nào.</p>
-                  <p className="text-[10px] text-slate-300 font-bold mt-1">Hãy đặt lịch ngay để được tư vấn.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </motion.div>
       </main>
 
       {/* Consolidated Settings Modal */}

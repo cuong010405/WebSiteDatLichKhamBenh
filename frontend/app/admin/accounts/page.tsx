@@ -47,6 +47,7 @@ import {
 import { API_URL, authFetch } from "@/lib/api";
 import { useLoading } from "@/lib/loading-context";
 import { cn } from "@/lib/utils";
+import { Pagination } from "@/components/ui/pagination";
 
 interface AccountUser {
   id: string;
@@ -208,6 +209,9 @@ export default function AccountsPage() {
     setIsOpenDelete(true);
   };
 
+  const [accountPage, setAccountPage] = React.useState(1);
+  const USERS_PER_PAGE = 4;
+
   const filteredUsers = users.filter((u) => {
     const matchesSearch = 
       u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -217,6 +221,16 @@ export default function AccountsPage() {
     const matchesRole = roleFilter === "Tất cả" || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
+
+  React.useEffect(() => {
+    setAccountPage(1);
+  }, [searchQuery, roleFilter]);
+
+  const totalAccountPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE));
+  const paginatedUsers = React.useMemo(() => {
+    const start = (accountPage - 1) * USERS_PER_PAGE;
+    return filteredUsers.slice(start, start + USERS_PER_PAGE);
+  }, [filteredUsers, accountPage]);
 
   return (
     <div className="p-10 max-w-7xl mx-auto w-full space-y-16 pb-32">
@@ -397,8 +411,8 @@ export default function AccountsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-hairline/40">
-                {filteredUsers.length > 0 ? (
-                  filteredUsers.map((u) => (
+                {paginatedUsers.length > 0 ? (
+                  paginatedUsers.map((u) => (
                     <TableRow key={u.id} className="group hover:bg-slate-50/50 transition-colors">
                       <TableCell className="px-8 py-6 text-left">
                         <div className="flex items-center gap-4">
@@ -465,6 +479,15 @@ export default function AccountsPage() {
             </Table>
           )}
         </div>
+        {filteredUsers.length > USERS_PER_PAGE && (
+          <div className="p-4 border-t border-hairline bg-slate-50/50 flex justify-center">
+            <Pagination
+              currentPage={accountPage}
+              totalPages={totalAccountPages}
+              onPageChange={setAccountPage}
+            />
+          </div>
+        )}
       </div>
 
       {/* Dialog Sửa tài khoản */}

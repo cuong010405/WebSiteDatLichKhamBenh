@@ -8,19 +8,20 @@ datasource db {
 }
 
 model Staff {
-  Id           String         @id(map: "PK__Staff__3214EC07A0920845") @db.NVarChar(50)
-  Name         String         @db.NVarChar(200)
-  Role         String         @db.NVarChar(100)
-  Status       String         @db.NVarChar(100)
-  Department   String         @db.NVarChar(100)
-  Phone        String         @db.NVarChar(20)
-  Email        String         @db.NVarChar(200)
-  Location     String         @db.NVarChar(200)
-  Avatar       String?        @db.NVarChar(Max)
-  Available    Boolean        @default(true, map: "DF__Staff__Available__37A5467C")
-  IsNew        Boolean        @default(false, map: "DF__Staff__IsNew__38996AB5")
-  PatientStaff PatientStaff[]
-  Visit        Visit[]
+  Id            String          @id(map: "PK__Staff__3214EC07A0920845") @db.NVarChar(50)
+  Name          String          @db.NVarChar(200)
+  Role          String          @db.NVarChar(100)
+  Status        String          @db.NVarChar(100)
+  Department    String          @db.NVarChar(100)
+  Phone         String          @db.NVarChar(20)
+  Email         String          @db.NVarChar(200)
+  Location      String          @db.NVarChar(200)
+  Avatar        String?         @db.NVarChar(Max)
+  Available     Boolean         @default(true, map: "DF__Staff__Available__37A5467C")
+  IsNew         Boolean         @default(false, map: "DF__Staff__IsNew__38996AB5")
+  PatientStaff  PatientStaff[]
+  Visit         Visit[]
+  StaffLicense  StaffLicense[]
 }
 
 model Patient {
@@ -115,6 +116,14 @@ model Service {
   Active      Boolean @default(true)
 }
 
+model ServiceType {
+  Id          String  @id @default(uuid()) @db.NVarChar(50)
+  Name        String  @db.NVarChar(200)
+  Description String? @db.NVarChar(Max)
+  Color       String? @db.NVarChar(50)
+  Active      Boolean @default(true)
+}
+
 model Department {
   Id          String  @id @default(uuid()) @db.NVarChar(50)
   Name        String  @db.NVarChar(200)
@@ -148,4 +157,16 @@ model Notification {
   User       User?     @relation(fields: [UserId], references: [Id], onUpdate: NoAction, map: "FK_Notification_User")
 
   @@map("Notification")
+}
+
+model StaffLicense {
+  Id            String  @id @default(uuid()) @db.NVarChar(50)
+  StaffId       String  @db.NVarChar(50)
+  LicenseNumber String  @db.NVarChar(100)
+  IssuedBy      String  @db.NVarChar(200)
+  IssuedDate    String  @db.NVarChar(20)
+  ExpiryDate    String? @db.NVarChar(20)
+  Specialty     String? @db.NVarChar(200)
+  Note          String? @db.NVarChar(Max)
+  Staff         Staff   @relation(fields: [StaffId], references: [Id], onDelete: Cascade, map: "FK_StaffLicense_Staff")
 }
