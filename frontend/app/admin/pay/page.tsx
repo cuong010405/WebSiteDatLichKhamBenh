@@ -501,22 +501,52 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
             <h2 className="text-base font-black text-foreground mb-5">Form thanh toán</h2>
             <div className="space-y-4">
               {selectedVisit && (
-                <div className="rounded-2xl bg-primary/5 border border-primary/20 p-3.5">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-[9px] font-black text-primary uppercase tracking-widest">Ca đã chọn</p>
-                    {selectedVisit.paymentStatus === "Đã thanh toán" && (
-                      <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-green-50 text-green-600 border border-green-200">
+                <div className="rounded-2xl bg-primary/5 border border-primary/20 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[9px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
+                      #{selectedVisit.id}
+                    </span>
+                    {selectedVisit.paymentStatus === "Đã thanh toán" ? (
+                      <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
                         ✓ Đã QR thanh toán
+                      </span>
+                    ) : (
+                      <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        Chờ thanh toán
                       </span>
                     )}
                   </div>
-                  <p className="text-xs font-black text-slate-800">{selectedVisit.type}</p>
-                  <p className="text-[10px] text-slate-500 font-semibold">{selectedVisit.patientName} · {selectedVisit.time}</p>
-                  {selectedVisit.paymentMethod && (
-                    <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                      Phương thức: {selectedVisit.paymentMethod}
-                    </p>
-                  )}
+
+                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-tight">
+                    {selectedVisit.type}
+                  </h3>
+
+                  <div className="text-[10px] space-y-1 text-slate-600 font-semibold pt-1 border-t border-primary/10">
+                    <p>👤 Bệnh nhân: <span className="font-black text-slate-800">{selectedVisit.patientName || selectedVisit.userName || "—"}</span> {(selectedVisit as any).userPhone && `(SĐT: ${(selectedVisit as any).userPhone})`}</p>
+                    <p>🛡️ Chuyên gia: <span className="font-black text-slate-800">{selectedVisit.staffName || "Chưa chọn"}</span></p>
+                    <p>⏰ Thời gian: <span className="font-mono font-bold text-slate-800">{selectedVisit.date && `${selectedVisit.date} · `}{selectedVisit.time}</span></p>
+                    <p>📌 Hình thức: <span className="font-bold text-emerald-700">
+                      {selectedVisit.careMode === "hourly"
+                        ? "⏱️ Theo giờ / Theo ngày"
+                        : selectedVisit.packagePlan === "30days"
+                        ? "📦 Gói tháng (30 ngày)"
+                        : selectedVisit.packagePlan === "14days"
+                        ? "📦 Gói 14 ngày"
+                        : selectedVisit.packagePlan === "7days"
+                        ? "📦 Gói 7 ngày"
+                        : "📦 Gói dài hạn"}
+                      {selectedVisit.packageShift ? ` (Ca ${selectedVisit.packageShift})` : ""}
+                    </span></p>
+                    {selectedVisit.requiredSpecialty && (
+                      <p>🩺 Yêu cầu chuyên môn: <span className="font-bold text-indigo-700">{selectedVisit.requiredSpecialty}</span></p>
+                    )}
+                    {(selectedVisit.address || (selectedVisit as any).customerArea) && (
+                      <p className="truncate">📍 Địa chỉ: <span className="font-bold text-slate-800">{selectedVisit.address || (selectedVisit as any).customerArea}</span></p>
+                    )}
+                    {selectedVisit.paymentMethod && (
+                      <p>💳 Phương thức: <span className="font-bold text-purple-700">{selectedVisit.paymentMethod}</span></p>
+                    )}
+                  </div>
                 </div>
               )}
               <div className="space-y-1.5">
@@ -791,10 +821,28 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                 </div>
 
                 <div className="space-y-2 text-xs font-semibold text-slate-600">
-                  <p>Khách hàng: <span className="font-black text-slate-800">{activePrintPayment.patientName || activePrintPayment.userName || "—"}</span></p>
+                  <p>Khách hàng: <span className="font-black text-slate-800">{activePrintPayment.patientName || activePrintPayment.userName || "—"}</span> {(activePrintPayment as any).userPhone && <span className="font-bold text-slate-600">({(activePrintPayment as any).userPhone})</span>}</p>
                   <p>Dịch vụ: <span className="font-black text-slate-800">{activePrintPayment.visitType}</span></p>
                   <p>Chuyên gia: <span className="font-black text-slate-800">{activePrintPayment.staffName}</span></p>
-                  <p>Thời gian: <span className="font-black text-slate-800">{activePrintPayment.visitDate ? `${activePrintPayment.visitDate} ` : ""}{activePrintPayment.visitTime}</span></p>
+                  <p>Thời gian: <span className="font-black text-slate-800">{activePrintPayment.visitDate ? `${activePrintPayment.visitDate} ` : ""}${activePrintPayment.visitTime}</span></p>
+                  <p>Hình thức & Chu kỳ: <span className="font-bold text-emerald-700">
+                    {(activePrintPayment as any).careMode === "hourly"
+                      ? "⏱️ Theo giờ / Theo ngày"
+                      : (activePrintPayment as any).packagePlan === "30days"
+                      ? "📦 Gói tháng (30 ngày)"
+                      : (activePrintPayment as any).packagePlan === "14days"
+                      ? "📦 Gói 14 ngày"
+                      : (activePrintPayment as any).packagePlan === "7days"
+                      ? "📦 Gói 7 ngày"
+                      : "📦 Ca dịch vụ tận nhà"}
+                    {(activePrintPayment as any).packageShift ? ` (Ca ${(activePrintPayment as any).packageShift})` : ""}
+                  </span></p>
+                  {(activePrintPayment as any).requiredSpecialty && (
+                    <p>Yêu cầu chuyên môn: <span className="font-bold text-indigo-700">{(activePrintPayment as any).requiredSpecialty}</span></p>
+                  )}
+                  {(activePrintPayment as any).address && (
+                    <p>Địa chỉ khám: <span className="font-bold text-slate-800">{(activePrintPayment as any).address}</span></p>
+                  )}
                   <div className="h-px bg-slate-100 my-2" />
                   <p>Phương thức: <span className="font-black text-slate-800">{activePrintPayment.method}</span></p>
                   {activePrintPayment.note && <p>Ghi chú: <span className="italic text-slate-500">"{activePrintPayment.note}"</span></p>}

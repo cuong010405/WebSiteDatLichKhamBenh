@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useLoading } from "@/lib/loading-context";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -20,6 +21,7 @@ import {
   CreditCard,
   CheckCircle2,
   AlertCircle,
+  XCircle,
   Sparkles,
   Download,
   CalendarPlus,
@@ -684,6 +686,7 @@ function Doctor3DCarousel({
 
 export default function BookingPage() {
   const { user, login, register, updateUser, logout } = useAuth();
+  const { show, hide } = useLoading();
   const router = useRouter();
   const isLoggedIn = !!user;
 
@@ -691,6 +694,18 @@ export default function BookingPage() {
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
   const [authView, setAuthView] = React.useState<"login" | "register">("login");
   const [showPassword, setShowPassword] = React.useState(false);
+  const [loginError, setLoginError] = React.useState("");
+  const loginErrorTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const triggerLoginError = (msg: string = "Tài khoản, mật khẩu không chính xác") => {
+    setLoginError(msg);
+    if (loginErrorTimerRef.current) {
+      clearTimeout(loginErrorTimerRef.current);
+    }
+    loginErrorTimerRef.current = setTimeout(() => {
+      setLoginError("");
+    }, 3000);
+  };
 
   // Post-Registration Age & Gender Modal States
   const [isBirthYearModalOpen, setIsBirthYearModalOpen] = React.useState(false);
@@ -1203,27 +1218,34 @@ export default function BookingPage() {
   // Handle local login
   const handleLocalLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoginError("");
     if (!loginEmail.trim() || !loginPassword) {
-      addToast("Vui lòng điền đầy đủ email và mật khẩu.", "error");
+      triggerLoginError("Tài khoản, mật khẩu không chính xác");
       return;
     }
 
     try {
       const u = await login(loginEmail.trim(), loginPassword);
-      addToast(`Đăng nhập thành công! Chào mừng ${u.fullName}.`, "success");
       setIsAuthModalOpen(false);
+      setLoginError("");
 
       // Reset fields
       setLoginEmail("");
       setLoginPassword("");
 
-      if (u.role === "admin") {
-        router.push("/admin");
-      } else {
-        router.push("/dat-lich");
-      }
+      // Show global loading from loading-context
+      show("Đang đăng nhập hệ thống...");
+      setTimeout(() => {
+        hide();
+        addToast(`Đăng nhập thành công! Chào mừng ${u.fullName}.`, "success");
+        if (u.role === "admin") {
+          router.push("/admin");
+        } else {
+          router.push("/dat-lich");
+        }
+      }, 700);
     } catch (err: any) {
-      addToast(err.message || "Đăng nhập thất bại", "error");
+      triggerLoginError("Tài khoản, mật khẩu không chính xác");
     }
   };
 
@@ -1231,6 +1253,7 @@ export default function BookingPage() {
   const handleLogin = () => {
     setIsAuthModalOpen(true);
     setAuthView("login");
+    setLoginError("");
   };
 
   // Trigger logout
@@ -1510,10 +1533,10 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
 
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-clip bg-slate-50 text-slate-900 font-sans selection:bg-blue-600 selection:text-white relative">
-      {/* Toast Notification Container */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm pointer-events-none">
+      {/* Toast Container - góc phải dưới (chỉ success & info, không có error) */}
+      <div className="fixed bottom-6 right-6 z-[150] flex flex-col gap-3 max-w-sm pointer-events-none">
         <AnimatePresence>
-          {toasts.map((toast) => (
+          {toasts.filter(t => t.type !== "error").map((toast) => (
             <motion.div
               key={toast.id}
               initial={{ opacity: 0, y: 30, scale: 0.9 }}
@@ -1522,22 +1545,16 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
               className={cn(
                 "p-4 rounded-2xl shadow-2xl border flex items-center gap-3 backdrop-blur-md pointer-events-auto",
                 toast.type === "success"
-                  ? "bg-white border-blue-200 text-blue-900 shadow-blue-50"
-                  : toast.type === "error"
-                    ? "bg-orange-50 border-orange-200 text-orange-700 shadow-orange-50"
-                    : "bg-white border-blue-100 text-slate-800",
+                  ? "bg-white border-blue-200 text-blue-900"
+                  : "bg-white border-blue-100 text-slate-800",
               )}
             >
               {toast.type === "success" ? (
                 <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0" />
-              ) : toast.type === "error" ? (
-                <AlertCircle className="w-5 h-5 text-orange-500 shrink-0" />
               ) : (
                 <Sparkles className="w-5 h-5 text-blue-500 shrink-0 animate-pulse" />
               )}
-              <span className="text-xs font-black tracking-tight">
-                {toast.message}
-              </span>
+              <span className="text-xs font-black tracking-tight">{toast.message}</span>
             </motion.div>
           ))}
         </AnimatePresence>
@@ -2099,6 +2116,31 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
         </div>
       </footer>
 
+      {/* Single Centered Error Overlay - Giữa màn hình (Dấu X hình tròn + Chữ thông báo) */}
+      <AnimatePresence>
+        {loginError && (
+          <motion.div
+            key="centered-login-error"
+            initial={{ opacity: 0, scale: 0.6 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.6 }}
+            transition={{ type: "spring", stiffness: 400, damping: 22 }}
+            className="fixed inset-0 z-[200] flex flex-col items-center justify-center pointer-events-none p-4"
+          >
+            <div className="bg-white/95 backdrop-blur-xl border border-red-100 p-6 rounded-[32px] shadow-[0_20px_50px_rgba(239,68,68,0.25)] flex flex-col items-center gap-3.5 text-center pointer-events-auto max-w-xs w-full ring-4 ring-red-500/10">
+              {/* Hình tròn đỏ có dấu X */}
+              <div className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center text-white shadow-lg shadow-red-500/30 shrink-0">
+                <X className="w-9 h-9" strokeWidth={3} />
+              </div>
+              {/* Chữ thông báo */}
+              <p className="text-sm font-extrabold text-slate-800 leading-snug">
+                {loginError}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Authentication Modal - Sliding Login & Register */}
       <AnimatePresence>
         {isAuthModalOpen && (
@@ -2160,6 +2202,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                     onClick={() => {
                       setAuthView("login");
                       setShowPassword(false);
+                      setLoginError("");
                     }}
                     className={cn(
                       "relative z-10 w-1/2 text-center py-2.5 text-xs font-black uppercase tracking-wider transition-colors duration-200",
@@ -2173,6 +2216,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                     onClick={() => {
                       setAuthView("register");
                       setShowPassword(false);
+                      setLoginError("");
                     }}
                     className={cn(
                       "relative z-10 w-1/2 text-center py-2.5 text-xs font-black uppercase tracking-wider transition-colors duration-200",

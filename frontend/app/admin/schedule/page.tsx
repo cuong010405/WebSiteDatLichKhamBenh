@@ -7,6 +7,10 @@ import {
   Search,
   Settings2,
   Users,
+  User,
+  Clock,
+  Stethoscope,
+  CreditCard,
   Calendar as CalendarIcon,
   Sparkles,
   CheckCircle2,
@@ -20,6 +24,7 @@ import {
   Phone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/ui/pagination";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -48,39 +53,125 @@ import { formatVietnameseDate, parseCurrencyNumber } from "@/lib/utils/format";
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8);
 
-function getPositionPercent(time: string): number {
-  if (!time || !time.includes(":")) return 0;
-  const [h, m] = time.split(":").map(Number);
-  if (isNaN(h) || isNaN(m)) return 0;
+function parseStartTime(timeStr?: string, startTimeStr?: string): string {
+  if (startTimeStr && startTimeStr.includes(":")) return startTimeStr.trim();
+  if (timeStr && timeStr.includes(":")) {
+    const firstPart = timeStr.split("-")[0].trim();
+    if (firstPart.includes(":")) return firstPart;
+  }
+  return "08:00";
+}
+
+function parseDurationHours(durationStr?: string, timeStr?: string, packageShiftStr?: string): number {
+  const combined = `${durationStr || ""} ${packageShiftStr || ""}`.toLowerCase();
+  if (combined.includes("8h") || combined.includes("8 tiếng") || combined.includes("8h/ngày") || combined.includes("(8h)")) {
+    return 8;
+  }
+  if (timeStr && timeStr.includes("-")) {
+    const parts = timeStr.split("-").map((p) => p.trim());
+    if (parts.length === 2 && parts[0].includes(":") && parts[1].includes(":")) {
+      const [h1, m1] = parts[0].split(":").map(Number);
+      const [h2, m2] = parts[1].split(":").map(Number);
+      if (!isNaN(h1) && !isNaN(h2)) {
+        const diffMinutes = (h2 * 60 + (m2 || 0)) - (h1 * 60 + (m1 || 0));
+        if (diffMinutes > 0) return diffMinutes / 60;
+      }
+    }
+  }
+
+  if (durationStr) {
+    const matches = durationStr.match(/(\d+(\.\d+)?)\s*(h|giờ)?/gi);
+    if (matches) {
+      for (const m of matches) {
+        if (m.toLowerCase().includes("h") || m.toLowerCase().includes("giờ")) {
+          const val = parseFloat(m);
+          if (!isNaN(val) && val > 0) return val;
+        }
+      }
+      const firstVal = parseFloat(matches[0]);
+      if (!isNaN(firstVal) && firstVal > 0 && firstVal <= 12) return firstVal;
+    }
+  }
+
+  return 4;
+}
+
+function formatVisitDisplayTime(v: Visit): string {
+  const durationHours = parseDurationHours(v.duration, v.time, v.packageShift ?? undefined);
+  const start = parseStartTime(v.time, v.startTime ?? undefined);
+  const [h, m] = start.split(":").map(Number);
+  if (isNaN(h)) return v.time || "08:00 - 12:00";
+
+  const endH = (h + durationHours) % 24;
+  const endHStr = String(endH).padStart(2, "0");
+  const mStr = String(isNaN(m) ? 0 : m).padStart(2, "0");
+  return `${start} - ${endHStr}:${mStr}`;
+}
+
+function getPositionPercent(timeStr?: string, startTimeStr?: string): number {
+  const start = parseStartTime(timeStr, startTimeStr);
+  const [h, m] = start.split(":").map(Number);
+  if (isNaN(h)) return 0;
   const startHour = 8;
   const totalMinutes = 12 * 60;
-  const minutes = (h - startHour) * 60 + m;
-  return Math.max(0, (minutes / totalMinutes) * 100);
+  const minutes = (h - startHour) * 60 + (isNaN(m) ? 0 : m);
+  return Math.max(0, Math.min(100, (minutes / totalMinutes) * 100));
 }
 
-function getWidthPercent(duration: string): number {
-  if (!duration) return 0;
-  const hours = parseFloat(duration.replace("h", ""));
-  if (isNaN(hours) || hours <= 0) return 0;
-  return Math.min(100, (hours / 12) * 100);
+function getWidthPercent(durationStr?: string, timeStr?: string, packageShiftStr?: string): number {
+  const hours = parseDurationHours(durationStr, timeStr, packageShiftStr);
+  const totalHours = 12;
+  return Math.max(10, Math.min(100, (hours / totalHours) * 100));
 }
 
-// Helper to check if two time ranges overlap
+function isVisitOnDate(v: Visit, targetDateStr?: string): boolean {
+  if (!v.date || !targetDateStr) return true;
+  if (v.date === targetDateStr) return true;
+
+  const pkgPlan = String((v as any).packagePlan || v.duration || "").toLowerCase();
+  const careMode = String((v as any).careMode || "").toLowerCase();
+
+  let days = 0;
+  if (pkgPlan.includes("30") || pkgPlan.includes("tháng")) days = 30;
+  else if (pkgPlan.includes("14")) days = 14;
+  else if (pkgPlan.includes("7") || pkgPlan.includes("tuần")) days = 7;
+  else if (careMode === "package" || careMode.includes("gói")) days = 7;
+
+  if (days > 1) {
+    const startDate = new Date(v.date);
+    const targetDate = new Date(targetDateStr);
+    if (!isNaN(startDate.getTime()) && !isNaN(targetDate.getTime())) {
+      const diffTime = targetDate.getTime() - startDate.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays >= 0 && diffDays < days) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 function isOverlapping(
-  v1: { startTime: string; duration: string },
-  v2: { startTime: string; duration: string },
+  v1: { startTime?: string; time?: string; duration?: string },
+  v2: { startTime?: string; time?: string; duration?: string },
 ) {
-  if (!v1.startTime || !v2.startTime || !v1.duration || !v2.duration) return false;
-  const getMinutes = (t: string) => {
-    if (!t || !t.includes(":")) return 0;
+  const start1Str = parseStartTime(v1.time, v1.startTime);
+  const start2Str = parseStartTime(v2.time, v2.startTime);
+  const dur1 = parseDurationHours(v1.duration, v1.time);
+  const dur2 = parseDurationHours(v2.duration, v2.time);
+
+  const getMin = (t: string) => {
     const [h, m] = t.split(":").map(Number);
-    return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+    return (isNaN(h) ? 8 : h) * 60 + (isNaN(m) ? 0 : m);
   };
-  const start1 = getMinutes(v1.startTime);
-  const end1 = start1 + parseFloat(v1.duration.replace("h", "") || "0") * 60;
-  const start2 = getMinutes(v2.startTime);
-  const end2 = start2 + parseFloat(v2.duration.replace("h", "") || "0") * 60;
-  return start1 < end2 && start2 < end1;
+
+  const s1 = getMin(start1Str);
+  const e1 = s1 + dur1 * 60;
+  const s2 = getMin(start2Str);
+  const e2 = s2 + dur2 * 60;
+
+  return s1 < e2 && s2 < e1;
 }
 
 // Flexible helper to match visits to staff members by ID or Name
@@ -99,14 +190,15 @@ function isStaffMatch(person: Staff, staffId?: string, staffName?: string): bool
   return false;
 }
 
+// Service names MUST match exactly what customers submit from dat-lich page
 const DEFAULT_VISIT_TYPES = [
-  "Kiểm tra sức khỏe định kỳ",
-  "Vật lý trị liệu",
-  "Phục hồi chức năng",
+  "Chăm sóc & Khám bệnh tổng quát tại nhà",
+  "Chăm sóc vết thương & Thay băng y tế",
+  "Vật lý trị liệu & Phục hồi chức năng",
+  "Chăm sóc người cao tuổi & Bệnh nhân tại gia",
   "Truyền dịch tại nhà",
-  "Chăm sóc vết thương",
-  "Khám nội khoa",
   "Tư vấn dinh dưỡng",
+  "Kiểm tra sức khỏe định kỳ",
 ];
 
 const DURATION_OPTIONS = [
@@ -521,17 +613,111 @@ function DeleteDialog({
   );
 }
 
+function checkStaffConflict(
+  staff: Staff,
+  targetVisit: Visit,
+  allVisits: Visit[]
+): boolean {
+  if (!staff || !targetVisit || !targetVisit.date) return false;
+  const staffVisits = allVisits.filter(
+    (v) =>
+      v.id !== targetVisit.id &&
+      v.date === targetVisit.date &&
+      v.status !== "Đã hủy" &&
+      isStaffMatch(staff, v.staffId, (v as any).staffName)
+  );
+  if (staffVisits.length === 0) return false;
+
+  const targetStart = targetVisit.startTime || (targetVisit.time ? targetVisit.time.split("-")[0]?.trim() : "");
+  const targetDuration = targetVisit.duration || "2h";
+
+  return staffVisits.some((sv) => {
+    const svStart = sv.startTime || (sv.time ? sv.time.split("-")[0]?.trim() : "");
+    const svDuration = sv.duration || "2h";
+    return isOverlapping(
+      { startTime: targetStart, duration: targetDuration },
+      { startTime: svStart, duration: svDuration }
+    );
+  });
+}
+
+function filterStaffForRequirement(staffList: Staff[], requiredSpecialty?: string) {
+  if (!staffList || staffList.length === 0) return [];
+  if (!requiredSpecialty || requiredSpecialty === "" || requiredSpecialty.includes("tự chọn")) {
+    return staffList;
+  }
+  const req = requiredSpecialty.toLowerCase().trim();
+
+  // Phát hiện trực tiếp loại chuyên gia từ form đặt lịch của khách hàng
+  // Khách hàng chọn "Điều dưỡng viên" hoặc "Vật lý trị liệu"
+  const wantsNurseExplicit =
+    req === "điều dưỡng viên" ||
+    req === "điều dưỡng" ||
+    req.startsWith("điều dưỡng");
+
+  const wantsPhysioExplicit =
+    req === "vật lý trị liệu" ||
+    req === "chuyên viên vật lý trị liệu" ||
+    req.startsWith("vật lý");
+
+  // Kiểm tra nếu yêu cầu thuộc nhóm Vật lý trị liệu / Phục hồi chức năng
+  const wantsPhysio = wantsPhysioExplicit ||
+    (!wantsNurseExplicit && (
+      req.includes("vật lý") ||
+      req.includes("trị liệu") ||
+      req.includes("vltl") ||
+      req.includes("phục hồi")
+    ));
+
+  // Hàm kiểm tra nhân viên thuộc nhóm VLTL hay nhóm Điều dưỡng
+  const isPhysioStaff = (st: Staff) => {
+    const savedType = ((st as any).staffType || "").toLowerCase();
+    if (savedType) {
+      return (
+        savedType.includes("vật lý") ||
+        savedType.includes("vltl") ||
+        savedType.includes("trị liệu")
+      );
+    }
+    const roleLower = (st.role || "").toLowerCase();
+    const deptLower = (st.department || "").toLowerCase();
+    return (
+      roleLower.includes("vltl") ||
+      roleLower.includes("vật lý") ||
+      deptLower.includes("phục hồi") ||
+      deptLower.includes("vật lý")
+    );
+  };
+
+  // Ưu tiên hiển thị đúng nhóm chuyên môn lên đầu danh sách combobox
+  // Nếu KH chọn rõ "Điều dưỡng viên" → nhóm Điều dưỡng lên đầu
+  // Nếu KH chọn rõ "Vật lý trị liệu" → nhóm VLTL lên đầu
+  const matchingGroup = staffList.filter((st) =>
+    wantsPhysio ? isPhysioStaff(st) : !isPhysioStaff(st)
+  );
+  const otherGroup = staffList.filter((st) =>
+    wantsPhysio ? !isPhysioStaff(st) : isPhysioStaff(st)
+  );
+
+  return [...matchingGroup, ...otherGroup];
+}
+
 function ApproveVisitsDialog({
   pendingVisits,
   onApprove,
   onReject,
   staffList,
+  allVisits = [],
+  onToast,
 }: {
   pendingVisits: Visit[];
-  onApprove: (id: string) => void;
+  onApprove: (id: string, staffId: string) => void;
   onReject: (id: string, reason?: string) => void;
   staffList: Staff[];
+  allVisits?: Visit[];
+  onToast?: (msg: string, type: "ok" | "err") => void;
 }) {
+  const [selectedStaffMap, setSelectedStaffMap] = React.useState<Record<string, string>>({});
   const [rejectingVisitId, setRejectingVisitId] = React.useState<string | null>(null);
   const [selectedReason, setSelectedReason] = React.useState("Lịch làm việc của chuyên gia bận / quá tải ca trực");
   const [customReason, setCustomReason] = React.useState("");
@@ -583,23 +769,23 @@ function ApproveVisitsDialog({
           </Button>
         }
       />
-      <DialogContent className="sm:max-w-[500px] rounded-[28px] border-hairline shadow-2xl p-0 overflow-hidden bg-white">
+      <DialogContent className="sm:max-w-[620px] rounded-[32px] border-hairline shadow-2xl p-0 overflow-hidden bg-white">
         <div className="h-1.5 w-full bg-gradient-to-r from-amber-400 to-orange-500" />
-        <div className="p-8">
-          <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-5 border-b border-slate-100 mb-6">
+        <div className="pt-5 px-9 pb-7">
+          <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-3 border-b border-slate-100 mb-3.5">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white shrink-0 shadow-md">
-              <Bell className="w-5 h-5" />
+              <Bell className="w-5.5 h-5.5" />
             </div>
             <div className="text-left">
-              <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">
+              <DialogTitle className="text-lg font-black text-slate-900 uppercase tracking-tight leading-none">
                 Yêu cầu chờ duyệt
               </DialogTitle>
-              <DialogDescription className="text-slate-500 mt-1.5 text-[11px] font-semibold leading-tight">
+              <DialogDescription className="text-slate-500 mt-1.5 text-xs font-semibold leading-tight">
                 Phê duyệt hoặc từ chối các yêu cầu đặt lịch hẹn của bệnh nhân.
               </DialogDescription>
             </div>
           </DialogHeader>
-          <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+          <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1">
             {pendingVisits.length > 0 ? (
               pendingVisits.map((visit) => (
                 <div key={visit.id}>
@@ -668,32 +854,204 @@ function ApproveVisitsDialog({
                     >
                       <div className="flex justify-between items-start gap-3">
                         <div className="flex-1 text-left min-w-0">
-                          <span className="font-mono text-[8px] font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-200">
-                            #{visit.id}
-                          </span>
-                          <h4 className="font-black text-xs uppercase text-slate-800 leading-none mt-2 truncate">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-[9px] font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-200">
+                              #{visit.id}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-500">
+                              📅 {visit.date || "Hôm nay"} ({visit.time})
+                            </span>
+                          </div>
+                          <h4 className="font-black text-sm uppercase text-slate-800 leading-tight mt-1.5">
                             {visit.type}
                           </h4>
-                          <p className="text-[10px] text-slate-500 font-bold mt-1">
-                            BN: {visit.patientName}
-                          </p>
-                          <p className="text-[10px] text-slate-500 font-bold mt-1">
-                            KH: {visit.userName || "Khách"}
-                          </p>
-                          <p className="text-[10px] text-indigo-600 font-black uppercase tracking-wider mt-0.5">
-                            CG:{" "}
-                            {staffList.find((s) => isStaffMatch(s, visit.staffId, (visit as any).staffName))?.name ||
-                              (visit as any).staffName ||
-                              "Chuyên gia"}
-                          </p>
+
+                          {/* Full Customer Information Card */}
+                          <div className="mt-2.5 p-3 rounded-xl bg-white border border-amber-100 space-y-1.5 text-[11px] text-slate-700">
+                            <p className="font-extrabold text-blue-950">
+                              👤 Bệnh nhân: <span className="text-slate-800 font-bold">{visit.patientName}</span>
+                            </p>
+                            <p className="font-semibold text-slate-600">
+                              📞 Khách hàng: <span className="text-slate-800 font-bold">{visit.userName || "Khách hàng"}</span>
+                              {((visit as any).userPhone || (visit as any).phone) && ` • SĐT: ${(visit as any).userPhone || (visit as any).phone}`}
+                              {((visit as any).userEmail || (visit as any).email) && ` • ${(visit as any).userEmail || (visit as any).email}`}
+                            </p>
+                            {((visit as any).address || (visit as any).customerArea) && (
+                              <p className="font-semibold text-slate-600 leading-snug">
+                                📍 Địa chỉ khám: <span className="text-slate-800 font-bold">{(visit as any).address || (visit as any).customerArea}</span>
+                              </p>
+                            )}
+                            {(visit as any).careMode && (
+                              <p className="font-bold text-emerald-700">
+                                📌 Hình thức: {(visit as any).careMode === "hourly" ? "⏱️ Chăm sóc theo giờ" : "📦 Gói dài hạn"}
+                                {(visit as any).packagePlan ? ` (${(visit as any).packagePlan})` : ""}
+                              </p>
+                            )}
+                            {(visit as any).requiredSpecialty && (
+                              <p className="font-extrabold text-indigo-700">
+                                🩺 Yêu cầu chuyên môn: <span className="bg-indigo-50 text-indigo-800 px-2 py-0.5 rounded-md border border-indigo-200">{(visit as any).requiredSpecialty}</span>
+                              </p>
+                            )}
+                            {((visit as any).notes || visit.paymentNote) && (
+                              <p className="font-medium text-slate-500 italic text-[10px]">
+                                📝 Mô tả/Triệu chứng: {(visit as any).notes || visit.paymentNote}
+                              </p>
+                            )}
+                            {visit.paymentMethod && (
+                              <p className="font-bold text-slate-600">
+                                💳 Thanh toán: <span className="text-blue-600">{visit.paymentMethod}</span>
+                                {visit.paymentAmount && ` (${parseCurrencyNumber(visit.paymentAmount).toLocaleString("vi-VN")}đ)`}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Currently Assigned / Selected Staff */}
+                          <div className="mt-2.5 flex items-center justify-between">
+                            <p className="text-[11px] text-indigo-700 font-extrabold uppercase tracking-wider">
+                              CG Đã chọn:{" "}
+                              <span className="text-indigo-950 font-black">
+                                {(() => {
+                                  const selId = selectedStaffMap[visit.id] || (visit.staffId !== "PENDING" ? visit.staffId : "");
+                                  const st = staffList.find((s) => isStaffMatch(s, selId, (visit as any).staffName));
+                                  return st ? `${st.name} (${st.specialty || st.role || st.department || "Chuyên gia"})` : "Chưa chọn chuyên gia";
+                                })()}
+                              </span>
+                            </p>
+                          </div>
+
+                          {/* Filtered Staff selector by Customer Requirement & Time Conflict check */}
+                          <div className="mt-2.5 flex items-center gap-2">
+                            {(() => {
+                              const reqSpecialty = (visit as any).requiredSpecialty || "";
+                              const req = reqSpecialty.toLowerCase().trim();
+
+                              // Xác định nhóm chuyên môn khách hàng muốn
+                              const wantsPhysio =
+                                req.startsWith("vật lý") ||
+                                req.includes("vltl") ||
+                                req.includes("trị liệu") ||
+                                req.includes("phục hồi");
+                              const wantsNurse =
+                                req.startsWith("điều dưỡng");
+
+                              const isPhysioStaff = (st: Staff) => {
+                                const savedType = ((st as any).staffType || "").toLowerCase();
+                                if (savedType) {
+                                  return savedType.includes("vật lý") || savedType.includes("vltl") || savedType.includes("trị liệu");
+                                }
+                                const r = (st.role || "").toLowerCase();
+                                const d = (st.department || "").toLowerCase();
+                                return r.includes("vltl") || r.includes("vật lý") || d.includes("phục hồi") || d.includes("vật lý");
+                              };
+
+                              const hasFilter = wantsPhysio || wantsNurse;
+                              let matchingGroup: Staff[] = [];
+                              let otherGroup: Staff[] = [];
+
+                              if (hasFilter) {
+                                matchingGroup = staffList.filter((st) => wantsPhysio ? isPhysioStaff(st) : !isPhysioStaff(st));
+                                otherGroup = staffList.filter((st) => wantsPhysio ? !isPhysioStaff(st) : isPhysioStaff(st));
+                              }
+
+                              const currentVal = selectedStaffMap[visit.id] || (visit.staffId && visit.staffId !== "PENDING" ? visit.staffId : "");
+
+                              const renderItem = (st: Staff) => {
+                                const hasConflict = checkStaffConflict(st, visit, allVisits);
+                                return (
+                                  <SelectItem
+                                    key={st.id}
+                                    value={st.id || ""}
+                                    disabled={hasConflict}
+                                    className={cn(
+                                      "cursor-pointer py-1.5 font-bold text-xs",
+                                      hasConflict && "opacity-50 text-rose-500 bg-rose-50/40"
+                                    )}
+                                  >
+                                    <span>{st.name} ({st.specialty || st.role || st.department || "Chuyên gia"})</span>
+                                    {hasConflict && (
+                                      <span className="ml-2 text-[9px] font-black text-rose-600 bg-rose-100 px-1.5 py-0.5 rounded border border-rose-200">
+                                        [🔴 Trùng lịch]
+                                      </span>
+                                    )}
+                                  </SelectItem>
+                                );
+                              };
+
+                              return (
+                                <Select
+                                  value={currentVal}
+                                  onValueChange={(val) => {
+                                    setSelectedStaffMap((prev) => ({ ...prev, [visit.id]: val ?? "" }));
+                                  }}
+                                >
+                                  <SelectTrigger className="h-9 text-[10px] font-bold bg-white border-amber-200 rounded-xl focus:ring-1 focus:ring-amber-400 flex-1">
+                                    <SelectValue placeholder="Chọn chuyên gia...">
+                                      {(() => {
+                                        const assigned = staffList.find((s) => isStaffMatch(s, currentVal, (visit as any).staffName));
+                                        return assigned ? `${assigned.name} (${assigned.specialty || assigned.role || assigned.department || "Chuyên gia"})` : "Chọn chuyên gia...";
+                                      })()}
+                                    </SelectValue>
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-white rounded-xl text-xs font-bold p-1 max-h-60">
+                                    {hasFilter ? (
+                                      <>
+                                        {matchingGroup.length > 0 && (
+                                          <>
+                                            <div className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 rounded-lg mb-1 border border-emerald-100">
+                                              ✅ Phù hợp yêu cầu ({wantsPhysio ? "Vật lý trị liệu" : "Điều dưỡng"})
+                                            </div>
+                                            {matchingGroup.map(renderItem)}
+                                          </>
+                                        )}
+                                        {otherGroup.length > 0 && (
+                                          <>
+                                            <div className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 rounded-lg mt-2 mb-1 border border-slate-100">
+                                              ↓ Nhóm khác
+                                            </div>
+                                            {otherGroup.map(renderItem)}
+                                          </>
+                                        )}
+                                      </>
+                                    ) : (
+                                      staffList.map(renderItem)
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                              );
+                            })()}
+
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const reqSpecialty = (visit as any).requiredSpecialty || "";
+                                const candidateStaff = filterStaffForRequirement(staffList, reqSpecialty);
+                                const bestStaff = candidateStaff.find((st) => !checkStaffConflict(st, visit, allVisits));
+                                if (bestStaff?.id) {
+                                  setSelectedStaffMap((prev) => ({ ...prev, [visit.id]: bestStaff.id! }));
+                                  if (onToast) onToast(`Đã gợi ý chuyên gia: ${bestStaff.name}. Bấm Phê duyệt để xác nhận!`, "ok");
+                                } else {
+                                  if (onToast) onToast("Không có chuyên gia phù hợp không trùng lịch!", "err");
+                                }
+                              }}
+                              className="px-3 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[9px] font-black uppercase tracking-wider rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all shrink-0 shadow-xs cursor-pointer"
+                              title="Gợi ý chọn chuyên gia phù hợp nhất không trùng lịch"
+                            >
+                              ⚡ AI Gợi ý
+                            </button>
+                          </div>
                         </div>
-                        <span className="text-[10px] font-mono font-black text-slate-500 bg-white border border-slate-200 px-2 py-1 rounded-lg shrink-0">
-                          {visit.time}
-                        </span>
                       </div>
                       <div className="flex gap-2 pt-1 border-t border-amber-100">
                         <Button
-                          onClick={() => onApprove(visit.id)}
+                          onClick={() => {
+                            const chosenStaffId = selectedStaffMap[visit.id] || (visit.staffId !== "PENDING" ? visit.staffId : "");
+                            if (!chosenStaffId) {
+                              alert("Vui lòng chọn Chuyên gia / Điều dưỡng cho ca trực trước khi phê duyệt!");
+                              return;
+                            }
+                            onApprove(visit.id, chosenStaffId);
+                          }}
                           className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-[9px] font-black uppercase tracking-widest rounded-xl h-9 shadow-sm"
                         >
                           <CheckCircle2 className="w-3 h-3 mr-1.5" /> Phê duyệt
@@ -963,8 +1321,9 @@ function SessionCard({
   visitTypes?: string[];
   selectedDate?: string;
 }) {
-  const left = getPositionPercent(visit.startTime || "08:00");
-  const width = getWidthPercent(visit.duration);
+  const left = getPositionPercent(visit.time, visit.startTime ?? undefined);
+  const width = getWidthPercent(visit.duration, visit.time, visit.packageShift ?? undefined);
+  const displayTime = formatVisitDisplayTime(visit);
   const isOngoing = visit.status === "Đang thực hiện";
   const isPending = visit.status === "Chờ duyệt";
   const isConfirmed = visit.status === "Đã xác nhận";
@@ -989,7 +1348,7 @@ function SessionCard({
     arrowLeft: 0,
   });
   const hoverTimeout = React.useRef<NodeJS.Timeout | null>(null);
-  const TOOLTIP_WIDTH = 320;
+  const TOOLTIP_WIDTH = 440;
 
   const handleMouseEnter = () => {
     if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
@@ -998,14 +1357,14 @@ function SessionCard({
       const cardCenterX = rect.left + rect.width / 2;
       let tooltipLeft = cardCenterX - TOOLTIP_WIDTH / 2;
       tooltipLeft = Math.max(
-        8,
-        Math.min(tooltipLeft, window.innerWidth - TOOLTIP_WIDTH - 8),
+        12,
+        Math.min(tooltipLeft, window.innerWidth - TOOLTIP_WIDTH - 12),
       );
       const arrowLeft = cardCenterX - tooltipLeft;
       setTooltipPos({
-        top: rect.top + window.scrollY - 8,
+        top: rect.top + window.scrollY - 6,
         left: tooltipLeft,
-        arrowLeft: Math.max(16, Math.min(arrowLeft, TOOLTIP_WIDTH - 24)),
+        arrowLeft: Math.max(20, Math.min(arrowLeft, TOOLTIP_WIDTH - 28)),
       });
     }
     setHovered(true);
@@ -1037,160 +1396,182 @@ function SessionCard({
             className="pointer-events-auto"
             style={{
               position: "absolute",
-              bottom: 8,
+              bottom: 6,
               left: 0,
               right: 0,
               transformOrigin: `${tooltipPos.arrowLeft}px bottom`,
             }}
-            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+            initial={{ opacity: 0, y: 6, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.97 }}
-            transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
+            transition={{ duration: 0.16, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
-            <div className="bg-white rounded-[20px] p-4 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.18)] border border-slate-200/80 text-left">
-              <div className="mb-3">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-[11px] font-black text-foreground uppercase tracking-tight leading-snug flex-1 min-w-0">
-                    {visit.type}
-                  </p>
+            <div className="bg-white rounded-[22px] p-4 shadow-[0_16px_45px_-8px_rgba(0,0,0,0.20)] border border-slate-200/90 text-left space-y-2.5">
+              {/* Header: Service Name & Status */}
+              <div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="font-mono text-[9px] font-black text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 shrink-0">
+                      #{visit.id}
+                    </span>
+                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight truncate">
+                      {visit.type}
+                    </h3>
+                  </div>
                   <span
                     className={cn(
-                      "text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg shrink-0 whitespace-nowrap",
+                      "text-[8px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full shrink-0 shadow-xs",
                       statusColor,
                     )}
                   >
                     {visit.status}
                   </span>
                 </div>
-                <p className="text-[9px] text-on-surface-tertiary font-bold mt-1.5 uppercase tracking-wider">
-                  #{visit.id} &bull; {visit.duration}
-                </p>
               </div>
-              <div className="h-px bg-slate-100 mb-3" />
-              <div className="space-y-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-6 h-6 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
-                    <svg
-                      className="w-3 h-3 text-primary"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
+
+              <div className="h-px bg-slate-100" />
+
+              {/* Information Grid: 2 Compact Columns */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {/* Column 1: Patient & Time */}
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <User className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[7.5px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                        Bệnh nhân
+                      </p>
+                      <p className="text-[11px] font-black text-slate-900 truncate mt-0.5">
+                        {visit.patientName}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-[8px] text-on-surface-tertiary font-bold uppercase tracking-widest">
-                      Bệnh nhân
-                    </p>
-                    <p className="text-[12px] font-black text-foreground leading-tight">
-                      {visit.patientName}
-                    </p>
+
+                  <div className="flex items-center gap-2 pt-1 border-t border-slate-200/60">
+                    <Clock className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[7.5px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                        Thời gian ({visit.duration || "1h"})
+                      </p>
+                      <p className="text-[11px] font-black font-mono text-slate-900 truncate mt-0.5">
+                        {displayTime}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2.5">
-                  <div className="w-6 h-6 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
-                    <svg
-                      className="w-3 h-3 text-primary"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-[8px] text-on-surface-tertiary font-bold uppercase tracking-widest">
-                      Thời gian
-                    </p>
-                    <p className="text-[12px] font-black text-foreground font-mono leading-tight">
-                      {visit.time}
-                    </p>
-                  </div>
-                </div>
-                {staffName && (
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6 h-6 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
-                      <svg
-                        className="w-3 h-3 text-primary"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138z"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-[8px] text-on-surface-tertiary font-bold uppercase tracking-widest">
+                {/* Column 2: Specialist & Contact */}
+                <div className="p-2.5 rounded-xl bg-indigo-50/40 border border-indigo-100 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Stethoscope className="w-3.5 h-3.5 text-indigo-700 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[7.5px] font-black text-indigo-500 uppercase tracking-widest leading-none">
                         Chuyên gia
                       </p>
-                      <p className="text-[12px] font-black text-foreground leading-tight">
+                      <p className="text-[11px] font-black text-indigo-950 truncate mt-0.5">
                         {staffName}
                       </p>
                     </div>
                   </div>
-                )}
-                {/* 📍 Địa chỉ khám tại nhà */}
-                <div className="flex items-start gap-2.5 pt-1">
-                  <div className="w-6 h-6 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <MapPin className="w-3 h-3 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-[8px] text-blue-500 font-black uppercase tracking-widest">
-                      📍 Địa chỉ khám tại nhà
-                    </p>
-                    <p className="text-[11px] font-bold text-slate-800 leading-tight">
-                      {(visit as any).address || "Chưa cập nhật địa chỉ"}
-                    </p>
+
+                  <div className="flex items-center gap-2 pt-1 border-t border-indigo-100/80">
+                    <Phone className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[7.5px] font-black text-emerald-600 uppercase tracking-widest leading-none">
+                        Số điện thoại
+                      </p>
+                      <p className="text-[11px] font-black text-slate-900 truncate mt-0.5">
+                        {(visit as any).userPhone || "Chưa nhập SĐT"}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                {/* 📞 Số điện thoại */}
-                {(visit as any).userPhone && (
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6 h-6 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
-                      <Phone className="w-3 h-3 text-emerald-600" />
-                    </div>
-                    <div>
-                      <p className="text-[8px] text-emerald-600 font-black uppercase tracking-widest">
-                        📞 Số điện thoại
-                      </p>
-                      <p className="text-[11px] font-bold text-slate-800 leading-tight">
-                        {(visit as any).userPhone}
-                      </p>
-                    </div>
+              </div>
+
+              {/* Compact Badges Row: Hình thức, Chuyên môn & Thanh toán */}
+              <div className="flex flex-wrap gap-1.5 text-[10px] font-bold">
+                <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-lg">
+                  📌 {(visit as any).careMode === "hourly"
+                    ? "Theo giờ"
+                    : (visit as any).packagePlan === "30days"
+                    ? "Gói tháng (30d)"
+                    : (visit as any).packagePlan === "14days"
+                    ? "Gói 14 ngày"
+                    : (visit as any).packagePlan === "7days"
+                    ? "Gói 7 ngày"
+                    : "Gói dài hạn"}
+                  {(visit as any).packageShift ? ` (${(visit as any).packageShift})` : ""}
+                </span>
+
+                {(visit as any).requiredSpecialty && (
+                  <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-800 border border-indigo-200 px-2 py-0.5 rounded-lg">
+                    🩺 {(visit as any).requiredSpecialty}
+                  </span>
+                )}
+
+                <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-800 border border-purple-200 px-2 py-0.5 rounded-lg">
+                  💳 {visit.paymentAmount ? `${parseCurrencyNumber(visit.paymentAmount).toLocaleString("vi-VN")}đ` : "Theo gói"}
+                  {visit.paymentMethod ? ` (${visit.paymentMethod})` : ""}
+                </span>
+              </div>
+
+              {/* 📍 Địa chỉ & 📝 Ghi chú */}
+              <div className="space-y-1 text-xs">
+                <div className="flex items-center gap-2 text-[11px] text-slate-700 bg-blue-50/50 p-2 rounded-xl border border-blue-100">
+                  <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <span className="font-bold truncate">
+                    📍 {(visit as any).address || "Chưa cập nhật địa chỉ"}
+                  </span>
+                </div>
+
+                {((visit as any).notes || (visit.paymentNote && !visit.paymentNote.startsWith("Lý do hủy:"))) && (
+                  <div className="flex items-center gap-2 text-[11px] text-amber-800 bg-amber-50/50 p-2 rounded-xl border border-amber-100">
+                    <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span className="font-semibold truncate">
+                      📝 {(visit as any).notes || visit.paymentNote}
+                    </span>
                   </div>
                 )}
-                {/* 📝 Mô tả triệu chứng / Ghi chú */}
-                {((visit as any).notes || (visit.paymentNote && !visit.paymentNote.startsWith("Lý do hủy:"))) && (
-                  <div className="flex items-start gap-2.5">
-                    <div className="w-6 h-6 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0 mt-0.5">
-                      <FileText className="w-3 h-3 text-amber-600" />
-                    </div>
-                    <div>
-                      <p className="text-[8px] text-amber-600 font-black uppercase tracking-widest">
-                        📝 Triệu chứng / Ghi chú
-                      </p>
-                      <p className="text-[11px] font-semibold text-slate-700 leading-tight">
-                        {(visit as any).notes || visit.paymentNote}
-                      </p>
-                    </div>
-                  </div>
+              </div>
+
+              {/* Status transition buttons */}
+              {isConfirmed && onStatusChange && (
+                <div className="pt-1 border-t border-slate-100">
+                  <Button
+                    onClick={() => {
+                      setHovered(false);
+                      onStatusChange(visit.id, "Đã hoàn tất" as VisitStatus);
+                    }}
+                    size="sm"
+                    className="w-full h-8 text-[9px] font-black uppercase tracking-widest rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-95 shadow-xs"
+                  >
+                    <CheckCircle2 className="w-3 h-3 mr-1" /> Hoàn thành khám
+                  </Button>
+                </div>
+              )}
+
+              <div className="pt-1 border-t border-slate-100">
+                {!isCompleted ? (
+                  <Button
+                    onClick={() => {
+                      setHovered(false);
+                      setEditOpen(true);
+                    }}
+                    size="sm"
+                    variant="outline"
+                    className="w-full h-8 text-[9px] font-black uppercase tracking-widest rounded-xl border-blue-100 text-blue-600 hover:bg-blue-50 hover:border-blue-200"
+                  >
+                    <Pencil className="w-3 h-3 mr-1" /> Sửa ca trực
+                  </Button>
+                ) : (
+                  <Button
+                    disabled
+                    size="sm"
+                    variant="outline"
+                    className="w-full h-8 text-[9px] font-black uppercase tracking-widest rounded-xl border-slate-200 text-slate-400 bg-slate-50 cursor-not-allowed opacity-60"
+                  >
+                    <Pencil className="w-3 h-3 mr-1" /> Sửa ca trực (Đã hoàn tất)
+                  </Button>
                 )}
               </div>
               {isOngoing && (
@@ -1239,45 +1620,6 @@ function SessionCard({
                   </div>
                 </div>
               )}
-              {/* Status transition buttons */}
-              {isConfirmed && onStatusChange && (
-                <div className="mt-3 pt-3 border-t border-blue-100">
-                  <Button
-                    onClick={() => {
-                      setHovered(false);
-                      onStatusChange(visit.id, "Đã hoàn tất" as VisitStatus);
-                    }}
-                    size="sm"
-                    className="w-full h-8 text-[9px] font-black uppercase tracking-widest rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-95 shadow-sm"
-                  >
-                    <CheckCircle2 className="w-3 h-3 mr-1" /> Hoàn thành khám
-                  </Button>
-                </div>
-              )}
-              <div className="mt-3 pt-3 border-t border-slate-100">
-                {!isCompleted ? (
-                  <Button
-                    onClick={() => {
-                      setHovered(false);
-                      setEditOpen(true);
-                    }}
-                    size="sm"
-                    variant="outline"
-                    className="w-full h-8 text-[9px] font-black uppercase tracking-widest rounded-xl border-blue-100 text-blue-600 hover:bg-blue-50 hover:border-blue-200"
-                  >
-                    <Pencil className="w-3 h-3 mr-1" /> Sửa ca trực
-                  </Button>
-                ) : (
-                  <Button
-                    disabled
-                    size="sm"
-                    variant="outline"
-                    className="w-full h-8 text-[9px] font-black uppercase tracking-widest rounded-xl border-slate-200 text-slate-400 bg-slate-50 cursor-not-allowed opacity-60"
-                  >
-                    <Pencil className="w-3 h-3 mr-1" /> Sửa (Đã hoàn tất)
-                  </Button>
-                )}
-              </div>
             </div>
             <div className="relative h-2" style={{ marginTop: "-1px" }}>
               <div
@@ -1363,7 +1705,7 @@ function SessionCard({
             {visit.patientName}
           </span>
           <span className="text-[8px] font-black font-mono uppercase tracking-[0.05em] text-on-surface-tertiary mt-0.5 whitespace-nowrap overflow-hidden">
-            {visit.time}
+            {displayTime}
           </span>
         </div>
       </motion.div>
@@ -1400,6 +1742,13 @@ function SessionCard({
 
 export default function SchedulePage() {
   const { show, hide } = useLoading();
+  const [toast, setToast] = React.useState<{ msg: string; type: "ok" | "err" } | null>(null);
+
+  const showToast = React.useCallback((msg: string, type: "ok" | "err" = "ok") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  }, []);
+
   const [view, setView] = React.useState<"day" | "week" | "month">("day");
   const [allVisits, setAllVisits] = React.useState<Visit[]>([]);
   const [staffList, setStaffList] = React.useState<Staff[]>([]);
@@ -1425,56 +1774,66 @@ export default function SchedulePage() {
     >
   >({});
 
+  const [staffPage, setStaffPage] = React.useState(1);
+  const STAFF_PER_PAGE = 5;
+
   const loadData = React.useCallback(() => {
     setLoading(true);
     Promise.all([
-      fetch(`${API_URL}/visits`).then(async (r) => {
+      fetch(`${API_URL}/visits`, { cache: "no-store", headers: { "Cache-Control": "no-cache" } }).then(async (r) => {
         const text = await r.text();
-        if (!r.ok) {
-          throw new Error(`Visits fetch failed ${r.status}: ${text}`);
-        }
-        try {
-          return JSON.parse(text);
-        } catch (err) {
-          throw new Error(`Visits JSON parse failed: ${text}`);
-        }
+        if (!r.ok) throw new Error(`Visits fetch failed ${r.status}: ${text}`);
+        try { return JSON.parse(text); } catch { throw new Error(`Visits JSON parse failed: ${text}`); }
       }),
-      fetch(`${API_URL}/staff`).then(async (r) => {
+      fetch(`${API_URL}/staff`, { cache: "no-store", headers: { "Cache-Control": "no-cache" } }).then(async (r) => {
         const text = await r.text();
-        if (!r.ok) {
-          throw new Error(`Staff fetch failed ${r.status}: ${text}`);
-        }
-        try {
-          return JSON.parse(text);
-        } catch (err) {
-          throw new Error(`Staff JSON parse failed: ${text}`);
-        }
+        if (!r.ok) throw new Error(`Staff fetch failed ${r.status}: ${text}`);
+        try { return JSON.parse(text); } catch { throw new Error(`Staff JSON parse failed: ${text}`); }
       }),
       authFetch(`${API_URL}/patients`).then(async (r) => {
         const text = await r.text();
-        if (!r.ok) {
-          throw new Error(`Patients fetch failed ${r.status}: ${text}`);
-        }
-        try {
-          return JSON.parse(text);
-        } catch (err) {
-          throw new Error(`Patients JSON parse failed: ${text}`);
-        }
+        if (!r.ok) throw new Error(`Patients fetch failed ${r.status}: ${text}`);
+        try { return JSON.parse(text); } catch { throw new Error(`Patients JSON parse failed: ${text}`); }
       }),
     ])
       .then(([visits, staff, patients]) => {
-        setAllVisits(Array.isArray(visits) ? visits : []);
-        setStaffList(Array.isArray(staff) ? staff : []);
+        // Normalize visits: map all fields from dat-lich customer booking format
+        const normalizedVisits = (Array.isArray(visits) ? visits : []).map((v: any) => ({
+          ...v,
+          // Ensure all dispatch metadata fields from dat-lich are present
+          careMode: v.careMode || null,
+          packagePlan: v.packagePlan || null,
+          packageShift: v.packageShift || null,
+          requiredSpecialty: v.requiredSpecialty || null,
+          customerArea: v.customerArea || null,
+          address: v.address || v.customerArea || "",
+          notes: v.notes || "",
+          userPhone: v.userPhone || "",
+          userEmail: v.userEmail || "",
+          // Ensure staffName shown correctly for PENDING
+          staffName: v.staffId === "PENDING" || !v.staffId
+            ? "⏳ Chưa phân công"
+            : (v.staffName || ""),
+        }));
+
+        // Filter PENDING out of staffList (only real staff for dispatch dropdown)
+        const realStaff = (Array.isArray(staff) ? staff : []).filter(
+          (s: any) => s.id !== "PENDING" && s.email !== "pending@mintcare.com"
+        );
+
+        setAllVisits(normalizedVisits);
+        setStaffList(realStaff);
         setPatientList(Array.isArray(patients) ? patients : []);
       })
-      .catch((err) =>
-        console.error("[SchedulePage] Lỗi tải dữ liệu lịch trình:", err),
-      )
+      .catch((err) => console.error("[SchedulePage] Lỗi tải dữ liệu lịch trình:", err))
       .finally(() => setLoading(false));
   }, []);
 
   React.useEffect(() => {
     loadData();
+    const handleFocus = () => loadData();
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, [loadData]);
 
 
@@ -1513,13 +1872,14 @@ export default function SchedulePage() {
       });
       const resData = await r.json();
       if (!r.ok) {
-        alert(resData.error || "Lỗi tạo lịch trực!");
+        showToast(resData.error || "Lỗi tạo lịch trực!", "err");
         return;
       }
       setAllVisits((prev) => [...prev, resData]);
+      showToast("Tạo ca trực thành công!", "ok");
     } catch (err: any) {
       console.error("[SchedulePage] Lỗi tạo lịch trực:", err);
-      alert(err.message || "Lỗi tạo lịch trực!");
+      showToast(err.message || "Lỗi tạo lịch trực!", "err");
     } finally {
       hide();
     }
@@ -1535,13 +1895,14 @@ export default function SchedulePage() {
       });
       const resData = await r.json();
       if (!r.ok) {
-        alert(resData.error || "Lỗi cập nhật lịch trực!");
+        showToast(resData.error || "Lỗi cập nhật lịch trực!", "err");
         return;
       }
       setAllVisits((prev) => prev.map((v) => (v.id === resData.id ? resData : v)));
+      showToast("Cập nhật ca trực thành công!", "ok");
     } catch (err: any) {
       console.error("[SchedulePage] Lỗi cập nhật lịch trực:", err);
-      alert(err.message || "Lỗi cập nhật lịch trực!");
+      showToast(err.message || "Lỗi cập nhật lịch trực!", "err");
     } finally {
       hide();
     }
@@ -1551,7 +1912,10 @@ export default function SchedulePage() {
     show("Đang xóa lịch trực...")
     try {
       const r = await authFetch(`${API_URL}/visits/${id}`, { method: "DELETE" });
-      if (r.ok) setAllVisits((prev) => prev.filter((v) => v.id !== id));
+      if (r.ok) {
+        setAllVisits((prev) => prev.filter((v) => v.id !== id));
+        showToast("Đã xóa lịch trực!", "ok");
+      }
     } catch (err) {
       console.error("[SchedulePage] Lỗi xóa lịch trực:", err);
     } finally {
@@ -1559,20 +1923,49 @@ export default function SchedulePage() {
     }
   };
 
-  const handleApprove = async (id: string) => {
+  const handleApprove = async (id: string, targetStaffId?: string) => {
     const visit = allVisits.find((v) => v.id === id);
     if (!visit) return;
-    show("Đang phê duyệt...")
+
+    const finalStaffId = targetStaffId || visit.staffId;
+    if (!finalStaffId || finalStaffId === "PENDING") {
+      showToast("Vui lòng chọn Chuyên gia / Điều dưỡng trước khi phê duyệt!", "err");
+      return;
+    }
+
+    const assignedStaff = staffList.find((s) => isStaffMatch(s, finalStaffId));
+    const staffName = assignedStaff?.name || "Chuyên gia y tế";
+
+    show("Đang phê duyệt & phân công ca trực...");
     try {
       const r = await authFetch(`${API_URL}/visits/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...visit, status: "Đã xác nhận" }),
+        body: JSON.stringify({ ...visit, staffId: finalStaffId, staffName, status: "Đã xác nhận" }),
       });
       const saved = await r.json();
-      setAllVisits((prev) => prev.map((v) => (v.id === saved.id ? saved : v)));
-    } catch (err) {
+      if (!r.ok) {
+        showToast(saved.error || "Lỗi phê duyệt!", "err");
+        return;
+      }
+
+      // If it's a long-term package, lock this specialist for the entire package period
+      if ((visit as any).careMode === "package" || (visit as any).packagePlan) {
+        setAllVisits((prev) =>
+          prev.map((v) =>
+            v.userId === visit.userId && ((v as any).packagePlan || (v as any).careMode === "package")
+              ? { ...v, staffId: finalStaffId, staffName, status: "Đã xác nhận" }
+              : v.id === saved.id ? saved : v
+          )
+        );
+      } else {
+        setAllVisits((prev) => prev.map((v) => (v.id === saved.id ? saved : v)));
+      }
+
+      showToast(`Đã phê duyệt và phân công ca trực cho chuyên gia "${staffName}" thành công!`, "ok");
+    } catch (err: any) {
       console.error("Lỗi phê duyệt lịch:", err);
+      showToast(err?.message || "Lỗi phê duyệt lịch!", "err");
     } finally {
       hide();
     }
@@ -1618,7 +2011,7 @@ export default function SchedulePage() {
       });
       const saved = await r.json();
       if (!r.ok) {
-        alert(saved.error || "Lỗi cập nhật trạng thái!");
+        showToast(saved.error || "Lỗi cập nhật trạng thái!", "err");
         return;
       }
       setAllVisits((prev) => prev.map((v) => (v.id === saved.id ? saved : v)));
@@ -1652,6 +2045,60 @@ export default function SchedulePage() {
     setPaymentDialogOpen(false);
   };
 
+  const handleAutoAssign = async (visitId: string) => {
+    show("Đang tự động điều phối chuyên gia phù hợp nhất...");
+    try {
+      const res = await authFetch(`${API_URL}/dispatch/assign/${visitId}`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || "Không có chuyên gia phù hợp lịch trực này!", "err");
+        return;
+      }
+      setAllVisits((prev) =>
+        prev.map((v) =>
+          v.id === visitId
+            ? { ...v, staffId: data.staffId, staffName: data.staffName, status: "Đã xác nhận" }
+            : v
+        )
+      );
+      showToast(`Đã tự động phân công chuyên gia "${data.staffName}" cho ca trực #${visitId}`, "ok");
+    } catch (err: any) {
+      showToast(err.message || "Lỗi tự động điều phối!", "err");
+    } finally {
+      hide();
+    }
+  };
+
+  const handleManualAssign = async (visitId: string, staffId: string) => {
+    show("Đang phân công chuyên gia...");
+    try {
+      const res = await authFetch(`${API_URL}/dispatch/manual/${visitId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staffId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || "Lỗi phân công chuyên gia!", "err");
+        return;
+      }
+      setAllVisits((prev) =>
+        prev.map((v) =>
+          v.id === visitId
+            ? { ...v, staffId: data.staffId, staffName: data.staffName }
+            : v
+        )
+      );
+      showToast("Phân công chuyên gia thành công!", "ok");
+    } catch (err: any) {
+      showToast(err.message || "Lỗi phân công chuyên gia!", "err");
+    } finally {
+      hide();
+    }
+  };
+
   const confirmedVisits = allVisits.filter((v) => v.status === "Đã xác nhận");
 
 
@@ -1667,8 +2114,8 @@ export default function SchedulePage() {
 
     const matchStatus = statusFilter === "Tất cả" || v.status === statusFilter;
 
-    // Filter by selected date if visit has a Date field
-    const matchDate = !v.date || !selectedDate || v.date === selectedDate;
+    // Filter by selected date (supports multi-day packages)
+    const matchDate = isVisitOnDate(v, selectedDate);
 
     // Hide only cancelled visits
     const isCancelled = v.status === "Đã hủy";
@@ -1676,8 +2123,33 @@ export default function SchedulePage() {
     return matchQuery && matchStatus && matchDate && !isCancelled;
   });
 
+  const _totalStaffPages = Math.max(1, Math.ceil(staffList.length / STAFF_PER_PAGE));
+  const _currentStaffPage = Math.min(staffPage, _totalStaffPages);
+  const paginatedStaff = staffList.slice(
+    (_currentStaffPage - 1) * STAFF_PER_PAGE,
+    _currentStaffPage * STAFF_PER_PAGE
+  );
+
   return (
     <div className="p-10 max-w-7xl mx-auto w-full space-y-5 pb-32">
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className={cn(
+              "fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl text-sm font-bold border",
+              toast.type === "ok"
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : "bg-red-50 text-red-600 border-red-200"
+            )}
+          >
+            {toast.type === "ok" ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertTriangle className="w-4 h-4 text-red-600" />}
+            {toast.msg}
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -1750,6 +2222,8 @@ export default function SchedulePage() {
             onApprove={handleApprove}
             onReject={handleReject}
             staffList={staffList}
+            allVisits={allVisits}
+            onToast={showToast}
           />
         </div>
       </div>
@@ -1832,7 +2306,7 @@ export default function SchedulePage() {
                   </div>
                 ))}
               </div>
-              {staffList.map((person, idx) => {
+              {paginatedStaff.map((person, idx) => {
                 const staffVisits = filteredVisits.filter((v) =>
                   isStaffMatch(person, v.staffId, (v as any).staffName),
                 );
@@ -1863,12 +2337,16 @@ export default function SchedulePage() {
                         />
                         <div
                           className={cn(
-                            "absolute -bottom-0.5 -right-0.5 w-3 h-3 border-2 border-white rounded-full shadow-sm",
-                            person.available ? "bg-primary" : "bg-orange-400",
+                            "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-white rounded-full shadow-xs",
+                            person.status === "Nghỉ phép"
+                              ? "bg-rose-500"
+                              : person.status === "Đang bận" || !person.available
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
                           )}
                         >
-                          {person.available && (
-                            <div className="absolute inset-0 rounded-full bg-primary animate-ping opacity-30" />
+                          {person.available && person.status !== "Nghỉ phép" && (
+                            <div className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-40" />
                           )}
                         </div>
                       </div>
@@ -1876,25 +2354,25 @@ export default function SchedulePage() {
                         <p className="text-[11px] font-black text-foreground uppercase tracking-tight leading-none mb-1.5 group-hover/row:text-primary transition-colors truncate">
                           {person.name}
                         </p>
-                        <p className="text-[9px] text-on-surface-tertiary font-bold uppercase tracking-[0.08em] leading-none mb-1.5">
+                        <p className="text-[9px] text-on-surface-tertiary font-bold uppercase tracking-[0.08em] leading-none mb-1.5 truncate">
                           {String(person.role).split("*")[0].trim()}
                         </p>
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md",
-                            person.available
-                              ? "bg-primary/10 text-primary-strong"
-                              : "bg-orange-50 text-orange-600",
-                          )}
-                        >
-                          <span
-                            className={cn(
-                              "w-1 h-1 rounded-full",
-                              person.available ? "bg-primary" : "bg-orange-400",
-                            )}
-                          />
-                          {person.available ? "Sẵn sàng" : "Đang bận"}
-                        </span>
+                        {person.status === "Nghỉ phép" ? (
+                          <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-300 shadow-2xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-600" />
+                            Nghỉ phép
+                          </span>
+                        ) : (person.status === "Đang bận" || !person.available) ? (
+                          <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-100 text-amber-950 border border-amber-300/90 shadow-2xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse" />
+                            Đang bận
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-950 border border-emerald-300/90 shadow-2xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                            Sẵn sàng
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div
@@ -1930,7 +2408,7 @@ export default function SchedulePage() {
               })}
             </div>
           </div>
-          <div className="bg-surface-secondary/40 px-6 py-3 border-t border-hairline flex items-center justify-between gap-4">
+          <div className="bg-surface-secondary/40 px-6 py-3 border-t border-hairline flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_rgba(24,190,102,0.5)]" />
@@ -1945,16 +2423,29 @@ export default function SchedulePage() {
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 opacity-50">
-                <div className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.3)]" />
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.3)]" />
                 <span className="text-[9px] font-black text-on-surface-tertiary uppercase tracking-widest">
                   Nhân sự bận
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-hairline shadow-sm text-[9px] font-black text-emerald-600 uppercase tracking-widest">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Hệ thống ổn định
+            <div className="flex items-center gap-4 flex-wrap">
+              <span className="text-[10px] font-bold text-slate-500">
+                Hiển thị{" "}
+                <span className="font-mono font-black text-slate-800">
+                  {staffList.length > 0 ? (staffPage - 1) * STAFF_PER_PAGE + 1 : 0}-
+                  {Math.min(staffPage * STAFF_PER_PAGE, staffList.length)}
+                </span>{" "}
+                /{" "}
+                <span className="font-mono font-black text-slate-800">{staffList.length}</span> nhân sự
+              </span>
+              <Pagination
+                currentPage={staffPage}
+                totalPages={Math.max(1, Math.ceil(staffList.length / STAFF_PER_PAGE))}
+                onPageChange={setStaffPage}
+                className="py-0"
+              />
             </div>
           </div>
         </div>

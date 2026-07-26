@@ -90,7 +90,7 @@ const loginLocal = (email: string, password: string) => {
   );
   // Compare against base64-encoded hash
   if (!found || found.passwordHash !== btoa(password)) {
-    throw new Error("Đăng nhập thất bại");
+    throw new Error("Tài khoản, mật khẩu không chính xác");
   }
 
   return {
@@ -177,7 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Đăng nhập thất bại");
+        throw new Error("Tài khoản, mật khẩu không chính xác");
       }
 
       localStorage.setItem(LOCAL_TOKEN_KEY, data.token);
@@ -186,6 +186,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(data.user);
       return data.user as AuthUser;
     } catch (err: any) {
+      if (err.message && !err.message.includes("fetch") && err.message !== "Failed to fetch") {
+        throw err;
+      }
       console.warn("Backend auth failed, using local fallback:", err);
       const data = loginLocal(email, password);
       localStorage.setItem(LOCAL_TOKEN_KEY, data.token);

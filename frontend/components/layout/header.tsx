@@ -17,6 +17,8 @@ import {
   Send,
   MessageSquare,
   CheckCircle2,
+  AlertCircle,
+  X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +42,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { useLoading } from "@/lib/loading-context";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -68,6 +71,7 @@ interface NotificationLog {
 
 export function Header() {
   const { user, login, register, logout } = useAuth();
+  const { show, hide } = useLoading();
   const router = useRouter();
 
   // Auth Dialog state inside header
@@ -147,13 +151,17 @@ export function Header() {
     try {
       const u = await login(email, password);
       setIsOpen(false);
-      if (u.role === "admin") {
-        router.push("/");
-      } else {
-        router.push("/booking");
-      }
+      show("Đang đăng nhập hệ thống...");
+      setTimeout(() => {
+        hide();
+        if (u.role === "admin") {
+          router.push("/");
+        } else {
+          router.push("/booking");
+        }
+      }, 700);
     } catch (err: any) {
-      setErrorMsg(err.message || "Đăng nhập thất bại");
+      setErrorMsg("Tài khoản, mật khẩu không chính xác");
     }
   };
 
@@ -428,9 +436,19 @@ export function Header() {
                 </div>
 
                 {errorMsg && (
-                  <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-[11px] font-bold text-red-600">
-                    {errorMsg}
-                  </div>
+                  <motion.div
+                    key="header-error"
+                    initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                    transition={{ duration: 0.2 }}
+                    className="mb-4 flex items-center gap-3 px-4 py-3 rounded-2xl bg-red-50 border border-red-200"
+                  >
+                    <div className="w-7 h-7 rounded-full bg-red-500 flex items-center justify-center shrink-0 shadow-md shadow-red-500/30">
+                      <X className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+                    </div>
+                    <span className="text-sm font-semibold text-red-700 leading-tight">{errorMsg}</span>
+                  </motion.div>
                 )}
 
                 {authTab === "login" ? (

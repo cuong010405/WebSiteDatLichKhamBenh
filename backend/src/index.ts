@@ -17,6 +17,8 @@ import positionsRouter from "./routes/positions";
 import notificationsRouter from "./routes/notifications";
 import licensesRouter from "./routes/licenses";
 import serviceTypesRouter from "./routes/serviceTypes";
+import careLogsRouter from "./routes/careLogs";
+import dispatchRouter from "./routes/dispatch";
 import { requireAuth, requireAdmin } from "./middleware/auth";
 
 dotenv.config();
@@ -76,6 +78,7 @@ app.use("/api/roles", rolesRouter);
 app.use("/api/positions", positionsRouter);
 app.use("/api/licenses", licensesRouter);
 app.use("/api/service-types", serviceTypesRouter);
+app.use("/api/care-logs", careLogsRouter);
 
 // Admin-only endpoints
 app.use("/api/patients", requireAuth, requireAdmin, patientsRouter);
@@ -83,6 +86,7 @@ app.use("/api/logs", requireAuth, requireAdmin, logsRouter);
 app.use("/api/reports", requireAuth, requireAdmin, reportsRouter);
 app.use("/api/users", requireAuth, requireAdmin, usersRouter);
 app.use("/api/payments", requireAuth, requireAdmin, paymentsRouter);
+app.use("/api/dispatch", requireAuth, requireAdmin, dispatchRouter);
 
 // Notifications — Admin thấy tất cả, customer thấy của mình
 app.use("/api/notifications", notificationsRouter);

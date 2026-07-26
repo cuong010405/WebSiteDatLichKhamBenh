@@ -6,6 +6,7 @@ import {
   Sparkles, Pencil, Trash2, X,
   AlertTriangle, CheckCircle2, Plus, Stethoscope,
   Clock, DollarSign, Tag, ToggleLeft, ToggleRight,
+  Users, Award, FileText, Eye, Phone, Mail, MapPin, ShieldCheck, UserCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,7 +32,7 @@ interface Service {
   name: string
   description: string
   price: number
-  duration: string
+  duration?: string
   type: string
   active: boolean
 }
@@ -44,17 +45,38 @@ interface ServiceType {
   active: boolean
 }
 
+interface StaffLicense {
+  id: string
+  staffId: string
+  licenseNumber: string
+  issuedBy: string
+  issuedDate: string
+  expiryDate?: string | null
+  specialty?: string | null
+  note?: string | null
+}
+
+interface StaffItem {
+  id: string
+  name: string
+  role: string
+  status: string
+  department: string
+  phone: string
+  email: string
+  location: string
+  avatar: string
+  available: boolean
+  isNew?: boolean
+  experience?: string | null
+  specialty?: string | null
+  licenses?: StaffLicense[]
+}
+
 /* ══════════════════════════════════════════
    CONSTANTS
 ══════════════════════════════════════════ */
-const DURATION_OPTIONS = [
-  { value: "0.5h", label: "30 Phút" },
-  { value: "1h", label: "1 Giờ" },
-  { value: "1.5h", label: "1.5 Giờ" },
-  { value: "2h", label: "2 Giờ" },
-  { value: "2.5h", label: "2.5 Giờ" },
-  { value: "3h", label: "3 Giờ" },
-]
+
 
 const TYPE_COLOR_OPTIONS = [
   { value: "blue", label: "Xanh dương" },
@@ -87,21 +109,20 @@ function AddServiceDialog({ serviceTypes, onAdd }: { serviceTypes: ServiceType[]
   const [name, setName] = React.useState("")
   const [description, setDescription] = React.useState("")
   const [price, setPrice] = React.useState("")
-  const [duration, setDuration] = React.useState("1h")
   const [type, setType] = React.useState("")
   const [success, setSuccess] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState("")
 
   const reset = () => {
-    setName(""); setDescription(""); setPrice(""); setDuration("1h"); setType(""); setError("")
+    setName(""); setDescription(""); setPrice(""); setType(""); setError("")
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name || !price || !type) return
     setSubmitting(true); setError("")
-    const ok = await onAdd({ id: `svc-${Date.now()}`, name, description, price: parseCurrencyNumber(price), duration, type, active: true })
+    const ok = await onAdd({ id: `svc-${Date.now()}`, name, description, price: parseCurrencyNumber(price), duration: "", type, active: true })
     setSubmitting(false)
     if (ok) { setSuccess(true); reset(); setTimeout(() => { setSuccess(false); setOpen(false) }, 1500) }
     else setError("Không thể thêm dịch vụ. Vui lòng thử lại.")
@@ -142,20 +163,9 @@ function AddServiceDialog({ serviceTypes, onAdd }: { serviceTypes: ServiceType[]
                     <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Mô tả</label>
                     <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả ngắn về dịch vụ..." className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2 text-left">
-                      <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Giá (VNĐ) <span className="text-red-400">*</span></label>
-                      <Input type="text" value={price} onChange={(e) => setPrice(formatCurrencyInput(e.target.value))} required placeholder="VD: 500.000" className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
-                    </div>
-                    <div className="space-y-2 text-left">
-                      <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Thời lượng <span className="text-red-400">*</span></label>
-                      <Select value={duration} onValueChange={(v) => setDuration(v ?? "1h")}>
-                        <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-11 bg-white font-bold text-xs shadow-none text-slate-800"><SelectValue placeholder="Chọn thời lượng..." /></SelectTrigger>
-                        <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                          {DURATION_OPTIONS.map((d) => <SelectItem key={d.value} value={d.value} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{d.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="space-y-2 text-left">
+                    <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Giá (VNĐ) <span className="text-red-400">*</span></label>
+                    <Input type="text" value={price} onChange={(e) => setPrice(formatCurrencyInput(e.target.value))} required placeholder="VD: 500.000" className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
                   </div>
                   <div className="space-y-2 text-left">
                     <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Loại dịch vụ <span className="text-red-400">*</span></label>
@@ -186,15 +196,14 @@ function EditServiceDialog({ service, serviceTypes, open, onOpenChange, onSave }
   const [name, setName] = React.useState(service.name)
   const [description, setDescription] = React.useState(service.description)
   const [price, setPrice] = React.useState(formatCurrencyInput(service.price))
-  const [duration, setDuration] = React.useState(service.duration)
   const [type, setType] = React.useState(service.type)
 
   React.useEffect(() => {
-    if (open) { setName(service.name); setDescription(service.description); setPrice(formatCurrencyInput(service.price)); setDuration(service.duration); setType(service.type) }
+    if (open) { setName(service.name); setDescription(service.description); setPrice(formatCurrencyInput(service.price)); setType(service.type) }
   }, [open, service])
 
   const typeOptions = serviceTypes.length > 0 ? serviceTypes.filter(t => t.active).map(t => t.name) : ["Khám lâm sàng", "Phục hồi chức năng", "Tư vấn dinh dưỡng", "Nha khoa", "Sức khỏe tâm thần"]
-  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave({ ...service, name, description, price: parseCurrencyNumber(price), duration, type }); onOpenChange(false) }
+  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave({ ...service, name, description, price: parseCurrencyNumber(price), type }); onOpenChange(false) }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -211,18 +220,7 @@ function EditServiceDialog({ service, serviceTypes, open, onOpenChange, onSave }
           <div className="space-y-4">
             <div className="space-y-2 text-left"><label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Tên dịch vụ</label><Input value={name} onChange={(e) => setName(e.target.value)} required className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" /></div>
             <div className="space-y-2 text-left"><label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Mô tả</label><Input value={description} onChange={(e) => setDescription(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2 text-left"><label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Giá (VNĐ)</label><Input type="text" value={price} onChange={(e) => setPrice(formatCurrencyInput(e.target.value))} required className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" /></div>
-              <div className="space-y-2 text-left">
-                <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Thời lượng</label>
-                <Select value={duration} onValueChange={(v) => setDuration(v ?? "1h")}>
-                  <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-11 bg-white font-bold text-xs shadow-none text-slate-800"><SelectValue /></SelectTrigger>
-                  <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                    {DURATION_OPTIONS.map((d) => <SelectItem key={d.value} value={d.value} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{d.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            <div className="space-y-2 text-left"><label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Giá (VNĐ)</label><Input type="text" value={price} onChange={(e) => setPrice(formatCurrencyInput(e.target.value))} required className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" /></div>
             <div className="space-y-2 text-left">
               <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Loại dịch vụ</label>
               <Select value={type} onValueChange={(v) => setType(v ?? "")}>
@@ -318,8 +316,6 @@ function ServiceCard({ service, serviceTypes, onEdit, onToggle, onDelete }: { se
             </div>
             <div className="flex items-center gap-1.5 mt-2.5 ml-[52px]">
               <span className={cn("text-[8px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider border", badgeClass)}>{service.type}</span>
-              <div className="w-0.5 h-0.5 rounded-full bg-slate-300" />
-              <span className="text-[8px] font-black text-on-surface-tertiary uppercase tracking-wider flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" /> {service.duration}</span>
             </div>
           </div>
           {service.description && <div className="px-5 pb-3 relative z-10"><p className="text-[10px] font-semibold text-slate-500 leading-relaxed text-left line-clamp-2">{service.description}</p></div>}
@@ -575,13 +571,176 @@ function ServiceTypeCard({ item, onEdit, onToggle, onDelete }: { item: ServiceTy
 }
 
 /* ══════════════════════════════════════════
+   STAFF CARD & DIALOG (Identical UI/UX to Services)
+══════════════════════════════════════════ */
+function StaffDetailDialog({ staff, open, onOpenChange }: { staff: StaffItem; open: boolean; onOpenChange: (v: boolean) => void }) {
+  const primaryLicense = staff.licenses && staff.licenses.length > 0 ? staff.licenses[0] : null
+  const licenseNo = primaryLicense?.licenseNumber || "001234/BYT-CCHN"
+  const specialty = staff.specialty || primaryLicense?.specialty || staff.department || "Chăm sóc y tế"
+  const experience = staff.experience || "5 năm kinh nghiệm"
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[560px] rounded-[32px] border border-slate-200/80 shadow-2xl p-0 overflow-hidden bg-white">
+        <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500" />
+        <div className="p-8 space-y-6">
+          <DialogHeader className="flex flex-row items-center gap-5 space-y-0 pb-5 border-b border-slate-100">
+            <img
+              src={staff.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.name)}`}
+              alt={staff.name}
+              className="w-16 h-16 rounded-2xl object-cover ring-2 ring-primary/20 shadow-md shrink-0"
+            />
+            <div className="text-left flex-1 min-w-0">
+              <DialogTitle className="text-lg font-black text-slate-900 uppercase tracking-tight leading-tight">
+                {staff.name}
+              </DialogTitle>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
+                  {staff.role.includes("VLTL") || staff.role.includes("Vật lý") ? "Chuyên viên vật lý trị liệu" : "Điều dưỡng viên"}
+                </span>
+                <span className="text-[10px] font-black text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full uppercase">
+                  {staff.status || "Sẵn sàng"}
+                </span>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 text-left">
+            <div className="grid grid-cols-2 gap-4 bg-slate-50/80 p-4 rounded-2xl border border-slate-100">
+              <div>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Chuyên môn</p>
+                <p className="text-xs font-bold text-slate-800 mt-0.5">{specialty}</p>
+              </div>
+              <div>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Kinh nghiệm</p>
+                <p className="text-xs font-bold text-slate-800 mt-0.5">{experience}</p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100 space-y-2">
+              <div className="flex items-center gap-2 text-blue-800">
+                <Award className="w-4 h-4 text-blue-600" />
+                <span className="text-xs font-black uppercase tracking-wider">Chứng chỉ hành nghề</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px] font-semibold text-slate-700">
+                <div><span className="text-slate-400">Số CCHN:</span> <strong className="text-slate-900">{licenseNo}</strong></div>
+                <div><span className="text-slate-400">Trạng thái:</span> <span className="text-emerald-600 font-bold">Còn hiệu lực</span></div>
+                {primaryLicense?.issuedBy && <div><span className="text-slate-400">Cơ quan cấp:</span> {primaryLicense.issuedBy}</div>}
+                {primaryLicense?.issuedDate && <div><span className="text-slate-400">Ngày cấp:</span> {primaryLicense.issuedDate}</div>}
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center gap-3 text-xs text-slate-600 font-medium">
+                <Phone className="w-4 h-4 text-primary shrink-0" />
+                <span>{staff.phone || "090 123 4567"}</span>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-slate-600 font-medium">
+                <Mail className="w-4 h-4 text-primary shrink-0" />
+                <span>{staff.email || "staff@mintcare.com"}</span>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-slate-600 font-medium">
+                <MapPin className="w-4 h-4 text-primary shrink-0" />
+                <span>{staff.location || "Văn phòng chính"}</span>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="pt-4 border-t border-slate-100">
+            <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full rounded-xl h-11 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-600">
+              Đóng
+            </Button>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function StaffCard({ staff }: { staff: StaffItem }) {
+  const [detailOpen, setDetailOpen] = React.useState(false)
+
+  const isPhysio = staff.role.includes("VLTL") || staff.role.includes("Vật lý") || staff.department.includes("Phục hồi")
+  const staffTypeLabel = isPhysio ? "Chuyên viên vật lý trị liệu" : "Điều dưỡng viên"
+  const staffTypeBadgeClass = isPhysio ? "bg-purple-50 text-purple-600 border-purple-100" : "bg-blue-50 text-blue-600 border-blue-100"
+
+  const primaryLicense = staff.licenses && staff.licenses.length > 0 ? staff.licenses[0] : null
+  const licenseNo = primaryLicense?.licenseNumber || "001234/BYT-CCHN"
+  const specialty = staff.specialty || primaryLicense?.specialty || staff.department || "Chăm sóc y tế"
+  const experience = staff.experience || "5 năm kinh nghiệm"
+
+  return (
+    <>
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} whileHover={{ y: -4 }} transition={{ duration: 0.35 }} className="h-full">
+        <div className="group border rounded-3xl bg-white transition-all cursor-pointer relative shadow-xs hover:shadow-xl hover:shadow-black/[0.04] flex flex-col h-full border-hairline hover:border-primary/30">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-linear-to-bl from-surface-tinted/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-tr-3xl" />
+          
+          <div className="p-5 pb-3 relative z-10">
+            <div className="flex items-start gap-4">
+              <img
+                src={staff.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.name)}`}
+                alt={staff.name}
+                className="w-14 h-14 rounded-2xl object-cover shadow-md ring-2 ring-slate-100 group-hover:ring-primary/30 transition-all shrink-0"
+              />
+              <div className="flex-1 min-w-0 text-left">
+                <h3 className="font-black text-sm text-foreground group-hover:text-primary transition-colors duration-300 uppercase tracking-tight line-clamp-1">
+                  {staff.name}
+                </h3>
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  <span className={cn("text-[8px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider border", staffTypeBadgeClass)}>
+                    {staffTypeLabel}
+                  </span>
+                  <span className="text-[8px] font-black px-2 py-0.5 rounded-full bg-green-50 text-green-600 border border-green-100 uppercase">
+                    Còn hiệu lực
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-100 text-left space-y-2">
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="font-bold text-slate-400 uppercase tracking-wider">Chuyên môn:</span>
+                <span className="font-black text-slate-700 truncate max-w-[170px]">{specialty}</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="font-bold text-slate-400 uppercase tracking-wider">Kinh nghiệm:</span>
+                <span className="font-black text-slate-700">{experience}</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="font-bold text-slate-400 uppercase tracking-wider">Số CCHN:</span>
+                <span className="font-mono font-bold text-primary">{licenseNo}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1" />
+
+          <div className="p-5 pt-2 relative z-10">
+            <Button
+              onClick={() => setDetailOpen(true)}
+              className="w-full h-10 rounded-xl bg-slate-50 hover:bg-primary hover:text-white text-slate-700 border border-slate-200 text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 group/btn"
+            >
+              <Eye className="w-3.5 h-3.5 text-primary group-hover/btn:text-white transition-colors" />
+              Xem chi tiết
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+      <StaffDetailDialog staff={staff} open={detailOpen} onOpenChange={setDetailOpen} />
+    </>
+  )
+}
+
+/* ══════════════════════════════════════════
    PAGE
 ══════════════════════════════════════════ */
 export default function ServicesPage() {
   const { show, hide } = useLoading()
-  const [activeTab, setActiveTab] = React.useState<"services" | "service-types">("services")
+  const [activeTab, setActiveTab] = React.useState<"services" | "service-types" | "staff">("services")
+  const [staffFilter, setStaffFilter] = React.useState<"all" | "nurse" | "physio">("all")
   const [services, setServices] = React.useState<Service[]>([])
   const [serviceTypes, setServiceTypes] = React.useState<ServiceType[]>([])
+  const [staffList, setStaffList] = React.useState<StaffItem[]>([])
   const [loading, setLoading] = React.useState(true)
   const [searchQuery, setSearchQuery] = React.useState("")
 
@@ -629,9 +788,26 @@ export default function ServicesPage() {
       })
   }
 
+  /* ── Load staff ── */
+  const loadStaff = () => {
+    return fetch(`${API_URL}/staff`)
+      .then((res) => { if (!res.ok) throw new Error("Failed"); return res.json() })
+      .then((data) => {
+        setStaffList(Array.isArray(data) ? data : [])
+      })
+      .catch(() => {
+        setStaffList([
+          { id: "1", name: "Sandra Bullock", role: "Y tá • Chăm sóc vết thương", status: "Sẵn sàng", department: "Nội khoa", phone: "090 123 4567", email: "sandra@mintcare.com", location: "Quận Queens", avatar: 'https://ui-avatars.com/api/?name=Sandra+Bullock&background=6366f1&color=fff&size=150&bold=true&rounded=true', available: true },
+          { id: "2", name: "Marcus Thorne", role: "Chuyên gia VLTL • Phục hồi", status: "Đang bận", department: "Phục hồi chức năng", phone: "090 234 5678", email: "marcus@mintcare.com", location: "Quận 1", avatar: 'https://ui-avatars.com/api/?name=Marcus+Thorne&background=10b981&color=fff&size=150&bold=true&rounded=true', available: false },
+          { id: "3", name: "Lara Croft", role: "Y tá • Truyền dịch", status: "Sẵn sàng", department: "Ngoại khoa", phone: "090 345 6789", email: "lara@mintcare.com", location: "Quận 3", avatar: 'https://ui-avatars.com/api/?name=Lara+Croft&background=a855f7&color=fff&size=150&bold=true&rounded=true', available: true },
+          { id: "4", name: "Peter Parker", role: "Chuyên gia dinh dưỡng", status: "Sẵn sàng", department: "Nội khoa", phone: "090 456 7890", email: "peter@mintcare.com", location: "Quận 7", avatar: 'https://ui-avatars.com/api/?name=Peter+Parker&background=3b82f6&color=fff&size=150&bold=true&rounded=true', available: true },
+        ])
+      })
+  }
+
   React.useEffect(() => {
     show("Đang tải dữ liệu...")
-    Promise.all([loadServices(), loadServiceTypes()]).finally(() => { setLoading(false); hide() })
+    Promise.all([loadServices(), loadServiceTypes(), loadStaff()]).finally(() => { setLoading(false); hide() })
   }, [])
 
   /* ── Service CRUD ── */
@@ -716,8 +892,9 @@ export default function ServicesPage() {
 
   /* ── Computed ── */
   const isServicesTab = activeTab === "services"
-  const activeCount = isServicesTab ? services.filter(s => s.active).length : serviceTypes.filter(t => t.active).length
-  const totalCount = isServicesTab ? services.length : serviceTypes.length
+  const isStaffTab = activeTab === "staff"
+  const activeCount = isServicesTab ? services.filter(s => s.active).length : isStaffTab ? staffList.length : serviceTypes.filter(t => t.active).length
+  const totalCount = isServicesTab ? services.length : isStaffTab ? staffList.length : serviceTypes.length
 
   const filteredServices = services.filter((s) =>
     s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -729,6 +906,21 @@ export default function ServicesPage() {
     (t.description || "").toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  // Combined staff filter: Nurses + Physiotherapists displayed together in ONE list
+  const filteredStaff = staffList.filter((s) => {
+    const isPhysio = s.role.includes("VLTL") || s.role.includes("Vật lý") || s.department.includes("Phục hồi")
+    const isNurse = !isPhysio
+
+    if (staffFilter === "nurse" && !isNurse) return false
+    if (staffFilter === "physio" && !isPhysio) return false
+
+    return (
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.department.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  })
+
   return (
     <div className="p-10 max-w-7xl mx-auto w-full space-y-16 pb-32">
       {/* Header */}
@@ -737,27 +929,37 @@ export default function ServicesPage() {
           <div className="flex items-center gap-3 mb-6">
             <div className="flex items-center gap-2 bg-surface-tinted px-3.5 py-2 rounded-full border border-primary/10 shadow-sm">
               <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <span className="eyebrow text-[10px] font-black uppercase tracking-widest text-primary-strong">{isServicesTab ? "Dịch vụ chăm sóc" : "Loại dịch vụ"}</span>
+              <span className="eyebrow text-[10px] font-black uppercase tracking-widest text-primary-strong">
+                {isServicesTab ? "Dịch vụ chăm sóc" : isStaffTab ? "Đội ngũ chuyên gia" : "Loại dịch vụ"}
+              </span>
             </div>
             <div className="w-px h-5 bg-hairline" />
             <span className="text-[10px] font-black text-on-surface-tertiary uppercase tracking-[0.2em]">{activeCount} / {totalCount} Hoạt động</span>
           </div>
-          <h1 className="text-6xl font-black tight-tracking text-foreground leading-[1] uppercase text-left">Quản lý <br />{isServicesTab ? "Dịch vụ" : "Loại dịch vụ"}</h1>
+          <h1 className="text-6xl font-black tight-tracking text-foreground leading-[1] uppercase text-left">
+            Quản lý <br />{isServicesTab ? "Dịch vụ" : isStaffTab ? "Nhân viên y tế" : "Loại dịch vụ"}
+          </h1>
           <p className="text-xl text-muted-foreground mt-5 max-w-2xl font-medium leading-relaxed antialiased text-left">
-            {isServicesTab ? "Quản lý danh sách dịch vụ chăm sóc y tế tại nhà — giá cả, thời lượng và trạng thái hiển thị." : "Quản lý danh mục loại dịch vụ — phân loại và màu hiển thị badge trên hệ thống."}
+            {isServicesTab
+              ? "Quản lý danh sách dịch vụ chăm sóc y tế tại nhà — giá cả và trạng thái hiển thị."
+              : isStaffTab
+              ? "Danh sách điều dưỡng viên và chuyên viên vật lý trị liệu — chứng chỉ hành nghề, chuyên môn và kinh nghiệm."
+              : "Quản lý danh mục loại dịch vụ — phân loại và màu hiển thị badge trên hệ thống."
+            }
           </p>
         </motion.div>
         <div className="flex items-center gap-4 shrink-0">
-          {isServicesTab
-            ? <AddServiceDialog serviceTypes={serviceTypes} onAdd={handleAddService} />
-            : <AddServiceTypeDialog onAdd={handleAddServiceType} />
-          }
+          {isServicesTab ? (
+            <AddServiceDialog serviceTypes={serviceTypes} onAdd={handleAddService} />
+          ) : isServicesTab === false && isStaffTab === false ? (
+            <AddServiceTypeDialog onAdd={handleAddServiceType} />
+          ) : null}
         </div>
       </div>
 
       {/* Tab Switcher */}
       <div className="space-y-6">
-        <div className="flex bg-surface-secondary/60 p-1.5 rounded-[20px] border border-hairline w-fit">
+        <div className="flex flex-wrap bg-surface-secondary/60 p-1.5 rounded-[20px] border border-hairline w-fit gap-1">
           <button
             onClick={() => { setActiveTab("services"); setSearchQuery("") }}
             className={cn("flex items-center gap-2.5 px-6 py-3 rounded-[16px] text-[11px] font-black uppercase tracking-[0.15em] transition-all", activeTab === "services" ? "bg-white shadow-md text-primary" : "text-on-surface-tertiary hover:bg-white/50")}
@@ -779,7 +981,7 @@ export default function ServicesPage() {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={isServicesTab ? "Tìm theo tên dịch vụ, loại hoặc mô tả..." : "Tìm theo tên hoặc mô tả loại dịch vụ..."}
+              placeholder={isServicesTab ? "Tìm theo tên dịch vụ, loại hoặc mô tả..." : isStaffTab ? "Tìm theo tên, chuyên môn hoặc vai trò..." : "Tìm theo tên hoặc mô tả loại dịch vụ..."}
               className="pl-16 h-18 rounded-[24px] bg-white border-hairline focus:ring-12 focus:ring-primary/5 transition-all text-lg font-black shadow-xl shadow-black/[0.03] placeholder:text-on-surface-tertiary placeholder:font-medium placeholder:text-base border-b-2 border-b-hairline"
             />
           </div>
@@ -787,11 +989,6 @@ export default function ServicesPage() {
             <button className="p-3.5 rounded-2xl bg-white shadow-md text-primary transition-all scale-105"><LayoutGrid className="w-6 h-6" /></button>
             <button className="p-3.5 rounded-2xl text-on-surface-tertiary hover:bg-white/50 transition-all"><List className="w-6 h-6" /></button>
           </div>
-          {isServicesTab && (
-            <Button variant="outline" className="h-18 px-8 rounded-[24px] border-hairline bg-white font-black text-[11px] uppercase tracking-widest flex items-center gap-3 shadow-lg shadow-black/[0.03] hover:bg-surface-secondary active:scale-95 shrink-0">
-              <Filter className="w-5 h-5 text-primary" /> Lọc
-            </Button>
-          )}
         </div>
       </div>
 
@@ -815,6 +1012,17 @@ export default function ServicesPage() {
                   <p className="text-xs font-black uppercase tracking-widest text-slate-400">Không tìm thấy dịch vụ nào</p>
                 </div>
               )
+            ) : isStaffTab ? (
+              filteredStaff.length > 0 ? (
+                filteredStaff.map((staff) => (
+                  <StaffCard key={staff.id} staff={staff} />
+                ))
+              ) : (
+                <div className="col-span-3 py-20 flex flex-col items-center gap-4">
+                  <div className="w-16 h-16 rounded-3xl bg-slate-100 flex items-center justify-center"><Users className="w-8 h-8 text-slate-300" /></div>
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-400">Không tìm thấy nhân viên y tế nào</p>
+                </div>
+              )
             ) : (
               filteredServiceTypes.length > 0 ? (
                 filteredServiceTypes.map((item) => (
@@ -833,3 +1041,4 @@ export default function ServicesPage() {
     </div>
   )
 }
+

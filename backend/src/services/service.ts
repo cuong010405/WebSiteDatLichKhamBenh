@@ -8,7 +8,7 @@ function mapServiceToUI(s: any) {
     name: s.Name,
     description: s.Description ?? "",
     price: s.Price,
-    duration: s.Duration,
+    duration: s.Duration ?? "",
     type: s.Type,
     active: s.Active,
   };
@@ -20,7 +20,7 @@ function mapServiceToDb(s: any) {
     Name: s.name,
     Description: s.description || null,
     Price: s.price,
-    Duration: s.duration,
+    Duration: s.duration || null,
     Type: s.type,
     Active: s.active ?? true,
   };

@@ -29,7 +29,10 @@ export const staffSchema = z.object({
     .optional(),
   available: z.boolean().default(true),
   isNew: z.boolean().optional().default(false),
+  experience: z.string().optional().nullable(),
+  specialty: z.string().optional().nullable(),
 });
+
 
 export const patientSchema = z.object({
   id: z.string().min(1, "Mã bệnh nhân là bắt buộc"),
@@ -51,7 +54,7 @@ export const visitSchema = z.object({
   date: z.string().optional(),
   patientId: z.string().optional(),
   userId: z.string().optional().nullable(),
-  staffId: z.string().min(1, "Mã nhân viên là bắt buộc"),
+  staffId: z.string().optional().nullable(), // nullable — will be set by dispatch engine
   time: z.string().min(1, "Thời gian khám là bắt buộc"),
   startTime: z.string().optional(),
   endTime: z.string().optional(),
@@ -71,6 +74,13 @@ export const visitSchema = z.object({
   paymentStatus: z.enum(["Chưa thanh toán", "Đã thanh toán"]).optional(),
   address: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  // Dispatch / care booking fields
+  careMode: z.enum(["hourly", "package"]).optional().nullable(),
+  packagePlan: z.string().optional().nullable(),
+  packageShift: z.string().optional().nullable(),
+  customerArea: z.string().optional().nullable(),
+  requiredSpecialty: z.string().optional().nullable(),
+  hourlyHours: z.number().optional().nullable(),
 });
 
 export const activityLogSchema = z.object({

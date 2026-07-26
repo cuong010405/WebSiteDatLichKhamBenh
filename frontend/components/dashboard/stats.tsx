@@ -130,7 +130,7 @@ export function Stats() {
             {/* Sparkline Overlay - chỉ render sau khi DOM đã mount */}
             {mounted && (
               <div className="absolute bottom-0 left-0 right-0 h-10 opacity-20 group-hover:opacity-40 transition-opacity pointer-events-none">
-                <ResponsiveContainer width="100%" height="100%" minHeight={40}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={40}>
                   <LineChart data={stat.data.map((v) => ({ value: v }))}>
                     <Line 
                       type="monotone" 

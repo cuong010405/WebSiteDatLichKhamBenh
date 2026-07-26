@@ -1,24 +1,22 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import {
+  getRoleList,
+  getActiveRoles,
+  getRoleById,
+  createRole,
+  updateRole,
+  deleteRole,
+} from "./role";
 
 export async function getPositionList() {
-  return prisma.position.findMany({
-    orderBy: { Name: "asc" },
-  });
+  return getRoleList();
 }
 
 export async function getActivePositions() {
-  return prisma.position.findMany({
-    where: { Active: true },
-    orderBy: { Name: "asc" },
-  });
+  return getActiveRoles();
 }
 
 export async function getPositionById(id: string) {
-  return prisma.position.findUnique({
-    where: { Id: id },
-  });
+  return getRoleById(id);
 }
 
 export async function createPosition(data: {
@@ -27,28 +25,16 @@ export async function createPosition(data: {
   Description?: string;
   Active?: boolean;
 }) {
-  return prisma.position.create({
-    data: {
-      Id: data.Id,
-      Name: data.Name,
-      Description: data.Description || null,
-      Active: data.Active ?? true,
-    },
-  });
+  return createRole(data);
 }
 
 export async function updatePosition(
   id: string,
   data: { Name?: string; Description?: string; Active?: boolean }
 ) {
-  return prisma.position.update({
-    where: { Id: id },
-    data,
-  });
+  return updateRole(id, data);
 }
 
 export async function deletePosition(id: string) {
-  return prisma.position.delete({
-    where: { Id: id },
-  });
+  return deleteRole(id);
 }

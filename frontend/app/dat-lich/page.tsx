@@ -31,6 +31,7 @@ import {
   Eye,
   EyeOff,
   Award,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ import {
 import { cn } from "@/lib/utils";
 import { API_URL, authFetch } from "@/lib/api";
 import { Pagination } from "@/components/ui/pagination";
+import { staff as mockStaff } from "@/lib/mock-data";
 
 interface StoredVisit {
   id: string;
@@ -90,6 +92,13 @@ const PAYMENT_METHODS = [
 ];
 
 const TIME_SLOTS = ["08:00", "10:00", "14:00", "16:00", "18:00"];
+
+const DEFAULT_SERVICES: ServiceItem[] = [
+  { id: "SV-01", name: "Chăm sóc & Khám bệnh tổng quát tại nhà", price: 200000, duration: "1-2h" },
+  { id: "SV-02", name: "Chăm sóc vết thương & Thay băng y tế", price: 250000, duration: "1h" },
+  { id: "SV-03", name: "Vật lý trị liệu & Phục hồi chức năng", price: 350000, duration: "1.5h" },
+  { id: "SV-04", name: "Chăm sóc người cao tuổi & Bệnh nhân tại gia", price: 300000, duration: "4h" },
+];
 
 // ─── User pill + dropdown (mirrors homepage exactly) ────────────────────────
 function NavUserMenu({ user, logout, onOpenSettings }: { user: any; logout: () => void; onOpenSettings?: () => void }) {
@@ -229,8 +238,8 @@ export default function DatLichPage() {
     }
   }, [user, loading, router]);
 
-  const [staff, setStaff] = React.useState<StaffMember[]>([]);
   const [services, setServices] = React.useState<ServiceItem[]>([]);
+  const [staff, setStaff] = React.useState<any[]>(mockStaff);
   const [myBookings, setMyBookings] = React.useState<StoredVisit[]>([]);
   const [bookingPage, setBookingPage] = React.useState(1);
   const BOOKINGS_PER_PAGE = 4;
@@ -239,21 +248,43 @@ export default function DatLichPage() {
   const [bookingServiceId, setBookingServiceId] = React.useState("");
   const [bookingDate, setBookingDate] = React.useState("");
   const [bookingSlot, setBookingSlot] = React.useState("");
+  const [bookingAddress, setBookingAddress] = React.useState("");
   const [bookingPayment, setBookingPayment] = React.useState("Tiền mặt");
   const [bookingNotes, setBookingNotes] = React.useState("");
   const [qrConfirmed, setQrConfirmed] = React.useState(false);
-  const [staffLicenses, setStaffLicenses] = React.useState<any[]>([]);
+  // Dispatch: customer tells us what specialty they need & where they are
+  const [requiredSpecialty, setRequiredSpecialty] = React.useState("");
+  const [customerArea, setCustomerArea] = React.useState("");
 
-  React.useEffect(() => {
-    if (!bookingStaffId) {
-      setStaffLicenses([]);
-      return;
+  // Hourly vs Long-term Package care mode state
+  const [careMode, setCareMode] = React.useState<"hourly" | "package">("hourly");
+  const [hourlyHours, setHourlyHours] = React.useState<number>(4);
+  const [packagePlan, setPackagePlan] = React.useState<"7days" | "14days" | "30days">("7days");
+  const [packageShift, setPackageShift] = React.useState<"4h" | "8h" | "12h" | "24h">("4h");
+
+  // Helper for closing time limit (20:00)
+  const getSlotStartHour = (slot: string) => {
+    if (!slot || !slot.includes(":")) return 8;
+    return parseInt(slot.split(":")[0], 10) || 8;
+  };
+
+  const currentSlotHour = bookingSlot ? getSlotStartHour(bookingSlot) : null;
+
+  const handleSelectBookingSlot = (slotTime: string) => {
+    setBookingSlot(slotTime);
+    const startH = getSlotStartHour(slotTime);
+    const maxH = Math.max(0, 20 - startH);
+
+    if (careMode === "hourly" && hourlyHours > maxH) {
+      const validOptions = [2, 4, 8, 12].filter((h) => h <= maxH);
+      const newH = validOptions.length > 0 ? Math.max(...validOptions) : 2;
+      setHourlyHours(newH);
+      addToast(
+        `Khung giờ ${slotTime} giới hạn tối đa ${maxH}h (hệ thống nghỉ lúc 20:00). Đã tự động chuyển sang ca ${newH}h!`,
+        "info"
+      );
     }
-    fetch(`${API_URL}/licenses/${bookingStaffId}`)
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data) => setStaffLicenses(Array.isArray(data) ? data : []))
-      .catch(() => setStaffLicenses([]));
-  }, [bookingStaffId]);
+  };
 
   const [toasts, setToasts] = React.useState<{ id: number; msg: string; type: "success" | "error" | "info" }[]>([]);
 
@@ -354,9 +385,6 @@ export default function DatLichPage() {
       }
     }
   }, [user]);
-
-  // Booking form extra state
-  const [bookingAddress, setBookingAddress] = React.useState("Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM");
 
   // Profile modal states
   const [isProfileModalOpen, setIsProfileModalOpen] = React.useState(false);
@@ -503,13 +531,22 @@ export default function DatLichPage() {
   };
 
   React.useEffect(() => {
-    Promise.all([
-      fetch(`${API_URL}/staff`).then((r) => r.json()),
-      fetch(`${API_URL}/services/active`).then((r) => r.json()),
-    ])
-      .then(([staffData, servicesData]) => {
-        setStaff(Array.isArray(staffData) ? staffData : []);
-        setServices(Array.isArray(servicesData) ? servicesData : []);
+    fetch(`${API_URL}/services/active`)
+      .then((r) => r.json())
+      .then((servicesData) => {
+        const list = Array.isArray(servicesData) && servicesData.length > 0 ? servicesData : DEFAULT_SERVICES;
+        setServices(list);
+        setBookingServiceId((prev) => prev || (list[0].id || list[0].serviceId || "SV-01"));
+      })
+      .catch(() => {
+        setServices(DEFAULT_SERVICES);
+        setBookingServiceId((prev) => prev || "SV-01");
+      });
+
+    fetch(`${API_URL}/staff`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) setStaff(data);
       })
       .catch(() => {});
   }, []);
@@ -518,6 +555,9 @@ export default function DatLichPage() {
     if (!user?.id) return;
     try {
       const res = await authFetch(`${API_URL}/visits?userId=${user.id}`);
+      if (!res.ok) {
+        throw new Error(`API error (${res.status})`);
+      }
       const data = await res.json();
       const list = Array.isArray(data) ? data : [];
       const formatted: StoredVisit[] = list.map((v: any) => {
@@ -526,7 +566,7 @@ export default function DatLichPage() {
         return {
           id: v.id,
           staffId: v.staffId,
-          staffName: v.staffName || staff.find((s) => s.id === v.staffId)?.name || "Chuyên gia y tế",
+          staffName: v.staffName || (v.staffId === "PENDING" ? "⏳ Chờ phân công" : "Chuyên gia y tế"),
           type: v.type,
           date: v.date || "",
           time: v.time,
@@ -545,7 +585,7 @@ export default function DatLichPage() {
       const stored = localStorage.getItem(`mintcare_visits_${user?.id}`);
       if (stored) setMyBookings(JSON.parse(stored));
     }
-  }, [user, services, staff]);
+  }, [user, services]);
 
   React.useEffect(() => {
     fetchMyVisits();
@@ -567,9 +607,45 @@ export default function DatLichPage() {
     return `${endH.toString().padStart(2, "0")}:${endM.toString().padStart(2, "0")}`;
   };
 
+  const calculatePricing = React.useCallback(() => {
+    const activeService = services.find((s) => (s.id || s.serviceId) === bookingServiceId) || services[0];
+    const baseServicePrice = activeService?.price || 200000;
+    
+    if (careMode === "hourly") {
+      const hourlyRate = baseServicePrice;
+      const total = hourlyRate * hourlyHours;
+      return {
+        total,
+        originalTotal: total,
+        discountText: null,
+        labelText: `${hourlyHours} giờ chăm sóc`,
+        subText: `${hourlyRate.toLocaleString("vi-VN")}đ/h × ${hourlyHours} giờ`,
+        modeTitle: `⏱️ Theo giờ (${hourlyHours}h)`,
+      };
+    } else {
+      const days = packagePlan === "7days" ? 7 : packagePlan === "14days" ? 14 : 30;
+      const discountRate = packagePlan === "7days" ? 0.10 : packagePlan === "14days" ? 0.15 : 0.25;
+      const shiftMult = packageShift === "4h" ? 1.0 : packageShift === "8h" ? 1.8 : packageShift === "12h" ? 2.5 : 4.0;
+      
+      const dailyRate = Math.round(baseServicePrice * 2 * shiftMult);
+      const originalTotal = dailyRate * days;
+      const total = Math.round(originalTotal * (1 - discountRate));
+      const savings = originalTotal - total;
+      
+      return {
+        total,
+        originalTotal,
+        discountText: `Tiết kiệm ${Math.round(discountRate * 100)}% (-${savings.toLocaleString("vi-VN")}đ)`,
+        labelText: `Gói ${days} ngày (Ca ${packageShift})`,
+        subText: `${dailyRate.toLocaleString("vi-VN")}đ/ngày × ${days} ngày`,
+        modeTitle: `📦 Gói ${days} ngày (Ca ${packageShift})`,
+      };
+    }
+  }, [careMode, hourlyHours, packagePlan, packageShift, bookingServiceId, services]);
+
   const handleCreateBooking = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bookingStaffId || !bookingServiceId || !bookingDate || !bookingSlot) {
+    if (!bookingServiceId || !bookingDate || !bookingSlot) {
       addToast("Vui lòng điền đầy đủ thông tin đặt lịch hẹn.", "error");
       return;
     }
@@ -578,31 +654,39 @@ export default function DatLichPage() {
       return;
     }
 
-    const selectedStaff = staff.find((s) => (s.id || s.staffId) === bookingStaffId);
     const selectedService = services.find((s) => (s.id || s.serviceId) === bookingServiceId);
-    if (!selectedStaff || !selectedService) {
-      addToast("Chuyên gia hoặc dịch vụ không hợp lệ.", "error");
+    if (!selectedService) {
+      addToast("Dịch vụ không hợp lệ. Vui lòng chọn lại.", "error");
       return;
     }
 
+    const pricing = calculatePricing();
     const newId = crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase();
-    const duration = selectedService.duration || "1h";
-    const endTime = calculateEndTime(bookingSlot, duration);
+    const duration = careMode === "hourly" ? `${hourlyHours}h` : `Gói ${packagePlan === "7days" ? "7 ngày" : packagePlan === "14days" ? "14 ngày" : "30 ngày"}`;
+    const endTime = calculateEndTime(bookingSlot, careMode === "hourly" ? `${hourlyHours}h` : "4h");
+    const effectiveArea = customerArea || bookingAddress || user?.address || "";
 
     const newVisitObj: Record<string, any> = {
       id: newId,
-      type: selectedService.name,
+      type: selectedService.name || selectedService.serviceName || "Khám bệnh tại nhà",
       date: bookingDate,
       userId: user?.id,
-      staffId: bookingStaffId,
+      // staffId intentionally omitted — backend dispatch engine assigns it
       time: `${bookingSlot} - ${endTime}`,
       startTime: bookingSlot,
       endTime: endTime,
       duration,
+      careMode,
+      packagePlan: careMode === "package" ? packagePlan : null,
+      packageShift: careMode === "package" ? packageShift : null,
+      paymentAmount: String(pricing.total),
       status: "Chờ duyệt",
       paymentMethod: bookingPayment,
       address: bookingAddress,
       notes: bookingNotes,
+      // Dispatch metadata
+      customerArea: effectiveArea,
+      requiredSpecialty: requiredSpecialty || null,
     };
 
     if (bookingAddress && bookingAddress !== user?.address) {
@@ -633,11 +717,18 @@ export default function DatLichPage() {
         }
         return data;
       })
-      .then(() => {
-        addToast("Gửi yêu cầu thành công! Đang chờ Admin phê duyệt.", "success");
+      .then((data) => {
+        const assigned = data?.staffName && data.staffName !== "⏳ Chờ phân công";
+        addToast(
+          assigned
+            ? `Đặt lịch thành công! Chuyên gia ${data.staffName} sẽ đến chăm sóc bạn.`
+            : "Gửi yêu cầu thành công! Hệ thống đang điều phối chuyên gia phù hợp.",
+          "success"
+        );
         setBookingDate("");
         setBookingSlot("");
         setBookingNotes("");
+        setRequiredSpecialty("");
         setQrConfirmed(false);
         fetchMyVisits();
       })
@@ -693,7 +784,8 @@ Trạng thái: ${booking.status}
 
   if (!user) return null;
 
-  const selectedService = services.find((s) => (s.id || s.serviceId) === bookingServiceId);
+  const activeService = services.find((s) => (s.id || s.serviceId) === bookingServiceId) || services[0];
+  const selectedService = activeService;
   const selectedStaff = staff.find((s) => (s.id || s.staffId) === bookingStaffId);
 
   const formProgress = [
@@ -705,10 +797,33 @@ Trạng thái: ${booking.status}
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-blue-50/60 via-white to-slate-50 text-slate-900 font-sans">
-      {/* Toast */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm pointer-events-none">
+      {/* Toast - Error: hình tròn X giữa màn hình */}
+      <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center pointer-events-none">
         <AnimatePresence>
-          {toasts.map((t) => (
+          {toasts.filter(t => t.type === "error").map((t) => (
+            <motion.div
+              key={t.id}
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.5 }}
+              transition={{ type: "spring", stiffness: 400, damping: 22 }}
+              className="flex flex-col items-center gap-4 pointer-events-auto"
+            >
+              <div className="w-24 h-24 rounded-full bg-red-500 flex items-center justify-center shadow-2xl shadow-red-500/40">
+                <XCircle className="w-14 h-14 text-white" strokeWidth={2} />
+              </div>
+              <p className="text-base font-bold text-slate-800 bg-white/90 backdrop-blur-md px-6 py-3 rounded-2xl shadow-lg border border-red-100 text-center max-w-xs">
+                {t.msg}
+              </p>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* Toast - Success & Info: góc phải dưới */}
+      <div className="fixed bottom-6 right-6 z-[150] flex flex-col gap-3 max-w-sm pointer-events-none">
+        <AnimatePresence>
+          {toasts.filter(t => t.type !== "error").map((t) => (
             <motion.div
               key={t.id}
               initial={{ opacity: 0, y: 30, scale: 0.9 }}
@@ -717,15 +832,15 @@ Trạng thái: ${booking.status}
               className={cn(
                 "p-4 rounded-2xl shadow-2xl border flex items-center gap-3 backdrop-blur-md pointer-events-auto",
                 t.type === "success"
-                  ? "bg-white border-blue-200 text-blue-900 shadow-blue-50"
-                  : t.type === "error"
-                    ? "bg-orange-50 border-orange-200 text-orange-700"
-                    : "bg-white border-blue-100 text-slate-800"
+                  ? "bg-white border-blue-200 text-blue-900"
+                  : "bg-white border-blue-100 text-slate-800",
               )}
             >
-              {t.type === "success" && <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0" />}
-              {t.type === "error" && <AlertCircle className="w-5 h-5 text-orange-500 shrink-0" />}
-              {t.type === "info" && <Sparkles className="w-5 h-5 text-blue-500 shrink-0 animate-pulse" />}
+              {t.type === "success" ? (
+                <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0" />
+              ) : (
+                <Sparkles className="w-5 h-5 text-blue-500 shrink-0 animate-pulse" />
+              )}
               <span className="text-xs font-black tracking-tight">{t.msg}</span>
             </motion.div>
           ))}
@@ -853,94 +968,239 @@ Trạng thái: ${booking.status}
               </div>
               <div>
                 <h2 className="text-sm font-black text-blue-950 uppercase tracking-wider">Thông tin đặt lịch</h2>
-                <p className="text-[10px] text-slate-400 font-semibold">Điền các trường bắt buộc bên dưới</p>
+                <p className="text-[10px] text-slate-400 font-semibold">Lựa chọn hình thức dịch vụ & thời gian bên dưới</p>
               </div>
             </div>
 
-            {/* Row 1: Staff + Service */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-blue-400">
-                  Chuyên gia y khoa
-                </Label>
-                <Select value={bookingStaffId} onValueChange={(val) => setBookingStaffId(val || "")}>
-                  <SelectTrigger className="w-full rounded-2xl border-blue-100 h-12 bg-white font-bold text-sm shadow-none text-slate-800 focus:ring-2 focus:ring-blue-600/20 hover:border-blue-200 transition-colors">
-                    <SelectValue placeholder="Chọn chuyên gia">
-                      {bookingStaffId
-                        ? (() => { const s = staff.find((x) => String(x.id || x.staffId) === String(bookingStaffId)); return s ? (s.name || s.fullName || bookingStaffId) : bookingStaffId; })()
-                        : null}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl border-blue-100 shadow-2xl shadow-blue-900/10 p-2 bg-white">
-                    {staff.map((s) => {
-                      const sid = String(s.id || s.staffId || "");
-                      const sname = s.name || s.fullName || sid;
-                      return (
-                        <SelectItem key={sid} value={sid} disabled={!s.available} className="rounded-xl py-2.5 font-bold text-xs focus:bg-blue-50 cursor-pointer">
-                          {sname} {s.department ? `• ${s.department}` : ""} {!s.available && "(Bận)"}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+            {/* Mode Switcher: Theo Giờ vs Gói Dài Hạn */}
+            <div className="space-y-2">
+              <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-blue-400">
+                Hình thức chăm sóc y tế
+              </Label>
+              <div className="bg-slate-100 p-1.5 rounded-2xl flex items-center gap-1.5 border border-slate-200/80">
+                <button
+                  type="button"
+                  onClick={() => setCareMode("hourly")}
+                  className={cn(
+                    "flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer",
+                    careMode === "hourly"
+                      ? "bg-white text-blue-600 shadow-md shadow-blue-900/5 ring-1 ring-black/5 scale-[1.02]"
+                      : "text-slate-500 hover:text-slate-900 hover:bg-white/50"
+                  )}
+                >
+                  <Clock className="w-4 h-4 text-blue-500" />
+                  <span>⏱️ Chăm sóc theo giờ</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCareMode("package")}
+                  className={cn(
+                    "flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer",
+                    careMode === "package"
+                      ? "bg-white text-emerald-600 shadow-md shadow-emerald-900/5 ring-1 ring-black/5 scale-[1.02]"
+                      : "text-slate-500 hover:text-slate-900 hover:bg-white/50"
+                  )}
+                >
+                  <Activity className="w-4 h-4 text-emerald-500" />
+                  <span>📦 Gói dài hạn (Tuần / Tháng)</span>
+                </button>
+              </div>
+            </div>
 
-                {/* License Red Badge (Phiếu Chứng chỉ mộc đỏ) */}
-                {bookingStaffId && staffLicenses.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="relative p-3.5 rounded-2xl bg-gradient-to-br from-rose-50 via-red-50/50 to-rose-100/30 border border-rose-200 shadow-sm text-left overflow-hidden space-y-1.5"
+
+
+            {/* Chuyên môn mong muốn */}
+            <div className="space-y-2">
+              <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-blue-400">
+                Chuyên môn mong muốn <span className="text-slate-400 font-normal normal-case">(tuỳ chọn)</span>
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: "Điều dưỡng", label: "💉 Điều dưỡng viên" },
+                  { value: "Vật lý trị liệu", label: "🏃 Vật lý trị liệu" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setRequiredSpecialty(requiredSpecialty === opt.value ? "" : opt.value)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all duration-200 cursor-pointer",
+                      requiredSpecialty === opt.value
+                        ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/25 scale-[1.03]"
+                        : "bg-white text-slate-600 border-slate-200 hover:border-blue-200 hover:bg-blue-50/50"
+                    )}
                   >
-                    {/* Stamp visual */}
-                    <div className="absolute top-2 right-2 w-9 h-9 rounded-full border border-dashed border-rose-500/40 bg-rose-100/60 flex flex-col items-center justify-center rotate-[-12deg] pointer-events-none">
-                      <Award className="w-3 h-3 text-rose-600" />
-                      <span className="text-[5px] font-black text-rose-700 uppercase">MỘC ĐỎ</span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <Award className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                      <span className="text-[9px] font-black uppercase tracking-wider text-rose-800">
-                        Chứng chỉ hành nghề chính thức
-                      </span>
-                    </div>
-
-                    {staffLicenses.map((lic) => (
-                      <div key={lic.id} className="text-[10px] font-bold text-slate-700 space-y-0.5 border-t border-rose-200/60 pt-1.5">
-                        <p><span className="text-slate-400 font-semibold">Số CCHN:</span> <span className="font-mono text-rose-950 font-black">{lic.licenseNumber}</span></p>
-                        <p><span className="text-slate-400 font-semibold">Cấp bởi:</span> {lic.issuedBy} ({lic.issuedDate})</p>
-                        {lic.specialty && <p><span className="text-slate-400 font-semibold">Chuyên khoa:</span> {lic.specialty}</p>}
-                      </div>
-                    ))}
-                  </motion.div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-blue-400">
-                  Dịch vụ chăm sóc
-                </Label>
-                <Select value={bookingServiceId} onValueChange={(val) => setBookingServiceId(val || "")}>
-                  <SelectTrigger className="w-full rounded-2xl border-blue-100 h-12 bg-white font-bold text-sm shadow-none text-slate-800 focus:ring-2 focus:ring-blue-600/20 hover:border-blue-200 transition-colors">
-                    <SelectValue placeholder="Chọn loại dịch vụ">
-                      {bookingServiceId
-                        ? (() => { const sv = services.find((x) => String(x.id || x.serviceId) === String(bookingServiceId)); return sv ? (sv.name || sv.serviceName || bookingServiceId) : bookingServiceId; })()
-                        : null}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl border-blue-100 shadow-2xl shadow-blue-900/10 p-2 bg-white">
-                    {services.map((serv) => {
-                      const svid = String(serv.id || serv.serviceId || "");
-                      const svname = serv.name || serv.serviceName || svid;
-                      return (
-                        <SelectItem key={svid} value={svid} className="rounded-xl py-2.5 font-bold text-xs focus:bg-blue-50 cursor-pointer">
-                          {svname}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </div>
+
+            {/* Row 1: Service only */}
+            <div className="space-y-2">
+              <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-blue-400">
+                Dịch vụ chăm sóc
+              </Label>
+              <Select value={bookingServiceId} onValueChange={(val) => setBookingServiceId(val || "")}>
+                <SelectTrigger className="w-full rounded-2xl border-blue-100 h-12 bg-white font-bold text-sm shadow-none text-slate-800 focus:ring-2 focus:ring-blue-600/20 hover:border-blue-200 transition-colors">
+                  <SelectValue placeholder="Chọn loại dịch vụ">
+                    {bookingServiceId
+                      ? (() => { const sv = services.find((x) => String(x.id || x.serviceId) === String(bookingServiceId)); return sv ? (sv.name || sv.serviceName || bookingServiceId) : bookingServiceId; })()
+                      : null}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border-blue-100 shadow-2xl shadow-blue-900/10 p-2 bg-white">
+                  {services.map((serv) => {
+                    const svid = String(serv.id || serv.serviceId || "");
+                    const svname = serv.name || serv.serviceName || svid;
+                    return (
+                      <SelectItem key={svid} value={svid} className="rounded-xl py-2.5 font-bold text-xs focus:bg-blue-50 cursor-pointer">
+                        {svname}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
+
+            {/* Conditional Options: Hourly Care vs Long-term Package */}
+            {careMode === "hourly" ? (
+              <div className="space-y-2.5 p-4 rounded-2xl bg-blue-50/50 border border-blue-100/80">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-blue-600 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5" /> Số giờ chăm sóc tại nhà
+                  </Label>
+                  <span className="text-xs font-black text-blue-950 bg-white px-2.5 py-1 rounded-lg border border-blue-200 shadow-2xs">
+                    {hourlyHours} giờ / ca
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { hours: 2, label: "2 giờ", desc: "Ca ngắn" },
+                    { hours: 4, label: "4 giờ", desc: "Nửa ngày" },
+                    { hours: 8, label: "8 giờ", desc: "Cả ngày" },
+                    { hours: 12, label: "12 giờ", desc: "Ca đêm" },
+                  ].map((item) => {
+                    const isExceeding20h = currentSlotHour !== null && item.hours > (20 - currentSlotHour);
+                    return (
+                      <button
+                        key={item.hours}
+                        type="button"
+                        disabled={isExceeding20h}
+                        onClick={() => {
+                          if (isExceeding20h) {
+                            addToast(`Khung giờ ${bookingSlot} bắt đầu lúc ${bookingSlot}, ca ${item.hours}h sẽ vượt quá 20:00 giờ nghỉ!`, "error");
+                            return;
+                          }
+                          setHourlyHours(item.hours);
+                        }}
+                        className={cn(
+                          "p-3 rounded-xl border text-center transition-all duration-200 flex flex-col items-center justify-center relative",
+                          isExceeding20h
+                            ? "bg-slate-100/80 border-slate-200 text-slate-400 cursor-not-allowed opacity-50"
+                            : hourlyHours === item.hours
+                              ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-600/30 scale-[1.03] cursor-pointer"
+                              : "bg-white border-blue-100 text-slate-700 hover:border-blue-300 hover:bg-white cursor-pointer"
+                        )}
+                      >
+                        <span className="text-xs font-black">{item.label}</span>
+                        <span className={cn(
+                          "text-[9px] font-bold mt-0.5",
+                          isExceeding20h
+                            ? "text-rose-500 font-black"
+                            : hourlyHours === item.hours
+                              ? "text-blue-100"
+                              : "text-slate-400"
+                        )}>
+                          {isExceeding20h ? "Vượt quá 20:00" : item.desc}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4 p-4.5 rounded-2xl bg-emerald-50/60 border border-emerald-100/80">
+                {/* Package Selection */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-emerald-700 flex items-center gap-1.5">
+                      <Activity className="w-3.5 h-3.5" /> Lựa chọn Gói chăm sóc dài hạn
+                    </Label>
+                    <span className="text-[9px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                      Tiết kiệm đến 25%
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {[
+                      { plan: "7days", name: "Gói 7 Ngày", sub: "Gói Tuần", badge: "-10%" },
+                      { plan: "14days", name: "Gói 14 Ngày", sub: "2 Tuần", badge: "-15%" },
+                      { plan: "30days", name: "Gói 30 Ngày", sub: "Gói Tháng", badge: "-25% Best" },
+                    ].map((item) => (
+                      <button
+                        key={item.plan}
+                        type="button"
+                        onClick={() => setPackagePlan(item.plan as any)}
+                        className={cn(
+                          "relative p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer overflow-hidden flex flex-col justify-between",
+                          packagePlan === item.plan
+                            ? "bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-600/30 scale-[1.03]"
+                            : "bg-white border-emerald-200/80 text-slate-700 hover:border-emerald-300"
+                        )}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black">{item.name}</span>
+                          </div>
+                          <p className={cn("text-[9px] font-bold mt-0.5", packagePlan === item.plan ? "text-emerald-100" : "text-slate-400")}>
+                            {item.sub}
+                          </p>
+                        </div>
+                        <span className={cn(
+                          "mt-2 text-[9px] font-black uppercase px-2 py-0.5 rounded-md inline-block text-center w-fit",
+                          packagePlan === item.plan ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-800"
+                        )}>
+                          {item.badge}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Shift Selection */}
+                <div className="space-y-2 pt-2 border-t border-emerald-200/60">
+                  <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-emerald-700">
+                    Khung Ca làm việc mỗi ngày
+                  </Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { shift: "4h", label: "Ca 4h", desc: "Nửa ngày" },
+                      { shift: "8h", label: "Ca 8h", desc: "Hành chính" },
+                      { shift: "12h", label: "Ca 12h", desc: "Ca đêm" },
+                      { shift: "24h", label: "Ca 24/7", desc: "Toàn thời gian" },
+                    ].map((item) => (
+                      <button
+                        key={item.shift}
+                        type="button"
+                        onClick={() => setPackageShift(item.shift as any)}
+                        className={cn(
+                          "p-2.5 rounded-xl border text-center transition-all duration-200 cursor-pointer flex flex-col items-center justify-center",
+                          packageShift === item.shift
+                            ? "bg-emerald-700 border-emerald-700 text-white shadow-sm"
+                            : "bg-white border-emerald-200 text-slate-700 hover:bg-emerald-50"
+                        )}
+                      >
+                        <span className="text-xs font-black">{item.label}</span>
+                        <span className={cn("text-[8px] font-bold mt-0.5", packageShift === item.shift ? "text-emerald-200" : "text-slate-400")}>
+                          {item.desc}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Row 2: Date + Time Slots */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -961,21 +1221,33 @@ Trạng thái: ${booking.status}
                   Khung giờ rảnh rỗi
                 </Label>
                 <div className="grid grid-cols-3 gap-2">
-                  {TIME_SLOTS.map((time) => (
-                    <button
-                      key={time}
-                      type="button"
-                      onClick={() => setBookingSlot(time)}
-                      className={cn(
-                        "py-2.5 border text-xs font-black rounded-xl transition-all duration-200",
-                        bookingSlot === time
-                          ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/25 scale-105"
-                          : "bg-white border-blue-100 hover:border-blue-300 hover:bg-blue-50 text-slate-700"
-                      )}
-                    >
-                      {time}
-                    </button>
-                  ))}
+                  {TIME_SLOTS.map((time) => {
+                    const slotH = getSlotStartHour(time);
+                    const maxH = Math.max(0, 20 - slotH);
+                    return (
+                      <button
+                        key={time}
+                        type="button"
+                        onClick={() => handleSelectBookingSlot(time)}
+                        className={cn(
+                          "py-2.5 border text-xs font-black rounded-xl transition-all duration-200 flex flex-col items-center justify-center gap-0.5 cursor-pointer",
+                          bookingSlot === time
+                            ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/25 scale-105"
+                            : "bg-white border-blue-100 hover:border-blue-300 hover:bg-blue-50 text-slate-700"
+                        )}
+                      >
+                        <span>{time}</span>
+                        {careMode === "hourly" && maxH < 12 && (
+                          <span className={cn(
+                            "text-[8px] font-extrabold leading-none",
+                            bookingSlot === time ? "text-blue-100" : "text-blue-600/80"
+                          )}>
+                            (Tối đa {maxH}h)
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -1059,85 +1331,102 @@ Trạng thái: ${booking.status}
                 <h4 className="text-sm font-black text-blue-950 uppercase tracking-wider">Chi tiết thanh toán</h4>
               </div>
 
-              {bookingServiceId ? (
-                <div className="space-y-4">
-                  {/* Detail rows */}
-                  {[
-                    { label: "Dịch vụ", value: selectedService?.name || "" },
-                    { label: "Thời lượng", value: selectedService?.duration || "1h" },
-                    bookingStaffId ? { label: "Chuyên gia", value: selectedStaff?.name || "" } : null,
-                    bookingDate ? { label: "Ngày khám", value: bookingDate } : null,
-                    bookingSlot ? { label: "Bắt đầu", value: bookingSlot } : null,
-                    { label: "Thanh toán", value: PAYMENT_METHODS.find((p) => p.value === bookingPayment)?.label || bookingPayment },
-                  ].filter(Boolean).map((item: any) => (
-                    <div key={item.label} className="flex justify-between items-center py-1">
-                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{item.label}:</span>
-                      <span className="text-xs font-black text-blue-950">{item.value}</span>
-                    </div>
-                  ))}
-
-                  {/* QR Transfer */}
-                  {bookingPayment === "Chuyển khoản" && (
-                    <div className="mt-4 p-5 bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl border border-blue-100 space-y-4">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 text-center">Quét QR để chuyển khoản</p>
-                      <div className="flex justify-center">
-                        <div className="bg-white p-3 rounded-xl shadow-sm border border-blue-50">
-                          <svg viewBox="0 0 200 200" className="w-36 h-36" xmlns="http://www.w3.org/2000/svg">
-                            <rect width="200" height="200" fill="white" />
-                            <rect x="20" y="20" width="40" height="40" fill="#1D4ED8" />
-                            <rect x="25" y="25" width="30" height="30" fill="white" />
-                            <rect x="30" y="30" width="20" height="20" fill="#1D4ED8" />
-                            <rect x="140" y="20" width="40" height="40" fill="#1D4ED8" />
-                            <rect x="145" y="25" width="30" height="30" fill="white" />
-                            <rect x="150" y="30" width="20" height="20" fill="#1D4ED8" />
-                            <rect x="20" y="140" width="40" height="40" fill="#1D4ED8" />
-                            <rect x="25" y="145" width="30" height="30" fill="white" />
-                            <rect x="30" y="150" width="20" height="20" fill="#1D4ED8" />
-                            <rect x="70" y="20" width="10" height="10" fill="#1D4ED8" />
-                            <rect x="90" y="20" width="10" height="10" fill="#1D4ED8" />
-                            <rect x="110" y="20" width="10" height="10" fill="#1D4ED8" />
-                            <rect x="70" y="70" width="60" height="60" fill="#1D4ED8" />
-                            <rect x="75" y="75" width="50" height="50" fill="white" />
-                            <rect x="80" y="80" width="40" height="40" fill="#1D4ED8" />
-                            <rect x="85" y="85" width="30" height="30" fill="white" />
-                            <rect x="90" y="90" width="20" height="20" fill="#1D4ED8" />
-                          </svg>
+              {(bookingServiceId || services.length > 0 || careMode === "package") ? (
+                (() => {
+                  const pricing = calculatePricing();
+                  return (
+                    <div className="space-y-4">
+                      {/* Detail rows */}
+                      {[
+                        { label: "Dịch vụ", value: selectedService?.name || "" },
+                        { label: "Hình thức", value: careMode === "hourly" ? "⏱️ Chăm sóc theo giờ" : "📦 Gói dài hạn" },
+                        { label: "Chi tiết ca", value: pricing.labelText },
+                        bookingStaffId ? { label: "Chuyên gia", value: selectedStaff?.name || "" } : null,
+                        { label: "Ngày khám", value: bookingDate || "Chưa chọn ngày" },
+                        { label: "Khung giờ", value: bookingSlot || "Chưa chọn giờ" },
+                        { label: "Địa chỉ", value: bookingAddress || profile?.address || "Chưa nhập địa chỉ" },
+                        { label: "Thanh toán", value: PAYMENT_METHODS.find((p) => p.value === bookingPayment)?.label || bookingPayment },
+                      ].filter(Boolean).map((item: any) => (
+                        <div key={item.label} className="flex justify-between items-center py-1 border-b border-blue-50/50">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{item.label}:</span>
+                          <span className="text-xs font-black text-blue-950">{item.value}</span>
                         </div>
-                      </div>
-                      <div className="text-center space-y-1.5">
-                        <p className="text-[11px] font-bold text-slate-600">Ngân hàng: <span className="text-blue-600 font-black">Vietcombank</span></p>
-                        <p className="text-[11px] font-bold text-slate-600">Số TK: <span className="text-blue-600 font-black">1234567890</span></p>
-                        <p className="text-[11px] font-bold text-slate-600">Chủ TK: <span className="text-blue-600 font-black">CONG TY TNHH MINTCARE</span></p>
-                      </div>
-                      {!qrConfirmed ? (
-                        <button
-                          type="button"
-                          onClick={() => setQrConfirmed(true)}
-                          className="w-full py-3 bg-gradient-to-r from-blue-600 to-sky-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:from-blue-700 hover:to-sky-600 transition-all shadow-lg shadow-blue-600/20"
-                        >
-                          ✓ Xác nhận đã chuyển khoản
-                        </button>
-                      ) : (
-                        <div className="flex items-center justify-center gap-2 py-3 bg-blue-50 rounded-xl border border-blue-200">
-                          <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                          <span className="text-[10px] font-black text-blue-700 uppercase tracking-widest">Đã xác nhận chuyển khoản</span>
+                      ))}
+
+                      {/* QR Transfer */}
+                      {bookingPayment === "Chuyển khoản" && (
+                        <div className="mt-4 p-5 bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl border border-blue-100 space-y-4">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 text-center">Quét QR để chuyển khoản</p>
+                          <div className="flex justify-center">
+                            <div className="bg-white p-3 rounded-xl shadow-sm border border-blue-50">
+                              <svg viewBox="0 0 200 200" className="w-36 h-36" xmlns="http://www.w3.org/2000/svg">
+                                <rect width="200" height="200" fill="white" />
+                                <rect x="20" y="20" width="40" height="40" fill="#1D4ED8" />
+                                <rect x="25" y="25" width="30" height="30" fill="white" />
+                                <rect x="30" y="30" width="20" height="20" fill="#1D4ED8" />
+                                <rect x="140" y="20" width="40" height="40" fill="#1D4ED8" />
+                                <rect x="145" y="25" width="30" height="30" fill="white" />
+                                <rect x="150" y="30" width="20" height="20" fill="#1D4ED8" />
+                                <rect x="20" y="140" width="40" height="40" fill="#1D4ED8" />
+                                <rect x="25" y="145" width="30" height="30" fill="white" />
+                                <rect x="30" y="150" width="20" height="20" fill="#1D4ED8" />
+                                <rect x="70" y="20" width="10" height="10" fill="#1D4ED8" />
+                                <rect x="90" y="20" width="10" height="10" fill="#1D4ED8" />
+                                <rect x="110" y="20" width="10" height="10" fill="#1D4ED8" />
+                                <rect x="70" y="70" width="60" height="60" fill="#1D4ED8" />
+                                <rect x="75" y="75" width="50" height="50" fill="white" />
+                                <rect x="80" y="80" width="40" height="40" fill="#1D4ED8" />
+                                <rect x="85" y="85" width="30" height="30" fill="white" />
+                                <rect x="90" y="90" width="20" height="20" fill="#1D4ED8" />
+                              </svg>
+                            </div>
+                          </div>
+                          <div className="text-center space-y-1.5">
+                            <p className="text-[11px] font-bold text-slate-600">Ngân hàng: <span className="text-blue-600 font-black">Vietcombank</span></p>
+                            <p className="text-[11px] font-bold text-slate-600">Số TK: <span className="text-blue-600 font-black">1234567890</span></p>
+                            <p className="text-[11px] font-bold text-slate-600">Chủ TK: <span className="text-blue-600 font-black">CONG TY TNHH MINTCARE</span></p>
+                          </div>
+                          {!qrConfirmed ? (
+                            <button
+                              type="button"
+                              onClick={() => setQrConfirmed(true)}
+                              className="w-full py-3 bg-gradient-to-r from-blue-600 to-sky-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:from-blue-700 hover:to-sky-600 transition-all shadow-lg shadow-blue-600/20"
+                            >
+                              ✓ Xác nhận đã chuyển khoản
+                            </button>
+                          ) : (
+                            <div className="flex items-center justify-center gap-2 py-3 bg-blue-50 rounded-xl border border-blue-200">
+                              <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                              <span className="text-[10px] font-black text-blue-700 uppercase tracking-widest">Đã xác nhận chuyển khoản</span>
+                            </div>
+                          )}
                         </div>
                       )}
-                    </div>
-                  )}
 
-                  {/* Price */}
-                  <div className="border-t border-blue-50 pt-5 mt-5">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Chi phí tạm tính</p>
-                    <p className="text-3xl font-black text-blue-950 tracking-tighter">
-                      {typeof selectedService?.price === "number"
-                        ? selectedService.price.toLocaleString("vi-VN")
-                        : parseFloat(String(selectedService?.price || "0").replace(/[^0-9.]/g, "")).toLocaleString("vi-VN")}
-                      <span className="text-sm text-slate-400 ml-1">đ</span>
-                    </p>
-                    <p className="text-[10px] text-slate-400 mt-2">* Đã bao gồm VAT và chi phí di chuyển</p>
-                  </div>
-                </div>
+                      {/* Price Calculation breakdown */}
+                      <div className="border-t border-blue-100 pt-5 mt-4 space-y-2">
+                        <div className="flex justify-between items-center text-slate-500 text-[10px] font-bold">
+                          <span>Đơn giá cơ sở:</span>
+                          <span>{pricing.subText}</span>
+                        </div>
+                        {pricing.discountText && (
+                          <div className="flex justify-between items-center text-emerald-600 text-[10px] font-black">
+                            <span>Ưu đãi gói:</span>
+                            <span>{pricing.discountText}</span>
+                          </div>
+                        )}
+                        <div className="pt-2 border-t border-slate-100">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Tổng chi phí gói chăm sóc</p>
+                          <p className="text-3xl font-black text-blue-950 tracking-tighter">
+                            {pricing.total.toLocaleString("vi-VN")}
+                            <span className="text-sm text-slate-400 ml-1">đ</span>
+                          </p>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-2">* Đã bao gồm VAT và toàn bộ phí di chuyển của chuyên gia</p>
+                      </div>
+                    </div>
+                  );
+                })()
               ) : (
                 <div className="py-16 text-center">
                   <div className="w-16 h-16 rounded-[28px] bg-blue-50 flex items-center justify-center mx-auto mb-4">

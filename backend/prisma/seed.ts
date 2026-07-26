@@ -69,6 +69,18 @@ const staffData = [
     isNew: true,
     available: true,
   },
+  {
+    id: "PENDING",
+    name: "⏳ Chờ phân công",
+    role: "Chuyên gia y tế",
+    status: "Sẵn sàng",
+    department: "Điều phối",
+    phone: "0000000000",
+    email: "pending@mintcare.com",
+    location: "Hệ thống",
+    isNew: false,
+    available: true,
+  },
 ];
 
 const patientData = [
@@ -92,7 +104,7 @@ const patientData = [
     lastVisitTime: "02:30 PM",
     status: "Chờ tái khám",
     summary: "Bệnh nhân cần kiểm tra định kỳ hàng tháng về chức năng tim mạch.",
-    assignedStaff: ["2"],
+    assignedStaff: ["2"], 
   },
   {
     id: "BN-1052",

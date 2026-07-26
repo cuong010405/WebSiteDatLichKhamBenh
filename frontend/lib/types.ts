@@ -36,7 +36,28 @@ export interface Staff {
   avatar: string;
   available: boolean;
   isNew?: boolean;
+  experience?: string | null;
+  specialty?: string | null;
   licenses?: StaffLicense[];
+}
+
+export interface CareLog {
+  id: string;
+  patientId: string;
+  staffId?: string | null;
+  staffName?: string | null;
+  serviceName?: string | null;
+  careDate: string;
+  temperature?: string | null;
+  bloodPressure?: string | null;
+  heartRate?: string | null;
+  spo2?: string | null;
+  bloodSugar?: string | null;
+  medications?: string | null;
+  notes?: string | null;
+  assessment?: string | null;
+  attachment?: string | null;
+  createdAt?: string | Date;
 }
 
 export interface Patient {
@@ -77,6 +98,15 @@ export interface Visit {
   paymentNote?: string | null;
   paymentStatus?: string | null;
   icon?: ElementType;
+  // Dispatch / booking fields
+  careMode?: string | null;
+  packagePlan?: string | null;
+  packageShift?: string | null;
+  customerArea?: string | null;
+  requiredSpecialty?: string | null;
+  assignedAt?: string | null;
+  phone?: string | null;
+  email?: string | null;
 }
 
 export interface ActivityLogEntry {

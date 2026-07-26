@@ -2,10 +2,11 @@ import crypto from "crypto";
 import { db } from "../db";
 import { visitSchema } from "../validations/schemas";
 import { z } from "zod";
+import { autoAssignStaff } from "./dispatch";
 
 function mapVisitToUI(v: any) {
   const notesContent = v.Notes || (v.PaymentNote?.startsWith("Lý do hủy:") ? "" : v.PaymentNote) || "";
-  const addressContent = v.Address || v.User?.Address || "Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM";
+  const addressContent = v.Address || v.CustomerArea || v.User?.Address || "Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM";
 
   return {
     id: v.Id,
@@ -27,11 +28,18 @@ function mapVisitToUI(v: any) {
     duration: v.Duration ?? "",
     status: v.Status ?? "Chờ duyệt",
     patientName: v.Patient?.Name ?? "",
-    staffName: v.Staff?.Name ?? "",
+    staffName: v.StaffId === "PENDING" ? "⏳ Chờ phân công" : (v.Staff?.Name ?? ""),
     paymentMethod: v.PaymentMethod ?? "",
     paymentAmount: v.PaymentAmount ?? "",
     paymentNote: v.PaymentNote ?? "",
     paymentStatus: v.PaymentStatus ?? "Chưa thanh toán",
+    // Dispatch fields
+    careMode: v.CareMode ?? null,
+    packagePlan: v.PackagePlan ?? null,
+    packageShift: v.PackageShift ?? null,
+    customerArea: v.CustomerArea ?? null,
+    requiredSpecialty: v.RequiredSpecialty ?? null,
+    assignedAt: v.AssignedAt ?? null,
   };
 }
 
@@ -508,24 +516,36 @@ export async function checkVisitOverlap(params: {
 export async function createVisit(data: z.infer<typeof visitSchema>) {
   const validated = visitSchema.parse(data);
 
-  // Check overlap before creating
-  await checkVisitOverlap({
-    staffId: validated.staffId,
-    userId: validated.userId,
-    date: validated.date,
-    startTime: validated.startTime,
-    time: validated.time,
-    duration: validated.duration,
-  });
+  // Determine the initial staffId:
+  // If client doesn't send one (customer booking), use "PENDING"
+  const resolvedStaffId = validated.staffId || "PENDING";
+
+  // Only check overlap / capacity if a real staff is specified
+  if (resolvedStaffId !== "PENDING") {
+    await checkVisitOverlap({
+      staffId: resolvedStaffId,
+      userId: validated.userId,
+      date: validated.date,
+      startTime: validated.startTime,
+      time: validated.time,
+      duration: validated.duration,
+    });
+  }
 
   const createData: any = {
     Id: validated.id,
     Type: validated.type,
-    StaffId: validated.staffId,
+    StaffId: resolvedStaffId,
     Date: validated.date || null,
     Time: validated.time,
     Duration: validated.duration,
     Status: validated.status,
+    // Dispatch fields
+    CareMode: validated.careMode || null,
+    PackagePlan: validated.packagePlan || null,
+    PackageShift: validated.packageShift || null,
+    CustomerArea: validated.customerArea || null,
+    RequiredSpecialty: validated.requiredSpecialty || null,
   };
   if (validated.patientId !== undefined && validated.patientId !== null) {
     const patient = await db.patient.findUnique({
@@ -575,6 +595,57 @@ export async function createVisit(data: z.infer<typeof visitSchema>) {
     }
   }
 
+  // Ensure Foreign Key constraint FK_Visit_Staff is satisfied
+  if (createData.StaffId === "PENDING") {
+    try {
+      await db.staff.upsert({
+        where: { Id: "PENDING" },
+        update: {},
+        create: {
+          Id: "PENDING",
+          Name: "⏳ Chờ phân công",
+          Role: "Chuyên gia y tế",
+          Status: "Sẵn sàng",
+          Department: "Điều phối",
+          Phone: "0000000000",
+          Email: "pending@mintcare.com",
+          Location: "Hệ thống",
+          Available: true,
+        },
+      });
+    } catch (sErr) {
+      const existingStaff = await db.staff.findFirst();
+      if (existingStaff) {
+        createData.StaffId = existingStaff.Id;
+      }
+    }
+  } else {
+    const staffExists = await db.staff.findUnique({ where: { Id: createData.StaffId } });
+    if (!staffExists) {
+      const fallbackStaff = await db.staff.findFirst();
+      if (fallbackStaff) {
+        createData.StaffId = fallbackStaff.Id;
+      } else {
+        await db.staff.upsert({
+          where: { Id: "PENDING" },
+          update: {},
+          create: {
+            Id: "PENDING",
+            Name: "⏳ Chờ phân công",
+            Role: "Chuyên gia y tế",
+            Status: "Sẵn sàng",
+            Department: "Điều phối",
+            Phone: "0000000000",
+            Email: "pending@mintcare.com",
+            Location: "Hệ thống",
+            Available: true,
+          },
+        });
+        createData.StaffId = "PENDING";
+      }
+    }
+  }
+
   const created = await db.visit.create({
     data: createData,
     include: {
@@ -589,6 +660,7 @@ export async function createVisit(data: z.infer<typeof visitSchema>) {
       },
     },
   });
+
   await ensurePatientForVisit(created.Id);
   const refreshed = await db.visit.findUnique({
     where: { Id: created.Id },

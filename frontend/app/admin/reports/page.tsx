@@ -511,7 +511,7 @@ export default function ReportsPage() {
             {loading ? (
               <div className="w-full h-full bg-surface-secondary/40 animate-pulse rounded-3xl" />
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={300}>
                 <AreaChart
                   data={visitData}
                   margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
@@ -595,7 +595,7 @@ export default function ReportsPage() {
               {loading ? (
                 <div className="w-full h-full bg-surface-secondary/40 animate-pulse rounded-full" />
               ) : (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
                   <PieChart>
                     <Pie
                       data={deptData}
