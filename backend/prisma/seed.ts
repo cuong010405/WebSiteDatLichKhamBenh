@@ -69,18 +69,6 @@ const staffData = [
     isNew: true,
     available: true,
   },
-  {
-    id: "PENDING",
-    name: "⏳ Chờ phân công",
-    role: "Chuyên gia y tế",
-    status: "Sẵn sàng",
-    department: "Điều phối",
-    phone: "0000000000",
-    email: "pending@mintcare.com",
-    location: "Hệ thống",
-    isNew: false,
-    available: true,
-  },
 ];
 
 const patientData = [
@@ -205,6 +193,7 @@ async function main() {
   await prisma.patientStaff.deleteMany();
   await prisma.patient.deleteMany();
   await prisma.staff.deleteMany();
+  await prisma.serviceType.deleteMany();
 
   console.log("Đang import dữ liệu nhân viên y tế...");
   for (const s of staffData) {

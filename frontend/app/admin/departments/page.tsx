@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
@@ -31,7 +32,6 @@ function AddDialog({ type, onAdd }: { type: string; onAdd: (d: Item) => Promise<
   const [open, setOpen] = React.useState(false)
   const [name, setName] = React.useState("")
   const [description, setDescription] = React.useState("")
-  const [success, setSuccess] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState("")
 
@@ -44,7 +44,7 @@ function AddDialog({ type, onAdd }: { type: string; onAdd: (d: Item) => Promise<
     const prefix = type === "departments" ? "dept" : "pos"
     const ok = await onAdd({ id: `${prefix}-${Date.now()}`, name, description, active: true })
     setSubmitting(false)
-    if (ok) { setSuccess(true); reset(); setTimeout(() => { setSuccess(false); setOpen(false) }, 1500) }
+    if (ok) { reset(); setOpen(false) }
     else setError(`Không thể thêm ${type === "departments" ? "phòng ban" : "chức vụ"}. Vui lòng thử lại.`)
   }
 
@@ -55,44 +55,35 @@ function AddDialog({ type, onAdd }: { type: string; onAdd: (d: Item) => Promise<
       <Button onClick={() => setOpen(true)} className="bg-primary text-white rounded-[24px] px-8 h-14 text-xs font-black uppercase tracking-[0.15em] flex items-center gap-3 shadow-xl shadow-primary/20 hover:opacity-95 transition-all border-b-4 border-white/10 active:border-b-0 active:translate-y-0.5">
         <Plus className="w-5 h-5" /> Thêm {title}
       </Button>
-      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { reset(); setSuccess(false) } }}>
-        <DialogContent className="sm:max-w-[520px] rounded-[32px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset() }}>
+        <DialogContent className="sm:max-w-[620px] rounded-[28px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
           <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 to-green-500" />
-          <AnimatePresence mode="wait">
-            {success ? (
-              <motion.div key="success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="p-12 flex flex-col items-center gap-5 text-center">
-                <div className="w-20 h-20 rounded-3xl bg-green-50 border border-green-100 flex items-center justify-center"><CheckCircle2 className="w-10 h-10 text-green-500" /></div>
-                <div><p className="text-base font-black text-slate-900 uppercase tracking-tight">Thêm thành công!</p><p className="text-xs text-slate-500 font-semibold mt-1">{title.charAt(0).toUpperCase() + title.slice(1)} đã được lưu vào hệ thống.</p></div>
-              </motion.div>
-            ) : (
-              <motion.form key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} onSubmit={handleSubmit} className="p-8 space-y-5">
-                <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-5 border-b border-slate-100">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-600 text-white flex items-center justify-center shrink-0 shadow-md"><Plus className="w-5 h-5" /></div>
-                  <div className="text-left flex-1">
-                    <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">Thêm {title} mới</DialogTitle>
-                    <DialogDescription className="text-slate-500 mt-1.5 text-[11px] font-semibold leading-tight">Đăng ký {title} trên hệ thống.</DialogDescription>
-                  </div>
-                </DialogHeader>
-                {error && <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600"><AlertTriangle className="w-4 h-4 shrink-0" /><p className="text-xs font-bold">{error}</p></div>}
-                <div className="space-y-4">
-                  <div className="space-y-2 text-left">
-                    <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Tên {title} <span className="text-red-400">*</span></label>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder={type === "departments" ? "VD: Nội khoa" : "VD: Bác sĩ Chuyên khoa"} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
-                  </div>
-                  <div className="space-y-2 text-left">
-                    <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Mô tả</label>
-                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={`Mô tả về ${title}...`} rows={3} className="w-full rounded-xl border border-slate-200 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all resize-none" />
-                  </div>
-                </div>
-                <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3 bg-white">
-                  <Button type="button" variant="outline" onClick={() => setOpen(false)} className="rounded-xl h-10 px-5 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">Hủy bỏ</Button>
-                  <Button type="submit" disabled={!name || submitting} className="rounded-xl h-10 px-6 text-xs font-black uppercase tracking-[0.15em] bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-95 transition-all shadow-md border-b-2 border-white/10 active:border-b-0 active:translate-y-0.5 disabled:opacity-40 group">
-                    {submitting ? "Đang lưu..." : `Tạo ${title}`}<Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" />
-                  </Button>
-                </DialogFooter>
-              </motion.form>
-            )}
-          </AnimatePresence>
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-4 border-b border-slate-100">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-green-600 text-white flex items-center justify-center shrink-0 shadow-md"><Plus className="w-4 h-4" /></div>
+              <div className="text-left flex-1">
+                <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">Thêm {title} mới</DialogTitle>
+                <DialogDescription className="text-slate-500 mt-1 text-[10px] font-semibold">Đăng ký {title} trên hệ thống.</DialogDescription>
+              </div>
+            </DialogHeader>
+            {error && <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600"><AlertTriangle className="w-4 h-4 shrink-0" /><p className="text-xs font-bold">{error}</p></div>}
+            <div className="space-y-3">
+              <div className="space-y-1.5 text-left">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tên {title} <span className="text-red-400">*</span></Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder={type === "departments" ? "VD: Cấp cứu tại gia, Phục hồi chức năng..." : "VD: Bác sĩ Chuyên khoa"} className="h-9 rounded-xl font-bold text-xs" />
+              </div>
+              <div className="space-y-1.5 text-left">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mô tả</Label>
+                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={`Mô tả về ${title}...`} rows={2} className="w-full rounded-xl border border-slate-200 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all resize-none min-h-[50px]" />
+              </div>
+            </div>
+            <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3 bg-white">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} className="rounded-full h-10 px-6 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">Hủy bỏ</Button>
+              <Button type="submit" disabled={!name || submitting} className="rounded-full h-10 px-8 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-95 transition-all shadow-md disabled:opacity-40 group">
+                {submitting ? "Đang lưu..." : `Tạo ${title}`}<Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" />
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </>
@@ -109,29 +100,31 @@ function EditDialog({ item, type, open, onOpenChange, onSave }: { item: Item; ty
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] rounded-[32px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
-        <div className="h-1.5 w-full bg-gradient-to-r from-blue-400 to-indigo-500" />
-        <form onSubmit={handleSubmit} className="p-8 space-y-5">
-          <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-5 border-b border-slate-100">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-400 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md"><Pencil className="w-5 h-5" /></div>
+      <DialogContent className="sm:max-w-[620px] rounded-[28px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
+        <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500" />
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-4 border-b border-slate-100">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md"><Pencil className="w-4 h-4" /></div>
             <div className="text-left flex-1">
               <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">Chỉnh sửa {title}</DialogTitle>
-              <DialogDescription className="text-slate-500 mt-1.5 text-[11px] font-semibold leading-tight">Cập nhật thông tin {title} trong hệ thống.</DialogDescription>
+              <DialogDescription className="text-slate-500 mt-1 text-[10px] font-semibold">Cập nhật thông tin {title} trong hệ thống.</DialogDescription>
             </div>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2 text-left">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Tên {title}</label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} required className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+          <div className="space-y-3">
+            <div className="space-y-1.5 text-left">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tên {title} <span className="text-red-400">*</span></Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} required className="h-9 rounded-xl font-bold text-xs" />
             </div>
-            <div className="space-y-2 text-left">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Mô tả</label>
-              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="w-full rounded-xl border border-slate-200 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all resize-none" />
+            <div className="space-y-1.5 text-left">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mô tả</Label>
+              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full rounded-xl border border-slate-200 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all resize-none min-h-[50px]" />
             </div>
           </div>
           <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3 bg-white">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl h-10 px-5 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">Hủy bỏ</Button>
-            <Button type="submit" className="rounded-xl h-10 px-6 text-xs font-black uppercase tracking-[0.15em] bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:opacity-95 transition-all shadow-md">Lưu thay đổi</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-full h-10 px-6 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">Hủy bỏ</Button>
+            <Button type="submit" className="rounded-full h-10 px-8 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:opacity-95 transition-all shadow-md group">
+              {<span>Lưu thay đổi</span>}<Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" />
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -297,12 +290,12 @@ export default function DepartmentsPage() {
       })
   }
 
-  React.useEffect(() => { show("Đang tải dữ liệu..."); Promise.all([loadDepartments(), loadPositions()]).finally(() => { setLoading(false); hide() }) }, [])
+  React.useEffect(() => { show("ĐANG TẢI DỮ LIỆU..."); Promise.all([loadDepartments(), loadPositions()]).finally(() => { setLoading(false); hide() }) }, [])
 
   // CRUD handlers
   const handleAdd = async (item: Item, endpoint: string): Promise<boolean> => {
-    const title = endpoint === "departments" ? "phòng ban" : "chức vụ"
-    show(`Đang thêm ${title}...`)
+    const label = endpoint === "departments" ? "PHÒNG BAN" : "CHỨC VỤ"
+    show(`ĐANG THÊM ${label}...`)
     try {
       const res = await authFetch(`${API_URL}/${endpoint}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ Id: item.id, Name: item.name, Description: item.description, Active: item.active }) })
       if (!res.ok) { hide(); return false }
@@ -315,7 +308,8 @@ export default function DepartmentsPage() {
   }
 
   const handleEdit = async (updated: Item, endpoint: string) => {
-    show("Đang cập nhật...")
+    const label = endpoint === "departments" ? "PHÒNG BAN" : "CHỨC VỤ"
+    show(`ĐANG CẬP NHẬT ${label}...`)
     try {
       const res = await authFetch(`${API_URL}/${endpoint}/${updated.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ Name: updated.name, Description: updated.description }) })
       if (!res.ok) throw new Error("Update failed")
@@ -327,7 +321,7 @@ export default function DepartmentsPage() {
   }
 
   const handleToggle = async (updated: Item, endpoint: string) => {
-    show("Đang cập nhật...")
+    show("ĐANG CẬP NHẬT TRẠNG THÁI...")
     try {
       const res = await authFetch(`${API_URL}/${endpoint}/${updated.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ Active: updated.active }) })
       if (!res.ok) throw new Error("Toggle failed")
@@ -338,7 +332,8 @@ export default function DepartmentsPage() {
   }
 
   const handleDelete = async (id: string, endpoint: string) => {
-    show("Đang xóa...")
+    const label = endpoint === "departments" ? "PHÒNG BAN" : "CHỨC VỤ"
+    show(`ĐANG XÓA ${label}...`)
     try {
       const res = await authFetch(`${API_URL}/${endpoint}/${id}`, { method: "DELETE" })
       if (!res.ok) throw new Error("Delete failed")
@@ -424,9 +419,8 @@ export default function DepartmentsPage() {
       </div>
 
       {/* Grid */}
-      {loading ? (
-        <div className="py-24 flex flex-col items-center justify-center gap-4">
-          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      {loading && items.length === 0 ? (
+        <div className="py-24 text-center">
           <p className="text-xs font-black uppercase tracking-widest text-slate-400">Đang tải danh sách...</p>
         </div>
       ) : (

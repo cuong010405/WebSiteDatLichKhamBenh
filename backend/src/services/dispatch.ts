@@ -150,7 +150,7 @@ export async function autoAssignStaff(params: {
     where: { Id: visitId },
     data: {
       StaffId: best.Id,
-      Status: "Đã xác nhận",
+      Status: "Đang thực hiện",
       AssignedAt: new Date(),
     },
   });

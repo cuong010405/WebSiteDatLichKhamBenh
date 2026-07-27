@@ -94,7 +94,7 @@ export default function SettingsPage() {
   const [email, setEmail] = React.useState("")
   const [phone, setPhone] = React.useState("")
   const [saving, setSaving] = React.useState(false)
-  const [toast, setToast] = React.useState<{ msg: string; type: "ok" | "err" } | null>(null)
+
 
   // Password change state
   const [pwDialogOpen, setPwDialogOpen] = React.useState(false)
@@ -105,10 +105,7 @@ export default function SettingsPage() {
   const [showNewPw, setShowNewPw] = React.useState(false)
   const [pwSaving, setPwSaving] = React.useState(false)
 
-  const showToast = (msg: string, type: "ok" | "err" = "ok") => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 3500)
-  }
+
 
   React.useEffect(() => {
     if (user) {
@@ -121,7 +118,7 @@ export default function SettingsPage() {
   const handleSaveProfile = async () => {
     if (!user?.id) return
     setSaving(true)
-    show("Đang lưu dữ liệu...")
+    show("ĐANG LƯU HỒ SƠ QUẢN TRỊ VIÊN...")
     try {
       const res = await authFetch(`${API_URL}/users/${user.id}`, {
         method: "PUT",
@@ -138,10 +135,10 @@ export default function SettingsPage() {
           phone: data.phone,
         }))
       }
-      showToast("Cập nhật hồ sơ thành công!")
+
       setTimeout(() => window.location.reload(), 800)
     } catch {
-      showToast("Không thể cập nhật. Thử lại sau.", "err")
+
     } finally {
       setSaving(false)
       hide()
@@ -155,21 +152,18 @@ export default function SettingsPage() {
 
   const handleChangePassword = async () => {
     if (!currentPw || !newPw || !confirmPw) {
-      showToast("Vui lòng điền đầy đủ thông tin.", "err")
       return
     }
     if (newPw !== confirmPw) {
-      showToast("Mật khẩu xác nhận không khớp.", "err")
       return
     }
     if (newPw.length < 6) {
-      showToast("Mật khẩu mới phải có ít nhất 6 ký tự.", "err")
       return
     }
     if (!user?.id) return
 
     setPwSaving(true)
-    show("Đang cập nhật...")
+    show("ĐANG ĐỔI MẬT KHẨU...")
     try {
       const res = await authFetch(`${API_URL}/users/${user.id}`, {
         method: "PUT",
@@ -179,13 +173,13 @@ export default function SettingsPage() {
         const data = await res.json()
         throw new Error(data.error || "Đổi mật khẩu thất bại")
       }
-      showToast("Đổi mật khẩu thành công!")
+
       setPwDialogOpen(false)
       setCurrentPw("")
       setNewPw("")
       setConfirmPw("")
     } catch (err: any) {
-      showToast(err.message || "Không thể đổi mật khẩu. Thử lại sau.", "err")
+
     } finally {
       setPwSaving(false)
       hide()
@@ -198,17 +192,6 @@ export default function SettingsPage() {
 
   return (
     <div className="p-10 max-w-4xl mx-auto w-full space-y-12 pb-20">
-      {/* Toast */}
-      {toast && (
-        <div className={cn(
-          "fixed top-6 right-6 z-50 px-5 py-3 rounded-xl text-xs font-bold shadow-lg border",
-          toast.type === "ok"
-            ? "bg-white text-green-700 border-green-200 shadow-green-50"
-            : "bg-white text-red-600 border-red-200 shadow-red-50"
-        )}>
-          {toast.msg}
-        </div>
-      )}
 
       <motion.div
         initial={{ opacity: 0, y: 10 }}

@@ -13,6 +13,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { API_URL, authFetch } from "@/lib/api";
 import { useLoading } from "@/lib/loading-context";
 import { motion, AnimatePresence } from "framer-motion";
@@ -35,6 +42,13 @@ import {
   Download,
   ShieldAlert,
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  MapPin,
+  Phone,
+  Mail,
+  Package,
+  BadgeCheck,
 } from "lucide-react";
 import { formatCurrencyInput, parseCurrencyNumber } from "@/lib/utils/format";
 import { exportToExcel } from "@/lib/utils/export";
@@ -52,6 +66,15 @@ interface PaymentVisit {
   paymentStatus?: string;
   paymentMethod?: string;
   paymentAmount?: string;
+  careMode?: string;
+  packagePlan?: string;
+  packageShift?: string;
+  requiredSpecialty?: string;
+  address?: string;
+  customerArea?: string;
+  userPhone?: string;
+  userEmail?: string;
+  [key: string]: any;
 }
 
 interface PaymentRecord {
@@ -65,9 +88,21 @@ interface PaymentRecord {
   visitType: string;
   visitTime: string;
   visitDate?: string;
+  visitStatus?: string;
+  startTime?: string;
+  endTime?: string;
+  duration?: string;
+  careMode?: string;
+  packagePlan?: string;
+  packageShift?: string;
+  address?: string;
   patientName: string;
   staffName: string;
+  staffPhone?: string;
+  staffSpecialty?: string;
   userName?: string;
+  userPhone?: string;
+  userEmail?: string;
 }
 
 const methodIcon: Record<string, React.ReactNode> = {
@@ -79,19 +114,95 @@ const methodIcon: Record<string, React.ReactNode> = {
 
 const PAYMENT_METHODS = ["Tiền mặt", "Chuyển khoản", "Ví điện tử", "Thẻ tín dụng"];
 
+const getPackageDetails = (item: {
+  amount?: string;
+  paymentAmount?: string;
+  careMode?: string;
+  packagePlan?: string;
+  packageShift?: string;
+}) => {
+  const isPackage = item.careMode === "package" || !!item.packagePlan;
+  const plan = item.packagePlan;
+  const days = plan === "30days" ? 30 : plan === "14days" ? 14 : plan === "7days" ? 7 : isPackage ? 30 : 1;
+  const discountRate = plan === "30days" ? 0.25 : plan === "14days" ? 0.15 : plan === "7days" ? 0.10 : 0;
+  const rawAmt = item.amount || item.paymentAmount || "0";
+  const total = parseFloat(rawAmt);
+
+  if (!isPackage || discountRate === 0 || total === 0) {
+    return {
+      isPackage,
+      days,
+      discountPercent: 0,
+      originalTotal: total,
+      total,
+      savings: 0,
+      dailyRate: days > 0 ? Math.round(total / days) : total,
+      shift: item.packageShift || "Tiêu chuẩn",
+    };
+  }
+
+  const originalTotal = Math.round(total / (1 - discountRate));
+  const savings = originalTotal - total;
+  const dailyRate = Math.round(originalTotal / days);
+
+  return {
+    isPackage: true,
+    days,
+    discountPercent: Math.round(discountRate * 100),
+    originalTotal,
+    total,
+    savings,
+    dailyRate,
+    shift: item.packageShift || "Tiêu chuẩn",
+  };
+};
+
 export default function AdminPayPage() {
   const { show, hide } = useLoading();
   const [pendingVisits, setPendingVisits] = React.useState<PaymentVisit[]>([]);
   const [payments, setPayments] = React.useState<PaymentRecord[]>([]);
   const [selectedVisitId, setSelectedVisitId] = React.useState("");
+  const [pendingVisitPage, setPendingVisitPage] = React.useState(1);
+  const [careFilter, setCareFilter] = React.useState<"all" | "hourly" | "package">("all");
   const [paymentMethod, setPaymentMethod] = React.useState("Tiền mặt");
   const [paymentAmount, setPaymentAmount] = React.useState("");
   const [paymentNote, setPaymentNote] = React.useState("");
   const [loadingVisits, setLoadingVisits] = React.useState(true);
   const [loadingPayments, setLoadingPayments] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
-  const [toast, setToast] = React.useState<{ msg: string; type: "ok" | "err" } | null>(null);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+
+  const selectedVisit = React.useMemo(() => {
+    return pendingVisits.find((v) => v.id === selectedVisitId);
+  }, [pendingVisits, selectedVisitId]);
+
+  const filteredPendingVisits = React.useMemo(() => {
+    if (careFilter === "hourly") {
+      return pendingVisits.filter(
+        (v) => v.careMode === "hourly" || (!v.careMode && !v.packagePlan)
+      );
+    }
+    if (careFilter === "package") {
+      return pendingVisits.filter(
+        (v) => v.careMode === "package" || !!v.packagePlan
+      );
+    }
+    return pendingVisits;
+  }, [pendingVisits, careFilter]);
+
+  React.useEffect(() => {
+    if (selectedVisit) {
+      const amt = (selectedVisit as any).paymentAmount || (selectedVisit as any).price || (selectedVisit as any).amount;
+      if (amt) {
+        setPaymentAmount(formatCurrencyInput(String(amt)));
+      } else {
+        setPaymentAmount("");
+      }
+      if ((selectedVisit as any).paymentMethod) {
+        setPaymentMethod((selectedVisit as any).paymentMethod);
+      }
+    }
+  }, [selectedVisit]);
   const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null);
   const [activePrintPayment, setActivePrintPayment] = React.useState<PaymentRecord | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -224,36 +335,49 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
     URL.revokeObjectURL(url);
   };
 
-  const showToast = (msg: string, type: "ok" | "err" = "ok") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
-  };
 
-  // Load visits chờ thanh toán (bao gồm cả đã QR thanh toán nhưng chưa có hóa đơn)
+  // Load visits chờ thanh toán (hiển thị tất cả ca chưa có hóa đơn, hỗ trợ thanh toán sớm & bình thường)
   const fetchPendingVisits = React.useCallback(async () => {
     setLoadingVisits(true);
+    show("ĐANG TẢI CA CHỞ THANH TOÁN...");
     try {
-      // Fetch visits with "Đã xác nhận" status - both paid and unpaid
-      const params = new URLSearchParams({
-        status: "Đã xác nhận",
-      });
-      const res = await fetch(`${API_URL}/visits?${params.toString()}`);
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : [];
-      // Filter out visits that already have an invoice (paymentStatus === "Đã thanh toán" with existing invoice)
-      // But keep QR-paid visits that don't have an invoice yet
-      setPendingVisits(list);
-      if (list.length > 0 && !selectedVisitId) setSelectedVisitId(list[0].id);
+      const [resVisits, resPayments] = await Promise.all([
+        fetch(`${API_URL}/visits`),
+        authFetch(`${API_URL}/payments`),
+      ]);
+      const visitsData = await resVisits.json();
+      const paymentsData = await resPayments.json();
+
+      const visitsList = Array.isArray(visitsData) ? visitsData : [];
+      const paymentsList = Array.isArray(paymentsData) ? paymentsData : [];
+
+      // Tập hợp các ID ca đã tạo hóa đơn (không tính hóa đơn đã hủy)
+      const invoicedVisitIds = new Set(
+        paymentsList.filter((p: any) => p.status !== "Đã hủy").map((p: any) => p.visitId)
+      );
+
+      // Hiển thị tất cả các ca chưa bị hủy và chưa lập hóa đơn thanh toán
+      const pendingList = visitsList.filter(
+        (v: any) => v.status !== "Đã hủy" && !invoicedVisitIds.has(v.id)
+      );
+
+      setPendingVisits(pendingList);
+      setSelectedVisitId((prev) =>
+        prev && pendingList.some((v: any) => v.id === prev) ? prev : (pendingList[0]?.id || "")
+      );
     } catch {
       setPendingVisits([]);
+      setSelectedVisitId("");
     } finally {
       setLoadingVisits(false);
+      hide();
     }
-  }, [selectedVisitId]);
+  }, [show, hide]);
 
   // Load lịch sử hóa đơn
   const fetchPayments = React.useCallback(async () => {
     setLoadingPayments(true);
+    show("ĐANG TẢI LỊCH SỬ HÓA ĐƠN...");
     try {
       const res = await authFetch(`${API_URL}/payments`);
       const data = await res.json();
@@ -262,8 +386,9 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
       setPayments([]);
     } finally {
       setLoadingPayments(false);
+      hide();
     }
-  }, []);
+  }, [show, hide]);
 
   React.useEffect(() => {
     fetchPendingVisits();
@@ -319,12 +444,12 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
     // Validate amount is a positive number
     const amountNum = parseCurrencyNumber(paymentAmount);
     if (amountNum <= 0) {
-      showToast("Số tiền thanh toán không hợp lệ", "err");
       return;
+
     }
 
     setSaving(true);
-    show("Đang thanh toán...")
+    show("ĐANG LƯU HÓA ĐƠN THANH TOÁN...");
     try {
       const res = await authFetch(`${API_URL}/payments`, {
         method: "POST",
@@ -339,13 +464,13 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
         const err = await res.json();
         throw new Error(err?.error || "Lỗi lưu hóa đơn");
       }
-      showToast("Hóa đơn đã được lưu thành công!", "ok");
+
       setPaymentAmount("");
       setPaymentNote("");
       setSelectedVisitId("");
       await Promise.all([fetchPendingVisits(), fetchPayments()]);
     } catch (e: any) {
-      showToast(e?.message || "Lỗi không xác định", "err");
+
     } finally {
       setSaving(false);
       hide();
@@ -354,14 +479,14 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
 
   const handleDelete = async (paymentId: string) => {
     setDeletingId(paymentId);
-    show("Đang xóa hóa đơn...")
+    show("ĐANG XÓA HÓA ĐƠN...");
     try {
       const res = await authFetch(`${API_URL}/payments/${paymentId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Xóa thất bại");
-      showToast("Đã xóa hóa đơn.", "ok");
+
       await Promise.all([fetchPendingVisits(), fetchPayments()]);
     } catch (e: any) {
-      showToast(e?.message || "Lỗi xóa hóa đơn", "err");
+
     } finally {
       setDeletingId(null);
       setPendingDeleteId(null);
@@ -369,32 +494,11 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
     }
   };
 
-  const selectedVisit = pendingVisits.find((v) => v.id === selectedVisitId);
-
   const paidPayments = React.useMemo(() => payments.filter((p) => p.status !== "Đã hủy"), [payments]);
   const totalRevenue = React.useMemo(() => paidPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0), [paidPayments]);
 
   return (
     <div className="p-8 max-w-7xl mx-auto w-full space-y-10">
-      {/* Toast */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className={cn(
-              "fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl text-sm font-bold border",
-              toast.type === "ok"
-                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                : "bg-red-50 text-red-600 border-red-200"
-            )}
-          >
-            {toast.type === "ok" ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-            {toast.msg}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Header */}
       <motion.div
@@ -420,7 +524,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
           Thanh toán
         </h1>
         <p className="text-xl text-muted-foreground mt-4 max-w-2xl font-medium leading-relaxed antialiased text-left">
-          Xử lý thanh toán và đối soát hóa đơn cho các ca khám đã xác nhận. Mỗi lần giao dịch sẽ tự động tạo hóa đơn điện tử trên hệ thống.
+          Xử lý thanh toán và đối soát hóa đơn cho tất cả các ca khám. Mỗi lần giao dịch sẽ tự động tạo hóa đơn điện tử trên hệ thống.
         </p>
       </motion.div>
 
@@ -438,64 +542,11 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
         ))}
       </div>
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      {/* Main Container */}
+      <div className="space-y-6">
 
-        {/* Left: Pending visits + Form */}
-        <div className="lg:col-span-2 space-y-5">
-          {/* Pending visits list */}
-          <div className="bg-white border border-hairline rounded-[32px] p-6 shadow-xs">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h2 className="text-base font-black text-foreground">Ca chờ thanh toán</h2>
-                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Đã xác nhận, chưa thu tiền</p>
-              </div>
-              <button
-                onClick={fetchPendingVisits}
-                suppressHydrationWarning
-                className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-              >
-                <RefreshCw className={cn("w-3.5 h-3.5 text-slate-400", loadingVisits && "animate-spin")} />
-              </button>
-            </div>
-            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-              {loadingVisits ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="h-16 rounded-2xl bg-slate-100 animate-pulse" />
-                ))
-              ) : pendingVisits.length === 0 ? (
-                <div className="py-8 text-center">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-300 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-slate-400">Không có ca chờ thanh toán</p>
-                </div>
-              ) : (
-                pendingVisits.map((v) => (
-                  <button
-                    key={v.id}
-                    suppressHydrationWarning
-                    onClick={() => setSelectedVisitId(v.id)}
-                    className={cn(
-                      "w-full text-left rounded-2xl border p-3.5 transition-all",
-                      v.id === selectedVisitId
-                        ? "border-primary bg-primary/5 shadow-sm shadow-primary/10"
-                        : "border-slate-100 bg-slate-50 hover:border-slate-200"
-                    )}
-                  >
-                    <p className="text-xs font-black text-slate-800 truncate">{v.type}</p>
-                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5 flex items-center gap-1">
-                      <User className="w-3 h-3" />
-                      {v.patientName || v.userName || "—"}
-                    </p>
-                    <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1 mt-0.5">
-                      <Clock className="w-3 h-3" />
-                      {v.date && `${v.date} · `}{v.time}
-                    </p>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-
+        {/* Top Row: Form thanh toán (Left) + Ca chờ thanh toán (Right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           {/* Payment Form */}
           <div className="bg-white border border-hairline rounded-[32px] p-6 shadow-xs">
             <h2 className="text-base font-black text-foreground mb-5">Form thanh toán</h2>
@@ -547,6 +598,40 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                       <p>💳 Phương thức: <span className="font-bold text-purple-700">{selectedVisit.paymentMethod}</span></p>
                     )}
                   </div>
+
+                  {/* Chi tiết tính tiền gói */}
+                  {(() => {
+                    const pkg = getPackageDetails(selectedVisit);
+                    if (!pkg.isPackage) return null;
+                    return (
+                      <div className="mt-3 rounded-xl border border-emerald-200/60 bg-emerald-50/50 p-3 space-y-1.5 text-[10px]">
+                        <div className="flex items-center justify-between font-black text-emerald-800">
+                          <span>📦 BẢNG TÍNH TIỀN GÓI ({pkg.days} NGÀY)</span>
+                          {pkg.discountPercent > 0 && (
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[8px]">
+                              Giảm {pkg.discountPercent}%
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex justify-between text-slate-600 font-semibold">
+                          <span>Đơn giá ngày gốc:</span>
+                          <span className="font-mono">{pkg.dailyRate.toLocaleString("vi-VN")}đ/ngày</span>
+                        </div>
+                        <div className="flex justify-between text-slate-600 font-semibold">
+                          <span>Tổng giá niêm yết:</span>
+                          <span className="font-mono line-through text-slate-400">{pkg.originalTotal.toLocaleString("vi-VN")}đ</span>
+                        </div>
+                        <div className="flex justify-between font-bold text-emerald-700">
+                          <span>Tiết kiệm (-{pkg.discountPercent}%):</span>
+                          <span className="font-mono">-{pkg.savings.toLocaleString("vi-VN")}đ</span>
+                        </div>
+                        <div className="flex justify-between pt-1 border-t border-emerald-200/60 font-black text-slate-900 text-xs">
+                          <span>Thanh toán gói:</span>
+                          <span className="font-mono text-emerald-700">{pkg.total.toLocaleString("vi-VN")}đ</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
               <div className="space-y-1.5">
@@ -614,10 +699,159 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
               </Button>
             </div>
           </div>
+
+          {/* Pending visits list */}
+          <div className="bg-white border border-hairline rounded-[32px] p-6 shadow-xs h-full flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h2 className="text-base font-black text-foreground">Ca chờ thanh toán</h2>
+                  <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                    {careFilter === "all" ? "Tất cả ca chưa lập hóa đơn" : careFilter === "hourly" ? "Lọc ca theo giờ / theo ngày" : "Lọc ca gói theo tháng"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <div className="inline-flex items-center p-1 rounded-full bg-slate-100/90 border border-slate-200/60 shadow-inner">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCareFilter("all");
+                        setPendingVisitPage(1);
+                      }}
+                      className={cn(
+                        "px-3.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer",
+                        careFilter === "all"
+                          ? "bg-white text-slate-900 shadow-xs"
+                          : "text-slate-400 hover:text-slate-600"
+                      )}
+                    >
+                      Tất cả
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCareFilter("hourly");
+                        setPendingVisitPage(1);
+                      }}
+                      className={cn(
+                        "px-3.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer",
+                        careFilter === "hourly"
+                          ? "bg-white text-slate-900 shadow-xs"
+                          : "text-slate-400 hover:text-slate-600"
+                      )}
+                    >
+                      Theo giờ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCareFilter("package");
+                        setPendingVisitPage(1);
+                      }}
+                      className={cn(
+                        "px-3.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer",
+                        careFilter === "package"
+                          ? "bg-white text-slate-900 shadow-xs"
+                          : "text-slate-400 hover:text-slate-600"
+                      )}
+                    >
+                      Gói tháng
+                    </button>
+                  </div>
+                  <button
+                    onClick={fetchPendingVisits}
+                    suppressHydrationWarning
+                    className="w-8.5 h-8.5 rounded-full border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 transition-colors cursor-pointer shrink-0 shadow-xs"
+                    title="Làm mới"
+                  >
+                    <RefreshCw className={cn("w-3.5 h-3.5 text-slate-400", loadingVisits && "animate-spin")} />
+                  </button>
+                </div>
+              </div>
+              {(() => {
+                const PENDING_PER_PAGE = 6;
+                const totalPendingPages = Math.max(1, Math.ceil(filteredPendingVisits.length / PENDING_PER_PAGE));
+                const currentPendingVisits = filteredPendingVisits.slice((pendingVisitPage - 1) * PENDING_PER_PAGE, pendingVisitPage * PENDING_PER_PAGE);
+
+                return (
+                  <>
+                    <div className="space-y-2">
+                      {loadingVisits ? (
+                        Array.from({ length: 6 }).map((_, i) => (
+                          <div key={i} className="h-16 rounded-2xl bg-slate-100 animate-pulse" />
+                        ))
+                      ) : filteredPendingVisits.length === 0 ? (
+                        <div className="py-8 text-center">
+                          <CheckCircle2 className="w-8 h-8 text-emerald-300 mx-auto mb-2" />
+                          <p className="text-xs font-bold text-slate-400">
+                            {careFilter === "all" ? "Không có ca chờ thanh toán" : "Không có ca thuộc hình thức này"}
+                          </p>
+                        </div>
+                      ) : (
+                        currentPendingVisits.map((v) => (
+                          <button
+                            key={v.id}
+                            type="button"
+                            suppressHydrationWarning
+                            onClick={() => setSelectedVisitId(v.id)}
+                            className={cn(
+                              "w-full text-left rounded-2xl border p-3.5 transition-all cursor-pointer",
+                              v.id === selectedVisitId
+                                ? "border-emerald-500 bg-emerald-50/50 shadow-xs shadow-emerald-500/10 ring-1 ring-emerald-400"
+                                : "border-slate-100 bg-slate-50/70 hover:border-slate-200 hover:bg-slate-50"
+                            )}
+                          >
+                            <p className="text-xs font-black text-slate-800 truncate">{v.type}</p>
+                            <p className="text-[10px] text-slate-500 font-semibold mt-0.5 flex items-center gap-1">
+                              <User className="w-3 h-3 text-slate-400" />
+                              {v.patientName || v.userName || "—"}
+                            </p>
+                            <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1 mt-0.5">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              {v.date && `${v.date} · `}{v.time}
+                            </p>
+                          </button>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Sleek Pill Pagination Control */}
+                    {totalPendingPages > 1 && (
+                      <div className="flex items-center justify-center gap-2.5 pt-4 mt-4 border-t border-slate-100">
+                        <button
+                          type="button"
+                          disabled={pendingVisitPage === 1}
+                          onClick={() => setPendingVisitPage((prev) => Math.max(1, prev - 1))}
+                          className="w-10 h-10 rounded-2xl border border-slate-200/80 bg-white flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:border-emerald-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-xs cursor-pointer"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+
+                        <div className="px-5 py-2 rounded-2xl border border-slate-200/80 bg-white text-xs font-black shadow-xs flex items-center gap-1.5 min-w-[72px] justify-center">
+                          <span className="text-emerald-600 font-extrabold text-sm">{pendingVisitPage}</span>
+                          <span className="text-slate-300 font-normal">/</span>
+                          <span className="text-slate-800 font-bold text-sm">{totalPendingPages}</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={pendingVisitPage >= totalPendingPages}
+                          onClick={() => setPendingVisitPage((prev) => Math.min(totalPendingPages, prev + 1))}
+                          className="w-10 h-10 rounded-2xl border border-slate-200/80 bg-white flex items-center justify-center text-emerald-600 hover:text-emerald-700 hover:border-emerald-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-xs cursor-pointer"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          </div>
         </div>
 
-        {/* Right: Invoice history */}
-        <div className="lg:col-span-3">
+        {/* Bottom Row: Invoice history (Full width) */}
+        <div className="w-full">
           <div className="bg-white border border-hairline rounded-[32px] shadow-xs overflow-hidden">
             <div className="p-6 border-b border-hairline flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
@@ -685,8 +919,9 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: i * 0.04 }}
+                      onClick={() => handlePrintInvoice(p)}
                       className={cn(
-                        "p-5 transition-all group",
+                        "p-5 transition-all group cursor-pointer relative",
                         isCancelled ? "bg-red-50/20 hover:bg-red-50/40" : "hover:bg-slate-50/50"
                       )}
                     >
@@ -738,22 +973,18 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                             {parseFloat(p.amount || "0").toLocaleString("vi-VN")}đ
                           </p>
                           <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{p.method}</span>
-                          <p className="text-[9px] text-slate-300 mt-1">
-                            {p.createdAt ? new Date(p.createdAt).toLocaleDateString("vi-VN") : "—"}
-                          </p>
-                          {!isCancelled && (
-                            <div className="flex gap-1.5 justify-end mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
+                          <div className="flex gap-1.5 justify-end mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button
                                 suppressHydrationWarning
-                                onClick={() => handlePrintInvoice(p)}
+                                onClick={(e) => { e.stopPropagation(); handlePrintInvoice(p); }}
                                 className="w-7 h-7 rounded-xl bg-blue-50 hover:bg-blue-100 flex items-center justify-center text-blue-500 hover:text-blue-700 transition-all cursor-pointer"
                                 title="In hóa đơn"
                               >
-                                <Printer className="w-3 h-3" />
+                                <Printer className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 suppressHydrationWarning
-                                onClick={() => setPendingDeleteId(p.id)}
+                                onClick={(e) => { e.stopPropagation(); setPendingDeleteId(p.id); }}
                                 disabled={deletingId === p.id}
                                 className="w-7 h-7 rounded-xl bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-400 hover:text-red-600 transition-all disabled:opacity-50 cursor-pointer"
                                 title="Xóa hóa đơn"
@@ -761,7 +992,6 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                                 <Trash2 className="w-3 h-3" />
                               </button>
                             </div>
-                          )}
                         </div>
                       </div>
                     </motion.div>
@@ -782,7 +1012,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
         </div>
       </div>
 
-      {/* Invoice Print Modal */}
+      {/* Invoice Detail Modal */}
       <AnimatePresence>
         {activePrintPayment && (
           <motion.div
@@ -796,78 +1026,212 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 flex flex-col p-6 text-slate-850"
+              className="bg-white rounded-[32px] shadow-2xl w-full max-w-[812px] overflow-hidden border border-slate-100 flex flex-col"
             >
+              {/* Gradient header band */}
+              <div className={cn(
+                "h-1 w-full",
+                activePrintPayment.status === "Đã hủy"
+                  ? "bg-gradient-to-r from-red-400 via-rose-400 to-pink-400"
+                  : "bg-gradient-to-r from-violet-500 via-indigo-500 to-blue-500"
+              )} />
+
               {/* Header */}
-              <div className="flex justify-between items-center pb-4 border-b border-slate-100">
-                <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
-                  <Receipt className="w-4 h-4 text-blue-600" />
-                  Hóa đơn tạm tính
-                </h3>
+              <div className="flex justify-between items-start px-8 pt-6 pb-5">
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-[10px] font-black text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg tracking-wider">
+                      #{activePrintPayment.id.slice(0, 8).toUpperCase()}
+                    </span>
+                    <span className={cn(
+                      "text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border",
+                      activePrintPayment.status === "Đã hủy"
+                        ? "bg-red-50 text-red-500 border-red-200"
+                        : "bg-violet-50 text-violet-600 border-violet-200"
+                    )}>
+                      {activePrintPayment.status === "Đã hủy" ? "✕ Đã hủy" : "✓ Đã thanh toán"}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900 leading-snug">{activePrintPayment.visitType || "Dịch vụ chăm sóc"}</h3>
+                  {activePrintPayment.createdAt && (
+                    <p className="text-[11px] text-slate-400 font-medium">
+                      Thanh toán lúc {new Date(activePrintPayment.createdAt).toLocaleString("vi-VN")}
+                    </p>
+                  )}
+                </div>
                 <button
                   onClick={() => setActivePrintPayment(null)}
-                  className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer shrink-0 mt-1 transition-colors"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              {/* Printable Preview Area */}
-              <div id="printable-invoice-area" className="py-6 space-y-4 text-left text-slate-800">
-                <div className="text-center pb-4 border-b border-dashed border-slate-200">
-                  <p className="text-lg font-black text-blue-600">MINTCARE PORTAL</p>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">Phiếu Thanh Toán Dịch Vụ</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Số: HD-{activePrintPayment.id}</p>
+              {/* Body */}
+              <div id="printable-invoice-area" className="px-8 pb-6 space-y-0 overflow-y-auto max-h-[60vh] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+
+                {/* --- Row: 2 columns Khách hàng + Chuyên gia --- */}
+                <div className="grid grid-cols-2 gap-6 py-5 border-b border-slate-100">
+                  {/* Khách hàng */}
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Khách hàng</p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+                        <User className="w-4.5 h-4.5 text-blue-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-black text-slate-900">{activePrintPayment.patientName || activePrintPayment.userName || "—"}</p>
+                        {activePrintPayment.userPhone && (
+                          <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1 mt-0.5">
+                            <Phone className="w-2.5 h-2.5" />{activePrintPayment.userPhone}
+                          </p>
+                        )}
+                        {activePrintPayment.userEmail && (
+                          <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                            <Mail className="w-2.5 h-2.5" />{activePrintPayment.userEmail}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Chuyên gia */}
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Chuyên gia thực hiện</p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+                        <BadgeCheck className="w-4.5 h-4.5 text-emerald-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-black text-slate-900">{activePrintPayment.staffName || "—"}</p>
+                        {activePrintPayment.staffSpecialty && (
+                          <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{activePrintPayment.staffSpecialty}</p>
+                        )}
+                        {activePrintPayment.staffPhone && (
+                          <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                            <Phone className="w-2.5 h-2.5" />{activePrintPayment.staffPhone}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-2 text-xs font-semibold text-slate-600">
-                  <p>Khách hàng: <span className="font-black text-slate-800">{activePrintPayment.patientName || activePrintPayment.userName || "—"}</span> {(activePrintPayment as any).userPhone && <span className="font-bold text-slate-600">({(activePrintPayment as any).userPhone})</span>}</p>
-                  <p>Dịch vụ: <span className="font-black text-slate-800">{activePrintPayment.visitType}</span></p>
-                  <p>Chuyên gia: <span className="font-black text-slate-800">{activePrintPayment.staffName}</span></p>
-                  <p>Thời gian: <span className="font-black text-slate-800">{activePrintPayment.visitDate ? `${activePrintPayment.visitDate} ` : ""}${activePrintPayment.visitTime}</span></p>
-                  <p>Hình thức & Chu kỳ: <span className="font-bold text-emerald-700">
-                    {(activePrintPayment as any).careMode === "hourly"
-                      ? "⏱️ Theo giờ / Theo ngày"
-                      : (activePrintPayment as any).packagePlan === "30days"
-                      ? "📦 Gói tháng (30 ngày)"
-                      : (activePrintPayment as any).packagePlan === "14days"
-                      ? "📦 Gói 14 ngày"
-                      : (activePrintPayment as any).packagePlan === "7days"
-                      ? "📦 Gói 7 ngày"
-                      : "📦 Ca dịch vụ tận nhà"}
-                    {(activePrintPayment as any).packageShift ? ` (Ca ${(activePrintPayment as any).packageShift})` : ""}
-                  </span></p>
-                  {(activePrintPayment as any).requiredSpecialty && (
-                    <p>Yêu cầu chuyên môn: <span className="font-bold text-indigo-700">{(activePrintPayment as any).requiredSpecialty}</span></p>
-                  )}
-                  {(activePrintPayment as any).address && (
-                    <p>Địa chỉ khám: <span className="font-bold text-slate-800">{(activePrintPayment as any).address}</span></p>
-                  )}
-                  <div className="h-px bg-slate-100 my-2" />
-                  <p>Phương thức: <span className="font-black text-slate-800">{activePrintPayment.method}</span></p>
-                  {activePrintPayment.note && <p>Ghi chú: <span className="italic text-slate-500">"{activePrintPayment.note}"</span></p>}
-                </div>
+                {/* --- Row: 2 columns Thông tin lịch hẹn + Chi tiết thanh toán --- */}
+                <div className="grid grid-cols-2 gap-6 py-5 border-b border-slate-100">
+                  {/* Thông tin lịch hẹn */}
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Thông tin lịch hẹn</p>
+                    <div className="space-y-2">
+                      {activePrintPayment.visitDate && (
+                        <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-600">
+                          <CalendarDays className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                          <span>{activePrintPayment.visitDate}</span>
+                        </div>
+                      )}
+                      {activePrintPayment.visitTime && (
+                        <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-600">
+                          <Clock className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                          <span>{activePrintPayment.visitTime}{activePrintPayment.duration ? ` · ${activePrintPayment.duration}` : ""}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-600">
+                        <Package className="w-3.5 h-3.5 shrink-0" />
+                        <span>
+                          {activePrintPayment.careMode === "hourly"
+                            ? "Theo giờ / Theo ngày"
+                            : activePrintPayment.packagePlan === "30days"
+                            ? "Gói tháng (30 ngày)"
+                            : activePrintPayment.packagePlan === "14days"
+                            ? "Gói 14 ngày"
+                            : activePrintPayment.packagePlan === "7days"
+                            ? "Gói 7 ngày"
+                            : activePrintPayment.packagePlan
+                            ? "Gói dài hạn"
+                            : "Ca dịch vụ"}
+                          {activePrintPayment.packageShift ? ` · Ca ${activePrintPayment.packageShift}` : ""}
+                        </span>
+                      </div>
+                      {activePrintPayment.address && (
+                        <div className="flex items-start gap-2 text-[11px] font-semibold text-slate-500">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                          <span>{activePrintPayment.address}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-                <div className="border-t border-dashed border-slate-200 pt-4 text-right">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tổng tiền</p>
-                  <p className="text-2xl font-black text-blue-600 mt-1">
-                    {parseFloat(activePrintPayment.amount).toLocaleString("vi-VN")}đ
-                  </p>
+                  {/* Chi tiết thanh toán */}
+                  <div>
+                    {(() => {
+                      const pkg = getPackageDetails(activePrintPayment);
+                      return (
+                        <>
+                          <div className="flex items-center justify-between mb-3">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-indigo-500">
+                              {pkg.isPackage ? "Bảng tính tiền gói" : "Chi tiết thanh toán"}
+                            </p>
+                            {pkg.isPackage && pkg.discountPercent > 0 && (
+                              <span className="px-2 py-0.5 text-[8px] font-black bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100">
+                                Ưu đãi -{pkg.discountPercent}%
+                              </span>
+                            )}
+                          </div>
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between text-[11px]">
+                              <span className="text-slate-500 font-semibold">Hình thức & Ca:</span>
+                              <span className="font-bold text-slate-800">
+                                {pkg.isPackage ? `Gói ${pkg.days} ngày (Ca ${pkg.shift})` : "Theo giờ / Theo ca"}
+                              </span>
+                            </div>
+                            {pkg.isPackage && pkg.discountPercent > 0 && (
+                              <>
+                                <div className="flex justify-between text-[11px]">
+                                  <span className="text-slate-500 font-semibold">Đơn giá ngày:</span>
+                                  <span className="font-mono font-bold text-slate-700">{pkg.dailyRate.toLocaleString("vi-VN")}đ/ngày</span>
+                                </div>
+                                <div className="flex justify-between text-[11px]">
+                                  <span className="text-slate-500 font-semibold">Giá gốc:</span>
+                                  <span className="font-mono text-slate-400 line-through">{pkg.originalTotal.toLocaleString("vi-VN")}đ</span>
+                                </div>
+                                <div className="flex justify-between text-[11px] text-emerald-600 font-bold">
+                                  <span>Ưu đãi (-{pkg.discountPercent}%):</span>
+                                  <span className="font-mono">-{pkg.savings.toLocaleString("vi-VN")}đ</span>
+                                </div>
+                              </>
+                            )}
+                            <div className="flex justify-between items-center pt-2 border-t border-slate-100 mt-2">
+                              <span className="font-black text-slate-900 text-[10px] uppercase tracking-tight">Thực thu:</span>
+                              <span className={cn(
+                                "text-base font-black font-mono",
+                                activePrintPayment.status === "Đã hủy" ? "text-red-500 line-through" : "text-indigo-600"
+                              )}>
+                                {parseFloat(activePrintPayment.amount || "0").toLocaleString("vi-VN")}đ
+                              </span>
+                            </div>
+                            {activePrintPayment.method && (
+                              <p className="text-[10px] text-slate-400 font-semibold">Qua: {activePrintPayment.method}</p>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-2 pt-4 border-t border-slate-100">
+              {/* Footer actions */}
+              <div className="flex gap-3 px-8 py-5 border-t border-slate-100 bg-slate-50/60">
                 <Button
                   onClick={() => handleDownloadTxtInvoice(activePrintPayment)}
                   variant="outline"
-                  className="flex-1 rounded-xl h-11 text-xs font-black uppercase tracking-wider"
+                  className="flex-1 rounded-2xl h-11 text-xs font-black uppercase tracking-wider border-slate-200 hover:bg-white"
                 >
                   Tải file text
                 </Button>
                 <Button
                   onClick={triggerBrowserPrint}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-11 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20"
+                  className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-2xl h-11 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 transition-all"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   In hóa đơn
@@ -877,6 +1241,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
           </motion.div>
         )}
       </AnimatePresence>
+
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!pendingDeleteId} onOpenChange={(v) => { if (!v) setPendingDeleteId(null); }}>

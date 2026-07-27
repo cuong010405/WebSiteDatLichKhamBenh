@@ -86,6 +86,7 @@ export default function AccountsPage() {
 
   const loadUsers = () => {
     setLoading(true);
+    show("ĐANG TẢI DỮ LIỆU TÀI KHOẢN...");
     authFetch(`${API_URL}/users`)
       .then((res) => {
         if (!res.ok) throw new Error("Fetch failed");
@@ -93,7 +94,10 @@ export default function AccountsPage() {
       })
       .then((data) => setUsers(Array.isArray(data) ? data : []))
       .catch((err) => console.error("Lỗi tải tài khoản:", err))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        hide();
+      });
   };
 
   React.useEffect(() => {
@@ -103,7 +107,7 @@ export default function AccountsPage() {
   const handleAddAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
-    show("Đang thêm tài khoản...")
+    show("ĐANG THÊM TÀI KHOẢN...");
     try {
       const res = await authFetch(`${API_URL}/users`, {
         method: "POST",
@@ -135,7 +139,7 @@ export default function AccountsPage() {
     e.preventDefault();
     if (!selectedUser) return;
     setErrorMsg("");
-    show("Đang cập nhật...")
+    show("ĐANG CẬP NHẬT TÀI KHOẢN...");
     try {
       const res = await authFetch(`${API_URL}/users/${selectedUser.id}`, {
         method: "PUT",
@@ -165,7 +169,7 @@ export default function AccountsPage() {
 
   const handleDeleteAccount = async () => {
     if (!selectedUser) return;
-    show("Đang xóa tài khoản...")
+    show("ĐANG XÓA TÀI KHOẢN...");
     try {
       const res = await authFetch(`${API_URL}/users/${selectedUser.id}`, {
         method: "DELETE",
@@ -394,9 +398,8 @@ export default function AccountsPage() {
         <div className="h-1.5 w-full bg-linear-to-r from-primary/10 via-primary to-primary/10 opacity-50" />
         
         <div className="overflow-x-auto">
-          {loading ? (
-            <div className="py-24 flex flex-col items-center justify-center gap-4">
-              <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          {loading && users.length === 0 ? (
+            <div className="py-24 text-center">
               <p className="text-xs font-black uppercase tracking-widest text-slate-400">Đang đồng bộ dữ liệu hệ thống...</p>
             </div>
           ) : (

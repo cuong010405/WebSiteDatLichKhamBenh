@@ -18,6 +18,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
 } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { API_URL, authFetch } from "@/lib/api"
@@ -123,8 +124,7 @@ function AddServiceDialog({ serviceTypes, onAdd }: { serviceTypes: ServiceType[]
     if (!name || !price || !type) return
     setSubmitting(true); setError("")
     const ok = await onAdd({ id: `svc-${Date.now()}`, name, description, price: parseCurrencyNumber(price), duration: "", type, active: true })
-    setSubmitting(false)
-    if (ok) { setSuccess(true); reset(); setTimeout(() => { setSuccess(false); setOpen(false) }, 1500) }
+    if (ok) { reset(); setOpen(false) }
     else setError("Không thể thêm dịch vụ. Vui lòng thử lại.")
   }
 
@@ -135,42 +135,35 @@ function AddServiceDialog({ serviceTypes, onAdd }: { serviceTypes: ServiceType[]
       <Button onClick={() => setOpen(true)} className="bg-primary text-white rounded-[24px] px-8 h-14 text-xs font-black uppercase tracking-[0.15em] flex items-center gap-3 shadow-xl shadow-primary/20 hover:opacity-95 transition-all border-b-4 border-white/10 active:border-b-0 active:translate-y-0.5">
         <Plus className="w-5 h-5" /> Thêm dịch vụ
       </Button>
-      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { reset(); setSuccess(false) } }}>
-        <DialogContent className="sm:max-w-[640px] rounded-[32px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset() }}>
+        <DialogContent className="sm:max-w-[580px] rounded-[28px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
           <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 to-green-500" />
-          <AnimatePresence mode="wait">
-            {success ? (
-              <motion.div key="success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="p-12 flex flex-col items-center gap-5 text-center">
-                <div className="w-20 h-20 rounded-3xl bg-green-50 border border-green-100 flex items-center justify-center"><CheckCircle2 className="w-10 h-10 text-green-500" /></div>
-                <div><p className="text-base font-black text-slate-900 uppercase tracking-tight">Thêm thành công!</p><p className="text-xs text-slate-500 font-semibold mt-1">Dịch vụ đã được lưu vào hệ thống.</p></div>
-              </motion.div>
-            ) : (
-              <motion.form key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} onSubmit={handleSubmit} className="p-8 space-y-5">
-                <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-5 border-b border-slate-100">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-600 text-white flex items-center justify-center shrink-0 shadow-md"><Plus className="w-5 h-5" /></div>
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-4 border-b border-slate-100">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-green-600 text-white flex items-center justify-center shrink-0 shadow-md"><Plus className="w-4 h-4" /></div>
                   <div className="text-left flex-1">
                     <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">Thêm dịch vụ mới</DialogTitle>
-                    <DialogDescription className="text-slate-500 mt-1.5 text-[11px] font-semibold leading-tight">Đăng ký dịch vụ chăm sóc y tế trên hệ thống.</DialogDescription>
+                    <DialogDescription className="text-slate-500 mt-1 text-[10px] font-semibold">Đăng ký dịch vụ chăm sóc y tế trên hệ thống.</DialogDescription>
                   </div>
                 </DialogHeader>
                 {error && <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600"><AlertTriangle className="w-4 h-4 shrink-0" /><p className="text-xs font-bold">{error}</p></div>}
-                <div className="space-y-4">
-                  <div className="space-y-2 text-left">
-                    <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Tên dịch vụ <span className="text-red-400">*</span></label>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder="VD: Kiểm tra sức khỏe định kỳ" className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                <div className="space-y-3">
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tên dịch vụ <span className="text-red-400">*</span></Label>
+                    <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder="VD: Kiểm tra sức khỏe định kỳ" className="h-9 rounded-xl font-bold text-xs" />
                   </div>
-                  <div className="space-y-2 text-left">
-                    <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Mô tả</label>
-                    <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả ngắn về dịch vụ..." className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mô tả</Label>
+                    <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả ngắn về dịch vụ..." className="h-9 rounded-xl font-bold text-xs" />
                   </div>
-                  <div className="space-y-2 text-left">
-                    <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Giá (VNĐ) <span className="text-red-400">*</span></label>
-                    <Input type="text" value={price} onChange={(e) => setPrice(formatCurrencyInput(e.target.value))} required placeholder="VD: 500.000" className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Giá (VNĐ) <span className="text-red-400">*</span></Label>
+                    <Input type="text" value={price} onChange={(e) => setPrice(formatCurrencyInput(e.target.value))} required placeholder="VD: 500.000" className="h-9 rounded-xl font-mono font-bold text-xs" />
                   </div>
-                  <div className="space-y-2 text-left">
-                    <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Loại dịch vụ <span className="text-red-400">*</span></label>
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loại dịch vụ <span className="text-red-400">*</span></Label>
                     <Select value={type} onValueChange={(v) => setType(v ?? "")}>
-                      <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-11 bg-white font-bold text-xs shadow-none text-slate-800"><SelectValue placeholder="Chọn loại dịch vụ..." /></SelectTrigger>
+                      <SelectTrigger className="h-9 rounded-xl font-bold text-xs"><SelectValue placeholder="Chọn loại dịch vụ..." /></SelectTrigger>
                       <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
                         {typeOptions.map((t) => <SelectItem key={t} value={t} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{t}</SelectItem>)}
                       </SelectContent>
@@ -178,14 +171,12 @@ function AddServiceDialog({ serviceTypes, onAdd }: { serviceTypes: ServiceType[]
                   </div>
                 </div>
                 <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3 bg-white">
-                  <Button type="button" variant="outline" onClick={() => setOpen(false)} className="rounded-xl h-10 px-5 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">Hủy bỏ</Button>
-                  <Button type="submit" disabled={!name || !price || !type || submitting} className="rounded-xl h-10 px-6 text-xs font-black uppercase tracking-[0.15em] bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-95 transition-all shadow-md border-b-2 border-white/10 active:border-b-0 active:translate-y-0.5 disabled:opacity-40 group">
+                  <Button type="button" variant="outline" onClick={() => setOpen(false)} className="rounded-full h-10 px-6 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">Hủy bỏ</Button>
+                  <Button type="submit" disabled={!name || !price || !type || submitting} className="rounded-full h-10 px-8 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-95 transition-all shadow-md disabled:opacity-40 group">
                     {submitting ? "Đang lưu..." : "Tạo dịch vụ"}<Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" />
                   </Button>
                 </DialogFooter>
-              </motion.form>
-            )}
-          </AnimatePresence>
+              </form>
         </DialogContent>
       </Dialog>
     </>
@@ -197,45 +188,65 @@ function EditServiceDialog({ service, serviceTypes, open, onOpenChange, onSave }
   const [description, setDescription] = React.useState(service.description)
   const [price, setPrice] = React.useState(formatCurrencyInput(service.price))
   const [type, setType] = React.useState(service.type)
+  const [submitting, setSubmitting] = React.useState(false)
+  const [success, setSuccess] = React.useState(false)
 
   React.useEffect(() => {
-    if (open) { setName(service.name); setDescription(service.description); setPrice(formatCurrencyInput(service.price)); setType(service.type) }
+    if (open) { setName(service.name); setDescription(service.description); setPrice(formatCurrencyInput(service.price)); setType(service.type); setSuccess(false) }
   }, [open, service])
 
   const typeOptions = serviceTypes.length > 0 ? serviceTypes.filter(t => t.active).map(t => t.name) : ["Khám lâm sàng", "Phục hồi chức năng", "Tư vấn dinh dưỡng", "Nha khoa", "Sức khỏe tâm thần"]
-  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave({ ...service, name, description, price: parseCurrencyNumber(price), type }); onOpenChange(false) }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSave({ ...service, name, description, price: parseCurrencyNumber(price), type })
+    onOpenChange(false)
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[640px] rounded-[32px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
-        <div className="h-1.5 w-full bg-gradient-to-r from-blue-400 to-indigo-500" />
-        <form onSubmit={handleSubmit} className="p-8 space-y-5">
-          <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-5 border-b border-slate-100">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-400 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md"><Pencil className="w-5 h-5" /></div>
-            <div className="text-left flex-1">
-              <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">Chỉnh sửa dịch vụ</DialogTitle>
-              <DialogDescription className="text-slate-500 mt-1.5 text-[11px] font-semibold leading-tight">Cập nhật thông tin dịch vụ trong hệ thống.</DialogDescription>
-            </div>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2 text-left"><label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Tên dịch vụ</label><Input value={name} onChange={(e) => setName(e.target.value)} required className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" /></div>
-            <div className="space-y-2 text-left"><label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Mô tả</label><Input value={description} onChange={(e) => setDescription(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" /></div>
-            <div className="space-y-2 text-left"><label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Giá (VNĐ)</label><Input type="text" value={price} onChange={(e) => setPrice(formatCurrencyInput(e.target.value))} required className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" /></div>
-            <div className="space-y-2 text-left">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Loại dịch vụ</label>
-              <Select value={type} onValueChange={(v) => setType(v ?? "")}>
-                <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-11 bg-white font-bold text-xs shadow-none text-slate-800"><SelectValue /></SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                  {typeOptions.map((t) => <SelectItem key={t} value={t} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{t}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3 bg-white">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl h-10 px-5 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">Hủy bỏ</Button>
-            <Button type="submit" className="rounded-xl h-10 px-6 text-xs font-black uppercase tracking-[0.15em] bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:opacity-95 transition-all shadow-md">Lưu thay đổi <Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" /></Button>
-          </DialogFooter>
-        </form>
+      <DialogContent className="sm:max-w-[580px] rounded-[28px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
+        <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500" />
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-5 border-b border-slate-100">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md"><Pencil className="w-4 h-4" /></div>
+                <div className="text-left flex-1">
+                  <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">Chỉnh sửa dịch vụ</DialogTitle>
+                  <DialogDescription className="text-slate-500 mt-1 text-[10px] font-semibold">Cập nhật thông tin dịch vụ trong hệ thống.</DialogDescription>
+                </div>
+              </DialogHeader>
+
+              <div className="space-y-3">
+                <div className="space-y-1.5 text-left">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tên dịch vụ</Label>
+                  <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder="VD: Kiểm tra sức khỏe định kỳ..." className="h-9 rounded-xl font-bold text-xs" />
+                </div>
+                <div className="space-y-1.5 text-left">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mô tả</Label>
+                  <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả chi tiết dịch vụ..." className="h-9 rounded-xl font-bold text-xs" />
+                </div>
+                <div className="space-y-1.5 text-left">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Giá (VNĐ)</Label>
+                  <Input type="text" value={price} onChange={(e) => setPrice(formatCurrencyInput(e.target.value))} required placeholder="VD: 200.000" className="h-9 rounded-xl font-mono font-bold text-xs" />
+                </div>
+                <div className="space-y-1.5 text-left">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loại dịch vụ</Label>
+                  <Select value={type} onValueChange={(v) => setType(v ?? "")}>
+                    <SelectTrigger className="h-9 rounded-xl font-bold text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
+                      {typeOptions.map((t) => <SelectItem key={t} value={t} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-full h-10 px-6 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500">Hủy bỏ</Button>
+                <Button type="submit" disabled={submitting} className="rounded-full h-10 px-8 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md group">
+                  {submitting ? "Đang lưu..." : <><span>Lưu thay đổi</span><Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" /></>}
+                </Button>
+              </DialogFooter>
+            </form>
       </DialogContent>
     </Dialog>
   )
@@ -365,7 +376,7 @@ function AddServiceTypeDialog({ onAdd }: { onAdd: (st: ServiceType) => Promise<b
     setSubmitting(true); setError("")
     const ok = await onAdd({ id: `st-${Date.now()}`, name, description, color, active: true })
     setSubmitting(false)
-    if (ok) { setSuccess(true); reset(); setTimeout(() => { setSuccess(false); setOpen(false) }, 1500) }
+    if (ok) { reset(); setOpen(false) }
     else setError("Không thể thêm loại dịch vụ. Vui lòng thử lại.")
   }
 
@@ -374,38 +385,31 @@ function AddServiceTypeDialog({ onAdd }: { onAdd: (st: ServiceType) => Promise<b
       <Button onClick={() => setOpen(true)} className="bg-primary text-white rounded-[24px] px-8 h-14 text-xs font-black uppercase tracking-[0.15em] flex items-center gap-3 shadow-xl shadow-primary/20 hover:opacity-95 transition-all border-b-4 border-white/10 active:border-b-0 active:translate-y-0.5">
         <Plus className="w-5 h-5" /> Thêm loại dịch vụ
       </Button>
-      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { reset(); setSuccess(false) } }}>
-        <DialogContent className="sm:max-w-[520px] rounded-[32px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset() }}>
+        <DialogContent className="sm:max-w-[580px] rounded-[28px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
           <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 to-green-500" />
-          <AnimatePresence mode="wait">
-            {success ? (
-              <motion.div key="success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="p-12 flex flex-col items-center gap-5 text-center">
-                <div className="w-20 h-20 rounded-3xl bg-green-50 border border-green-100 flex items-center justify-center"><CheckCircle2 className="w-10 h-10 text-green-500" /></div>
-                <div><p className="text-base font-black text-slate-900 uppercase tracking-tight">Thêm thành công!</p><p className="text-xs text-slate-500 font-semibold mt-1">Loại dịch vụ đã được lưu vào hệ thống.</p></div>
-              </motion.div>
-            ) : (
-              <motion.form key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} onSubmit={handleSubmit} className="p-8 space-y-5">
-                <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-5 border-b border-slate-100">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-600 text-white flex items-center justify-center shrink-0 shadow-md"><Tag className="w-5 h-5" /></div>
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-4 border-b border-slate-100">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-green-600 text-white flex items-center justify-center shrink-0 shadow-md"><Tag className="w-4 h-4" /></div>
                   <div className="text-left flex-1">
                     <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">Thêm loại dịch vụ mới</DialogTitle>
-                    <DialogDescription className="text-slate-500 mt-1.5 text-[11px] font-semibold leading-tight">Đăng ký loại dịch vụ trên hệ thống.</DialogDescription>
+                    <DialogDescription className="text-slate-500 mt-1 text-[10px] font-semibold">Đăng ký loại dịch vụ trên hệ thống.</DialogDescription>
                   </div>
                 </DialogHeader>
                 {error && <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600"><AlertTriangle className="w-4 h-4 shrink-0" /><p className="text-xs font-bold">{error}</p></div>}
-                <div className="space-y-4">
-                  <div className="space-y-2 text-left">
-                    <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Tên loại dịch vụ <span className="text-red-400">*</span></label>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder="VD: Clinical, Rehab, Nutrition..." className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                <div className="space-y-3">
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tên loại dịch vụ <span className="text-red-400">*</span></Label>
+                    <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder="VD: Khám lâm sàng, Phục hồi chức năng..." className="h-9 rounded-xl font-bold text-xs" />
                   </div>
-                  <div className="space-y-2 text-left">
-                    <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Mô tả</label>
-                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả về loại dịch vụ..." rows={3} className="w-full rounded-xl border border-slate-200 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all resize-none" />
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mô tả</Label>
+                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả về loại dịch vụ..." rows={2} className="w-full rounded-xl border border-slate-200 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all resize-none min-h-[50px]" />
                   </div>
-                  <div className="space-y-2 text-left">
-                    <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Màu badge</label>
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Màu badge</Label>
                     <Select value={color} onValueChange={(v) => setColor(v ?? "blue")}>
-                      <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-11 bg-white font-bold text-xs shadow-none text-slate-800"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-9 rounded-xl font-bold text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
                         {TYPE_COLOR_OPTIONS.map((c) => (
                           <SelectItem key={c.value} value={c.value} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">
@@ -421,14 +425,12 @@ function AddServiceTypeDialog({ onAdd }: { onAdd: (st: ServiceType) => Promise<b
                   </div>
                 </div>
                 <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3 bg-white">
-                  <Button type="button" variant="outline" onClick={() => setOpen(false)} className="rounded-xl h-10 px-5 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">Hủy bỏ</Button>
-                  <Button type="submit" disabled={!name || submitting} className="rounded-xl h-10 px-6 text-xs font-black uppercase tracking-[0.15em] bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-95 transition-all shadow-md border-b-2 border-white/10 active:border-b-0 active:translate-y-0.5 disabled:opacity-40 group">
+                  <Button type="button" variant="outline" onClick={() => setOpen(false)} className="rounded-full h-10 px-6 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">Hủy bỏ</Button>
+                  <Button type="submit" disabled={!name || submitting} className="rounded-full h-10 px-8 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-95 transition-all shadow-md disabled:opacity-40 group">
                     {submitting ? "Đang lưu..." : "Tạo loại dịch vụ"}<Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" />
                   </Button>
                 </DialogFooter>
-              </motion.form>
-            )}
-          </AnimatePresence>
+              </form>
         </DialogContent>
       </Dialog>
     </>
@@ -439,39 +441,69 @@ function EditServiceTypeDialog({ item, open, onOpenChange, onSave }: { item: Ser
   const [name, setName] = React.useState(item.name)
   const [description, setDescription] = React.useState(item.description)
   const [color, setColor] = React.useState(item.color || "blue")
-  React.useEffect(() => { if (open) { setName(item.name); setDescription(item.description); setColor(item.color || "blue") } }, [open, item])
-  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave({ ...item, name, description, color }); onOpenChange(false) }
+  const [submitting, setSubmitting] = React.useState(false)
+  const [success, setSuccess] = React.useState(false)
+
+  React.useEffect(() => {
+    if (open) { setName(item.name); setDescription(item.description); setColor(item.color || "blue"); setSuccess(false) }
+  }, [open, item])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSave({ ...item, name, description, color })
+    onOpenChange(false)
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] rounded-[32px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
-        <div className="h-1.5 w-full bg-gradient-to-r from-blue-400 to-indigo-500" />
-        <form onSubmit={handleSubmit} className="p-8 space-y-5">
-          <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-5 border-b border-slate-100">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-400 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md"><Pencil className="w-5 h-5" /></div>
-            <div className="text-left flex-1">
-              <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">Chỉnh sửa loại dịch vụ</DialogTitle>
-              <DialogDescription className="text-slate-500 mt-1.5 text-[11px] font-semibold leading-tight">Cập nhật thông tin loại dịch vụ trong hệ thống.</DialogDescription>
-            </div>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2 text-left"><label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Tên loại dịch vụ</label><Input value={name} onChange={(e) => setName(e.target.value)} required className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" /></div>
-            <div className="space-y-2 text-left"><label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Mô tả</label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="w-full rounded-xl border border-slate-200 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all resize-none" /></div>
-            <div className="space-y-2 text-left">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Màu badge</label>
-              <Select value={color} onValueChange={(v) => setColor(v ?? "blue")}>
-                <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-11 bg-white font-bold text-xs shadow-none text-slate-800"><SelectValue /></SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                  {TYPE_COLOR_OPTIONS.map((c) => (<SelectItem key={c.value} value={c.value} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"><div className="flex items-center gap-2"><div className={cn("w-3 h-3 rounded-full", colorMap[c.value]?.split(" ")[0])} />{c.label}</div></SelectItem>))}
-                </SelectContent>
-              </Select>
-              {color && <div className={cn("inline-flex px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border mt-1", colorMap[color] || "bg-slate-50 text-slate-600 border-slate-100")}>{name || "Xem trước"}</div>}
-            </div>
-          </div>
-          <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3 bg-white">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl h-10 px-5 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">Hủy bỏ</Button>
-            <Button type="submit" className="rounded-xl h-10 px-6 text-xs font-black uppercase tracking-[0.15em] bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:opacity-95 transition-all shadow-md">Lưu thay đổi</Button>
-          </DialogFooter>
-        </form>
+      <DialogContent className="sm:max-w-[580px] rounded-[28px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
+        <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500" />
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-4 border-b border-slate-100">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div className="text-left flex-1">
+                  <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">Chỉnh sửa loại dịch vụ</DialogTitle>
+                  <DialogDescription className="text-slate-500 mt-1 text-[10px] font-semibold">Cập nhật thông tin loại dịch vụ trong hệ thống.</DialogDescription>
+                </div>
+              </DialogHeader>
+
+              <div className="space-y-3">
+                <div className="space-y-1.5 text-left">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tên loại dịch vụ <span className="text-red-400">*</span></Label>
+                  <Input value={name} onChange={(e) => setName(e.target.value)} required className="h-9 rounded-xl font-bold text-xs" />
+                </div>
+                <div className="space-y-1.5 text-left">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mô tả</Label>
+                  <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full rounded-xl border border-slate-200 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all resize-none min-h-[50px]" />
+                </div>
+                <div className="space-y-1.5 text-left">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Màu badge</Label>
+                  <Select value={color} onValueChange={(v) => setColor(v ?? "blue")}>
+                    <SelectTrigger className="h-9 rounded-xl font-bold text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
+                      {TYPE_COLOR_OPTIONS.map((c) => (
+                        <SelectItem key={c.value} value={c.value} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">
+                          <div className="flex items-center gap-2">
+                            <div className={cn("w-3 h-3 rounded-full", colorMap[c.value]?.split(" ")[0])} />
+                            {c.label}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {color && <div className={cn("inline-flex px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border mt-1", colorMap[color] || "bg-slate-50 text-slate-600 border-slate-100")}>{name || "Xem trước"}</div>}
+                </div>
+              </div>
+
+              <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-full h-10 px-6 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500">Hủy bỏ</Button>
+                <Button type="submit" disabled={submitting} className="rounded-full h-10 px-8 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md group">
+                  {submitting ? "Đang lưu..." : <><span>Lưu thay đổi</span><Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" /></>}
+                </Button>
+              </DialogFooter>
+            </form>
       </DialogContent>
     </Dialog>
   )
@@ -806,13 +838,13 @@ export default function ServicesPage() {
   }
 
   React.useEffect(() => {
-    show("Đang tải dữ liệu...")
+    show("ĐANG TẢI DỮ LIỆU DỊCH VỤ...")
     Promise.all([loadServices(), loadServiceTypes(), loadStaff()]).finally(() => { setLoading(false); hide() })
   }, [])
 
   /* ── Service CRUD ── */
   const handleAddService = async (newService: Service): Promise<boolean> => {
-    show("Đang thêm dịch vụ...")
+    show("ĐANG THÊM DỊCH VỤ...")
     try {
       const res = await authFetch(`${API_URL}/services`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newService) })
       if (!res.ok) { hide(); return false }
@@ -823,7 +855,7 @@ export default function ServicesPage() {
   }
 
   const handleEditService = async (updated: Service) => {
-    show("Đang cập nhật...")
+    show("ĐANG CẬP NHẬT DỊCH VỤ...")
     try {
       const res = await authFetch(`${API_URL}/services/${updated.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) })
       if (!res.ok) throw new Error("Update failed")
@@ -833,7 +865,7 @@ export default function ServicesPage() {
   }
 
   const handleToggleService = async (updated: Service) => {
-    show("Đang cập nhật...")
+    show("ĐANG CẬP NHẬT TRẠNG THÁI DỊCH VỤ...")
     try {
       const res = await authFetch(`${API_URL}/services/${updated.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) })
       if (!res.ok) throw new Error("Toggle failed")
@@ -842,7 +874,7 @@ export default function ServicesPage() {
   }
 
   const handleDeleteService = async (id: string) => {
-    show("Đang xóa...")
+    show("ĐANG XÓA DỊCH VỤ...")
     try {
       const res = await authFetch(`${API_URL}/services/${id}`, { method: "DELETE" })
       if (!res.ok) throw new Error("Delete failed")
@@ -852,7 +884,7 @@ export default function ServicesPage() {
 
   /* ── ServiceType CRUD ── */
   const handleAddServiceType = async (item: ServiceType): Promise<boolean> => {
-    show("Đang thêm loại dịch vụ...")
+    show("ĐANG THÊM LOẠI DỊCH VỤ...")
     try {
       const res = await authFetch(`${API_URL}/service-types`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ Id: item.id, Name: item.name, Description: item.description, Color: item.color, Active: item.active }) })
       if (!res.ok) { hide(); return false }
@@ -863,7 +895,7 @@ export default function ServicesPage() {
   }
 
   const handleEditServiceType = async (updated: ServiceType) => {
-    show("Đang cập nhật...")
+    show("ĐANG CẬP NHẬT LOẠI DỊCH VỤ...")
     try {
       const res = await authFetch(`${API_URL}/service-types/${updated.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ Name: updated.name, Description: updated.description, Color: updated.color }) })
       if (!res.ok) throw new Error("Update failed")
@@ -873,7 +905,7 @@ export default function ServicesPage() {
   }
 
   const handleToggleServiceType = async (updated: ServiceType) => {
-    show("Đang cập nhật...")
+    show("ĐANG CẬP NHẬT TRẠNG THÁI LOẠI DỊCH VỤ...")
     try {
       const res = await authFetch(`${API_URL}/service-types/${updated.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ Active: updated.active }) })
       if (!res.ok) throw new Error("Toggle failed")
@@ -882,7 +914,7 @@ export default function ServicesPage() {
   }
 
   const handleDeleteServiceType = async (id: string) => {
-    show("Đang xóa...")
+    show("ĐANG XÓA LOẠI DỊCH VỤ...")
     try {
       const res = await authFetch(`${API_URL}/service-types/${id}`, { method: "DELETE" })
       if (!res.ok) throw new Error("Delete failed")
@@ -993,9 +1025,8 @@ export default function ServicesPage() {
       </div>
 
       {/* Grid */}
-      {loading ? (
-        <div className="py-24 flex flex-col items-center justify-center gap-4">
-          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      {loading && services.length === 0 && serviceTypes.length === 0 ? (
+        <div className="py-24 text-center">
           <p className="text-xs font-black uppercase tracking-widest text-slate-400">Đang tải danh sách...</p>
         </div>
       ) : (

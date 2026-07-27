@@ -148,32 +148,34 @@ export function Header() {
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
+    show("ĐANG ĐĂNG NHẬP HỆ THỐNG...");
     try {
       const u = await login(email, password);
       setIsOpen(false);
-      show("Đang đăng nhập hệ thống...");
-      setTimeout(() => {
-        hide();
-        if (u.role === "admin") {
-          router.push("/");
-        } else {
-          router.push("/booking");
-        }
-      }, 700);
+      if (u?.role === "admin") {
+        router.push("/admin/schedule");
+      } else {
+        router.push("/lich-hen");
+      }
     } catch (err: any) {
-      setErrorMsg("Tài khoản, mật khẩu không chính xác");
+      setErrorMsg("Tài khoản hoặc mật khẩu không chính xác");
+    } finally {
+      hide();
     }
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
+    show("ĐANG TẠO TÀI KHOẢN...");
     try {
       await register({ email, password, fullName, phone });
       setIsOpen(false);
-      router.push("/booking");
+      router.push("/lich-hen");
     } catch (err: any) {
       setErrorMsg(err.message || "Đăng ký thất bại");
+    } finally {
+      hide();
     }
   };
 
@@ -380,8 +382,12 @@ export function Header() {
                 <DropdownMenuSeparator className="bg-hairline/50 my-1" />
                 <DropdownMenuItem
                   onClick={() => {
-                    logout();
-                    router.push("/booking");
+                    show("ĐANG ĐĂNG XUẤT HỆ THỐNG...");
+                    setTimeout(() => {
+                      logout();
+                      router.push("/");
+                      hide();
+                    }, 400);
                   }}
                   className="rounded-xl gap-3 cursor-pointer px-3 py-3 text-red-500 focus:bg-red-50 focus:text-red-600 transition-colors"
                 >

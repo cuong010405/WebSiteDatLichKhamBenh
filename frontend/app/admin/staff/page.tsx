@@ -30,6 +30,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
 } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { Staff, StaffStatus } from "@/lib/types"
@@ -186,20 +187,12 @@ function AddStaffDialog({ onAdd, departments, positions }: { onAdd: (s: Staff) =
           }),
         }).catch(() => {})
       }
-      setSuccess(true)
       reset()
-      setTimeout(() => {
-        setSuccess(false)
-        setOpen(false)
-      }, 1500)
+      setOpen(false)
     } catch (err) {
       console.error("Add staff error:", err)
-      setSuccess(true)
       reset()
-      setTimeout(() => {
-        setSuccess(false)
-        setOpen(false)
-      }, 1500)
+      setOpen(false)
     } finally {
       setSubmitting(false)
     }
@@ -216,35 +209,10 @@ function AddStaffDialog({ onAdd, departments, positions }: { onAdd: (s: Staff) =
         Thêm chuyên gia
       </Button>
 
-      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { reset(); setSuccess(false) } }}>
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset() }}>
         <DialogContent className="sm:max-w-[980px] rounded-[28px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
           <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 to-green-500" />
-
-          <AnimatePresence mode="wait">
-            {success ? (
-              <motion.div
-                key="success"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                className="p-12 flex flex-col items-center gap-5 text-center"
-              >
-                <div className="w-20 h-20 rounded-3xl bg-green-50 border border-green-100 flex items-center justify-center">
-                  <CheckCircle2 className="w-10 h-10 text-green-500" />
-                </div>
-                <div>
-                  <p className="text-base font-black text-slate-900 uppercase tracking-tight">Thêm thành công!</p>
-                  <p className="text-xs text-slate-500 font-semibold mt-1">Hồ sơ chuyên gia đã được lưu thành công vào hệ thống.</p>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.form
-                key="form"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                onSubmit={handleSubmit}
-                className="p-6 space-y-4"
-              >
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
                 <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-5 border-b border-slate-100">
                   <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-600 text-white flex items-center justify-center shrink-0 shadow-md">
                     <UserPlus className="w-5 h-5" />
@@ -411,21 +379,19 @@ function AddStaffDialog({ onAdd, departments, positions }: { onAdd: (s: Staff) =
                 </div>
 
                 <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3 bg-white">
-                  <Button type="button" variant="outline" onClick={() => setOpen(false)} className="rounded-xl h-10 px-5 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">
+                  <Button type="button" variant="outline" onClick={() => setOpen(false)} className="rounded-full h-10 px-6 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">
                     Hủy bỏ
                   </Button>
                   <Button
                     type="submit"
                     disabled={!name || !role || !department || submitting}
-                    className="rounded-xl h-10 px-6 text-xs font-black uppercase tracking-[0.15em] bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-95 transition-all shadow-md border-b-2 border-white/10 active:border-b-0 active:translate-y-0.5 disabled:opacity-40 group"
+                    className="rounded-full h-10 px-8 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-95 transition-all shadow-md disabled:opacity-40 group"
                   >
                     {submitting ? "Đang lưu..." : "Tạo hồ sơ"}
                     <Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" />
                   </Button>
                 </DialogFooter>
-              </motion.form>
-            )}
-          </AnimatePresence>
+              </form>
         </DialogContent>
       </Dialog>
     </>
@@ -825,7 +791,7 @@ function StaffDetailDialog({
           )}
         </div>
 
-        <DialogFooter className="p-6 pb-7 bg-slate-50 border-t border-slate-100 flex justify-end shrink-0 rounded-b-[32px]">
+        <DialogFooter className="p-6 pb-7 bg-white border-t border-slate-100 flex justify-end shrink-0 rounded-b-[32px]">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-2xl px-8 h-11 text-xs font-black uppercase tracking-wider border-slate-300 hover:bg-slate-200/60 shadow-xs cursor-pointer">
             Đóng
           </Button>
@@ -869,6 +835,8 @@ function EditStaffDialog({
     }
   }, [open])
 
+  const [success, setSuccess] = React.useState(false)
+
   React.useEffect(() => {
     if (open) {
       setName(person.name)
@@ -882,7 +850,7 @@ function EditStaffDialog({
       setAvailable(person.available ?? true)
       setSpecialty(person.specialty || "")
       setExperience(person.experience || "")
-      // Ưu tiên staffType từ DB, fallback về derive từ role/department
+      setSuccess(false)
       const dbStaffType = (person as any).staffType
       if (dbStaffType) {
         setStaffType(dbStaffType)
@@ -899,7 +867,6 @@ function EditStaffDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // Lưu role từ Chức vụ, fallback về staffType nếu chưa chọn chức vụ cụ thể
     const finalRole = role || staffType
     onSave({ ...person, name, role: finalRole, department, phone, email, location, avatar, status, available, specialty: specialty || null, experience: experience || null, staffType } as any)
     onOpenChange(false)
@@ -907,193 +874,193 @@ function EditStaffDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[880px] rounded-[28px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
-        <div className="h-1.5 w-full bg-gradient-to-r from-blue-400 to-indigo-500" />
+      <DialogContent className="sm:max-w-[980px] rounded-[28px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
+        <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500" />
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-4 border-b border-slate-100">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-400 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md">
-              <Pencil className="w-5 h-5" />
-            </div>
-            <div className="text-left flex-1">
-              <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">Chỉnh sửa chuyên gia</DialogTitle>
-              <DialogDescription className="text-slate-500 mt-1.5 text-[11px] font-semibold leading-tight">Cập nhật thông tin hồ sơ nhân sự trong hệ thống.</DialogDescription>
-            </div>
-          </DialogHeader>
-
-          {/* Row 1: Avatar (Col 1), Phone & Email (Col 2), Status & Location (Col 3) */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-3">
-              <AvatarUpload value={avatar} onChange={setAvatar} />
-            </div>
-
-            <div className="space-y-3 justify-start">
-              <div className="space-y-1.5 text-left">
-                <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Số điện thoại</label>
-                <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded-xl border border-slate-200 h-10 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
-              </div>
-              <div className="space-y-1.5 text-left">
-                <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Email công vụ</label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ten@mintcare.com" className="w-full rounded-xl border border-slate-200 h-10 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
-              </div>
-            </div>
-
-            <div className="space-y-3 justify-start">
-              <div className="space-y-1.5 text-left">
-                <div className="flex items-center justify-between">
-                  <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Trạng thái hoạt động</label>
-                  {((person as any).activeVisitCount > 0) && (
-                    <span className="text-[8px] font-black text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                      🔒 Đang có ca trực
-                    </span>
-                  )}
+              <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-4 border-b border-slate-100">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md">
+                  <Pencil className="w-5 h-5" />
                 </div>
-                <Select value={status} onValueChange={(v) => { setStatus(v ?? "Sẵn sàng"); setAvailable(v === "Sẵn sàng") }}>
-                  <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-10 bg-white font-bold text-xs shadow-none text-slate-800">
-                    <SelectValue placeholder="Chọn trạng thái..." />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                    <SelectItem value="Sẵn sàng" className="rounded-lg py-2.5 font-bold text-xs focus:bg-emerald-50 text-emerald-700">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                        <span>Sẵn sàng (Được đặt lịch)</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="Đang bận" className="rounded-lg py-2.5 font-bold text-xs focus:bg-amber-50 text-amber-700">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-amber-500" />
-                        <span>Đang bận (Khóa đặt lịch)</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="Nghỉ phép" className="rounded-lg py-2.5 font-bold text-xs focus:bg-rose-50 text-rose-700">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-rose-500" />
-                        <span>Nghỉ phép (Khóa đặt lịch)</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="text-left flex-1">
+                  <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">Chỉnh sửa chuyên gia</DialogTitle>
+                  <DialogDescription className="text-slate-500 mt-1 text-[10px] font-semibold">Cập nhật thông tin hồ sơ nhân sự trong hệ thống.</DialogDescription>
+                </div>
+              </DialogHeader>
+
+              {/* Row 1: Avatar (Col 1), Phone & Email (Col 2), Status & Location (Col 3) */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-3">
+                  <AvatarUpload value={avatar} onChange={setAvatar} />
+                </div>
+
+                <div className="space-y-3 justify-start">
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Số điện thoại</Label>
+                    <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded-xl border border-slate-200 h-9 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                  </div>
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email công vụ</Label>
+                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ten@mintcare.com" className="w-full rounded-xl border border-slate-200 h-9 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                  </div>
+                </div>
+
+                <div className="space-y-3 justify-start">
+                  <div className="space-y-1.5 text-left">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Trạng thái hoạt động</Label>
+                      {((person as any).activeVisitCount > 0) && (
+                        <span className="text-[8px] font-black text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                          🔒 Đang có ca trực
+                        </span>
+                      )}
+                    </div>
+                    <Select value={status} onValueChange={(v) => { setStatus(v ?? "Sẵn sàng"); setAvailable(v === "Sẵn sàng") }}>
+                      <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-9 bg-white font-bold text-xs shadow-none text-slate-800">
+                        <SelectValue placeholder="Chọn trạng thái..." />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
+                        <SelectItem value="Sẵn sàng" className="rounded-lg py-2.5 font-bold text-xs focus:bg-emerald-50 text-emerald-700">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            <span>Sẵn sàng (Được đặt lịch)</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="Đang bận" className="rounded-lg py-2.5 font-bold text-xs focus:bg-amber-50 text-amber-700">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-amber-500" />
+                            <span>Đang bận (Khóa đặt lịch)</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="Nghỉ phép" className="rounded-lg py-2.5 font-bold text-xs focus:bg-rose-50 text-rose-700">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-rose-500" />
+                            <span>Nghỉ phép (Khóa đặt lịch)</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Địa điểm</Label>
+                    <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="VD: Quận 1, TP.HCM" className="w-full rounded-xl border border-slate-200 h-9 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                  </div>
+                </div>
               </div>
-              <div className="space-y-1.5 text-left">
-                <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Địa điểm</label>
-                <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="VD: Quận 1, TP.HCM" className="w-full rounded-xl border border-slate-200 h-10 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+
+              {/* Row 2: Name + Staff Type */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5 text-left">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Họ và tên <span className="text-red-400">*</span></Label>
+                  <Input value={name} onChange={(e) => setName(e.target.value)} required className="w-full rounded-xl border border-slate-200 h-9 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                </div>
+
+                <div className="space-y-1.5 text-left">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loại nhân viên <span className="text-red-400">*</span></Label>
+                  <Select value={staffType} onValueChange={(v) => setStaffType(v || "Điều dưỡng viên")}>
+                    <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-9 bg-white font-bold text-xs shadow-none text-slate-800">
+                      <SelectValue placeholder="Chọn loại nhân viên...">
+                        {staffType}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
+                      <SelectItem value="Điều dưỡng viên" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">
+                        Điều dưỡng viên
+                      </SelectItem>
+                      <SelectItem value="Chuyên viên vật lý trị liệu" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">
+                        Chuyên viên vật lý trị liệu
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* Row 2: Name + Staff Type */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5 text-left">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Họ và tên <span className="text-red-400">*</span></label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} required className="w-full rounded-xl border border-slate-200 h-10 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
-            </div>
+              {/* Row 3: Chức vụ | Phòng ban | Chuyên môn | Kinh nghiệm */}
+              <div className="grid grid-cols-4 gap-3">
+                <div className="space-y-1.5 text-left">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Chức vụ <span className="text-red-400">*</span></Label>
+                  <Select value={role} onValueChange={(v) => setRole(v ?? "")}>
+                    <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-9 bg-white font-bold text-xs shadow-none text-slate-800">
+                      <SelectValue placeholder="Chọn chức vụ...">
+                        {role || "Chọn chức vụ"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800 min-w-[220px]">
+                      {positions.length > 0 ? (
+                        positions.map((r) => (
+                          <SelectItem key={r} value={r} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">
+                            {r}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-3 py-3 text-center text-[10px] text-slate-400 font-semibold">Đang tải chức vụ...</div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5 text-left">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Phòng ban <span className="text-red-400">*</span></Label>
+                  <Select value={department} onValueChange={(v) => setDepartment(v ?? "")}>
+                    <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-9 bg-white font-bold text-xs shadow-none text-slate-800">
+                      <SelectValue placeholder="Chọn phòng ban...">
+                        {department || "Chọn phòng ban"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800 min-w-[220px]">
+                      {departments && departments.length > 0 ? (
+                        departments.map((d) => (
+                          <SelectItem key={d} value={d} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">
+                            {d}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <>
+                          <SelectItem value="Khoa Điều dưỡng" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">
+                            Khoa Điều dưỡng
+                          </SelectItem>
+                          <SelectItem value="Phục hồi chức năng" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">
+                            Phục hồi chức năng
+                          </SelectItem>
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div className="space-y-1.5 text-left">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Loại nhân viên <span className="text-red-400">*</span></label>
-              <Select value={staffType} onValueChange={(v) => setStaffType(v || "Điều dưỡng viên")}>
-                <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-10 bg-white font-bold text-xs shadow-none text-slate-800">
-                  <SelectValue placeholder="Chọn loại nhân viên...">
-                    {staffType}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                  <SelectItem value="Điều dưỡng viên" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">
-                    Điều dưỡng viên
-                  </SelectItem>
-                  <SelectItem value="Chuyên viên vật lý trị liệu" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">
-                    Chuyên viên vật lý trị liệu
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+                <div className="space-y-1.5 text-left">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Chuyên môn</Label>
+                  <Select value={specialty} onValueChange={(v) => setSpecialty(v ?? "")}>
+                    <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-9 bg-white font-bold text-xs shadow-none text-slate-800">
+                      <SelectValue placeholder="Chọn dịch vụ...">
+                        {specialty || "Chọn dịch vụ"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800 min-w-[220px]">
+                      {editServices.length > 0 ? (
+                        editServices.map((s) => (
+                          <SelectItem key={s} value={s} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{s}</SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-3 py-4 text-center text-[10px] text-slate-400 font-semibold">Đang tải...</div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-          {/* Row 3: Chức vụ | Phòng ban | Chuyên môn | Kinh nghiệm */}
-          <div className="grid grid-cols-4 gap-3">
-            <div className="space-y-1.5 text-left">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Chức vụ <span className="text-red-400">*</span></label>
-              <Select value={role} onValueChange={(v) => setRole(v ?? "")}>
-                <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-10 bg-white font-bold text-xs shadow-none text-slate-800">
-                  <SelectValue placeholder="Chọn chức vụ...">
-                    {role || "Chọn chức vụ"}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800 min-w-[220px]">
-                  {positions.length > 0 ? (
-                    positions.map((r) => (
-                      <SelectItem key={r} value={r} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">
-                        {r}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="px-3 py-3 text-center text-[10px] text-slate-400 font-semibold">Đang tải chức vụ...</div>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5 text-left">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Phòng ban <span className="text-red-400">*</span></label>
-              <Select value={department} onValueChange={(v) => setDepartment(v ?? "")}>
-                <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-10 bg-white font-bold text-xs shadow-none text-slate-800">
-                  <SelectValue placeholder="Chọn phòng ban...">
-                    {department || "Chọn phòng ban"}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800 min-w-[220px]">
-                  {departments && departments.length > 0 ? (
-                    departments.map((d) => (
-                      <SelectItem key={d} value={d} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">
-                        {d}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <>
-                      <SelectItem value="Khoa Điều dưỡng" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">
-                        Khoa Điều dưỡng
-                      </SelectItem>
-                      <SelectItem value="Phục hồi chức năng" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">
-                        Phục hồi chức năng
-                      </SelectItem>
-                    </>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+                <div className="space-y-1.5 text-left">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Kinh nghiệm</Label>
+                  <Input value={experience} onChange={(e) => setExperience(e.target.value)} placeholder="VD: 5 năm" className="w-full rounded-xl border border-slate-200 h-9 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                </div>
+              </div>
 
-            <div className="space-y-1.5 text-left">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Chuyên môn</label>
-              <Select value={specialty} onValueChange={(v) => setSpecialty(v ?? "")}>
-                <SelectTrigger className="w-full rounded-xl border border-slate-200 !h-10 bg-white font-bold text-xs shadow-none text-slate-800">
-                  <SelectValue placeholder="Chọn dịch vụ...">
-                    {specialty || "Chọn dịch vụ"}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800 min-w-[220px]">
-                  {editServices.length > 0 ? (
-                    editServices.map((s) => (
-                      <SelectItem key={s} value={s} className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">{s}</SelectItem>
-                    ))
-                  ) : (
-                    <div className="px-3 py-4 text-center text-[10px] text-slate-400 font-semibold">Đang tải...</div>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5 text-left">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Kinh nghiệm</label>
-              <Input value={experience} onChange={(e) => setExperience(e.target.value)} placeholder="VD: 5 năm" className="w-full rounded-xl border border-slate-200 h-10 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
-            </div>
-          </div>
-
-          <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3 bg-white">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl h-10 px-5 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">
-              Hủy bỏ
-            </Button>
-            <Button type="submit" className="rounded-xl h-10 px-6 text-xs font-black uppercase tracking-[0.15em] bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:opacity-95 transition-all shadow-md border-b-2 border-white/10 active:border-b-0 active:translate-y-0.5 group">
-              Lưu thay đổi <Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" />
-            </Button>
-          </DialogFooter>
-        </form>
+              <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3 bg-white">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-full h-10 px-6 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">
+                  Hủy bỏ
+                </Button>
+                <Button type="submit" className="rounded-full h-10 px-8 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:opacity-95 transition-all shadow-md group">
+                  Lưu thay đổi <Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" />
+                </Button>
+              </DialogFooter>
+            </form>
       </DialogContent>
     </Dialog>
   )
@@ -1278,11 +1245,13 @@ export default function StaffPage() {
   const [staffFilter, setStaffFilter] = React.useState<"all" | "nurse" | "physio">("all")
 
   const loadStaff = () => {
-    setLoading(true)
+    setLoading(true);
+    show("ĐANG TẢI DỮ LIỆU CHUYÊN GIA...");
     fetch(`${API_URL}/staff`, { cache: "no-store", headers: { "Cache-Control": "no-cache" } })
       .then((res) => { if (!res.ok) throw new Error("Staff fetch failed"); return res.json() })
-      .then((data) => { setStaffList(Array.isArray(data) ? data : []); setLoading(false) })
-      .catch((err) => { console.error("Lỗi tải chuyên gia:", err); setLoading(false) })
+      .then((data) => { setStaffList(Array.isArray(data) ? data : []) })
+      .catch((err) => console.error("Lỗi tải chuyên gia:", err))
+      .finally(() => { setLoading(false); hide() })
   }
 
   const loadDepartments = () => {
@@ -1302,7 +1271,7 @@ export default function StaffPage() {
   React.useEffect(() => { loadStaff(); loadDepartments(); loadPositions() }, [])
 
   const handleAdd = async (newStaff: Staff) => {
-    show("Đang thêm chuyên gia...")
+    show("ĐANG THÊM CHUYÊN GIA...")
     try {
       const res = await authFetch(`${API_URL}/staff`, {
         method: "POST",
@@ -1324,7 +1293,7 @@ export default function StaffPage() {
   }
 
   const handleEdit = async (updated: Staff) => {
-    show("Đang cập nhật...")
+    show("ĐANG CẬP NHẬT CHUYÊN GIA...")
     try {
       const res = await authFetch(`${API_URL}/staff/${updated.id}`, {
         method: "PUT",
@@ -1349,7 +1318,7 @@ export default function StaffPage() {
   }
 
   const handleDelete = async (id: string) => {
-    show("Đang xóa chuyên gia...")
+    show("ĐANG XÓA CHUYÊN GIA...")
     try {
       const res = await authFetch(`${API_URL}/staff/${id}`, { method: "DELETE" })
       setStaffList((prev) => prev.filter((s) => s.id !== id))
@@ -1453,9 +1422,8 @@ export default function StaffPage() {
       </div>
 
       {/* Grid */}
-      {loading ? (
-        <div className="py-24 flex flex-col items-center justify-center gap-4">
-          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      {loading && staffList.length === 0 ? (
+        <div className="py-24 text-center">
           <p className="text-xs font-black uppercase tracking-widest text-slate-400">Đang tải danh sách nhân viên y tế...</p>
         </div>
       ) : (

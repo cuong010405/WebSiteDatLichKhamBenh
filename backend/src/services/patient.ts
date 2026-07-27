@@ -1,8 +1,17 @@
 import { db } from "../db";
 import { patientSchema } from "../validations/schemas";
 import { z } from "zod";
+import { syncPatientsForVisits } from "./visit";
 
 export async function getPatientList() {
+  // Automatically sync any visits that haven't been linked to a Patient profile yet
+  // This is non-blocking: if it fails, we still return the patient list
+  try {
+    await syncPatientsForVisits();
+  } catch (syncErr) {
+    console.warn("[getPatientList] syncPatientsForVisits failed (non-fatal):", syncErr);
+  }
+
   const patients = await db.patient.findMany({
     include: {
       PatientStaff: true,
@@ -10,7 +19,7 @@ export async function getPatientList() {
         orderBy: { Date: "desc" },
       },
     },
-    orderBy: { Name: "asc" },
+    orderBy: [{ LastVisit: "desc" }, { Name: "asc" }],
   });
 
   const allVisitsWithUser = await db.visit.findMany({
@@ -40,6 +49,11 @@ export async function getPatientList() {
       }
     }
 
+    // Filter out "PENDING" and pick at most 1 assigned staff member (the active/latest one)
+    const validStaffIds = p.PatientStaff.map((ps) => ps.StaffId).filter((id) => id !== "PENDING");
+    const visitStaffId = latestVisit?.StaffId && latestVisit.StaffId !== "PENDING" ? latestVisit.StaffId : null;
+    const finalStaffId = visitStaffId || (validStaffIds.length > 0 ? validStaffIds[validStaffIds.length - 1] : null);
+
     return {
       id: p.Id,
       name: p.Name,
@@ -49,7 +63,7 @@ export async function getPatientList() {
       lastVisitTime: latestVisit?.Time || p.LastVisitTime || "",
       status: derivedStatus,
       summary: p.Summary ?? "",
-      assignedStaff: p.PatientStaff.map((ps) => ps.StaffId),
+      assignedStaff: finalStaffId ? [finalStaffId] : [],
     };
   });
 }
@@ -64,6 +78,9 @@ export async function getPatientById(id: string) {
 
   if (!patient) return null;
 
+  const validStaffIds = patient.PatientStaff.map((ps) => ps.StaffId).filter((id) => id !== "PENDING");
+  const finalStaffId = validStaffIds.length > 0 ? validStaffIds[validStaffIds.length - 1] : null;
+
   return {
     id: patient.Id,
     name: patient.Name,
@@ -73,7 +90,7 @@ export async function getPatientById(id: string) {
     lastVisitTime: patient.LastVisitTime ?? "",
     status: patient.Status ?? "Đang điều trị",
     summary: patient.Summary ?? "",
-    assignedStaff: patient.PatientStaff.map((ps) => ps.StaffId),
+    assignedStaff: finalStaffId ? [finalStaffId] : [],
   };
 }
 

@@ -6,6 +6,8 @@ import { Header } from "@/components/layout/header";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 
+import { LoadingService } from "@/lib/loading-context";
+
 export default function AdminLayout({
   children,
 }: Readonly<{
@@ -15,21 +17,18 @@ export default function AdminLayout({
   const router = useRouter();
 
   React.useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.replace("/");
-      } else if (user.role !== "admin") {
+    if (loading) {
+      LoadingService.Show("ĐANG XÁC THỰC QUYỀN ADMIN...");
+    } else {
+      LoadingService.Hide();
+      if (!user || user.role !== "admin") {
         router.replace("/");
       }
     }
   }, [user, loading, router]);
 
   if (loading || !user || user.role !== "admin") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <div className="min-h-screen bg-white" />;
   }
 
   return (

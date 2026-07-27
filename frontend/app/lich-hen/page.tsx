@@ -52,6 +52,12 @@ interface StoredVisit {
   notes?: string;
   paymentNote?: string;
   userPhone?: string;
+  careMode?: string | null;
+  packagePlan?: string | null;
+  packageShift?: string | null;
+  duration?: string | null;
+  requiredSpecialty?: string | null;
+  bookedAt?: string | null;
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string; border: string; dot: string }> = {
@@ -97,6 +103,7 @@ function formatPrice(val: any): string {
 
 function NavUserMenu({ user, logout, onOpenSettings }: { user: any; logout: () => void; onOpenSettings?: () => void }) {
   const [open, setOpen] = React.useState(false);
+  const [visitCount, setVisitCount] = React.useState<number | null>(null);
   const ref = React.useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -107,6 +114,18 @@ function NavUserMenu({ user, logout, onOpenSettings }: { user: any; logout: () =
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  React.useEffect(() => {
+    if (!user?.id) return;
+    authFetch(`${API_URL}/visits?userId=${user.id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setVisitCount(data.length);
+        }
+      })
+      .catch(() => {});
+  }, [user?.id]);
 
   const initials = user?.fullName
     ? user.fullName.split(" ").map((n: string) => n[0]).join("").substring(0, 2)
@@ -187,12 +206,14 @@ function NavUserMenu({ user, logout, onOpenSettings }: { user: any; logout: () =
                 onClick={() => { router.push("/lich-hen"); setOpen(false); }}
                 className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl hover:bg-blue-50 transition-all text-left group cursor-pointer"
               >
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 group-hover:bg-indigo-100 flex items-center justify-center transition-colors">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 group-hover:bg-indigo-100 flex items-center justify-center transition-colors shrink-0">
                   <Calendar className="w-4 h-4 text-indigo-600" />
                 </div>
                 <div>
-                  <p className="text-xs font-black text-slate-800">Lịch hẹn của bạn</p>
-                  <p className="text-[10px] text-slate-400 font-semibold">Xem lịch sử đặt khám</p>
+                  <p className="text-xs font-black text-slate-800">Lịch hẹn của tôi</p>
+                  <p className="text-[10px] text-slate-400 font-semibold">
+                    {visitCount !== null ? `${visitCount} lịch đặt` : "Xem lịch sử đặt khám"}
+                  </p>
                 </div>
               </button>
 
@@ -393,6 +414,7 @@ export default function LichHenPage() {
   const [cancelReason, setCancelReason] = React.useState("Bận công tác đột xuất");
   const [cancelNote, setCancelNote] = React.useState("");
   const [isCanceling, setIsCanceling] = React.useState(false);
+  const [selectedVisit, setSelectedVisit] = React.useState<StoredVisit | null>(null);
 
   const CANCEL_REASONS = [
     "Bận công tác đột xuất",
@@ -423,7 +445,7 @@ export default function LichHenPage() {
         type: v.type,
         date: v.date || "",
         time: v.time,
-        status: v.status,
+        status: v.status === "Đã xác nhận" ? "Đang thực hiện" : v.status,
         price: formatPrice(v.price || v.paymentAmount),
         paymentMethod: v.paymentMethod || "Tiền mặt",
         paymentStatus: v.paymentStatus,
@@ -431,6 +453,12 @@ export default function LichHenPage() {
         notes: v.notes,
         paymentNote: v.paymentNote,
         userPhone: v.userPhone,
+        careMode: v.careMode ?? null,
+        packagePlan: v.packagePlan ?? null,
+        packageShift: v.packageShift ?? null,
+        duration: v.duration ?? null,
+        requiredSpecialty: v.requiredSpecialty ?? null,
+        bookedAt: v.bookedAt || (v.assignedAt ? new Date(v.assignedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) + " " + new Date(v.assignedAt).toLocaleDateString("vi-VN") : null),
       }));
       setBookings(formatted);
     } catch {
@@ -443,14 +471,15 @@ export default function LichHenPage() {
 
   React.useEffect(() => {
     fetchVisits();
+    const handleFocus = () => fetchVisits();
+    const handleVisitCreated = () => fetchVisits();
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("mintcare-visit-created", handleVisitCreated);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("mintcare-visit-created", handleVisitCreated);
+    };
   }, [fetchVisits]);
-
-  // Poll every 15s
-  React.useEffect(() => {
-    if (!user?.id) return;
-    const interval = setInterval(fetchVisits, 15000);
-    return () => clearInterval(interval);
-  }, [fetchVisits, user]);
 
   // Reset page when filter changes
   React.useEffect(() => {
@@ -472,13 +501,8 @@ export default function LichHenPage() {
       return matchQuery && matchStatus;
     });
 
-    // Sort by date desc (newer date first), then by array order asc (newest visit at index 0 on top)
-    return list.sort((a, b) => {
-      if (a.date && b.date && a.date !== b.date) {
-        return b.date.localeCompare(a.date);
-      }
-      return a._origIdx - b._origIdx;
-    });
+    // Sort: Mới nhất vừa đặt lên trên cùng (Index nhỏ hơn = Lịch hẹn mới hơn từ API)
+    return list.sort((a, b) => a._origIdx - b._origIdx);
   }, [bookings, searchQuery, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBookings.length / PER_PAGE));
@@ -620,7 +644,7 @@ Trạng thái: ${booking.status}
             </span>
           </h1>
           <p className="text-base text-slate-500 max-w-xl font-medium leading-relaxed">
-            Theo dõi chi tiết trạng thái, phiếu khám và thông tin các ca hẹn đã đặt. Hệ thống tự động cập nhật mỗi 15 giây.
+            Theo dõi chi tiết trạng thái, phiếu khám và thông tin các ca hẹn đã đặt.
           </p>
         </motion.div>
 
@@ -690,29 +714,21 @@ Trạng thái: ${booking.status}
           ) : (
             <>
               <div className="divide-y divide-blue-50">
-                <AnimatePresence>
-                  {paginatedBookings.map((booking, i) => {
+                {paginatedBookings.map((booking, i) => {
                     const isPending = booking.status === "Chờ duyệt";
                     const isOngoing = booking.status === "Đang thực hiện";
                     const isCancelled = booking.status === "Đã hủy";
                     const statusCfg = STATUS_CONFIG[booking.status] ?? STATUS_CONFIG["Đã hủy"];
 
                     return (
-                      <motion.div
+                      <div
                         key={booking.id}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -4 }}
-                        transition={{ delay: i * 0.04 }}
+                        onClick={() => setSelectedVisit(booking)}
                         className={cn(
-                          "relative px-8 py-6 transition-all hover:bg-blue-50/30",
-                          isCancelled && "opacity-60",
-                          isOngoing && "bg-blue-50/40"
+                          "relative px-8 py-6 transition-all hover:bg-blue-50/50 cursor-pointer group",
+                          isCancelled && "opacity-60"
                         )}
                       >
-                        {isOngoing && (
-                          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-600 to-sky-500" />
-                        )}
 
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                           {/* Left: info */}
@@ -725,6 +741,12 @@ Trạng thái: ${booking.status}
                                 <span className="font-mono text-[9px] font-black bg-slate-50 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-md">
                                   #LH-{booking.id}
                                 </span>
+                                {booking.bookedAt && (
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-black text-blue-600 bg-blue-50/80 px-2 py-0.5 rounded-md border border-blue-100/80">
+                                    <Clock className="w-2.5 h-2.5 text-blue-500" />
+                                    <span>Đặt lúc: {booking.bookedAt}</span>
+                                  </span>
+                                )}
                                 <span className={cn(
                                   "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border",
                                   statusCfg.bg, statusCfg.text, statusCfg.border
@@ -796,18 +818,17 @@ Trạng thái: ${booking.status}
                               </span>
                             ) : null}
                             <button
-                              onClick={() => router.push("/dat-lich")}
-                              className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                              onClick={(e) => { e.stopPropagation(); setSelectedVisit(booking); }}
+                              className="w-8 h-8 rounded-xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center text-blue-400 hover:text-blue-600 transition-colors"
                             >
                               <ChevronRight className="w-4 h-4" />
                             </button>
                           </div>
                         </div>
-                      </motion.div>
+                      </div>
                     );
                   })}
-                </AnimatePresence>
-              </div>
+                </div>
 
               {filteredBookings.length > PER_PAGE && (
                 <div className="p-5 border-t border-blue-50 bg-blue-50/20 flex justify-center">
@@ -837,45 +858,54 @@ Trạng thái: ${booking.status}
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white rounded-[32px] shadow-2xl w-full max-w-md p-8 border border-slate-100"
+              className="bg-white rounded-[32px] shadow-2xl w-full max-w-[800px] h-[520px] flex flex-col justify-between overflow-hidden border border-slate-100"
             >
-              <div className="flex items-center justify-between mb-6">
+              {/* Top color bar */}
+              <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 to-pink-400" />
+
+              {/* Header */}
+              <div className="px-8 pt-4 pb-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Hủy lịch hẹn</h3>
-                  <p className="text-xs text-slate-400 font-semibold mt-1">Vui lòng cho biết lý do hủy lịch</p>
+                  <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">Hủy lịch hẹn</h3>
+                  <p className="text-xs text-slate-400 font-semibold mt-0.5">Vui lòng cho biết lý do hủy lịch</p>
                 </div>
-                <button onClick={() => setCancelId(null)} className="w-9 h-9 rounded-2xl hover:bg-slate-100 flex items-center justify-center transition-colors">
+                <button onClick={() => setCancelId(null)} className="w-9 h-9 rounded-2xl hover:bg-slate-100 flex items-center justify-center transition-colors shrink-0">
                   <X className="w-4 h-4 text-slate-500" />
                 </button>
               </div>
 
-              <form onSubmit={handleConfirmCancel} className="space-y-4">
-                <div className="space-y-2">
-                  {CANCEL_REASONS.map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => setCancelReason(r)}
-                      className={cn(
-                        "w-full text-left px-4 py-3 rounded-2xl border text-xs font-bold transition-all",
-                        cancelReason === r
-                          ? "bg-blue-50 border-blue-300 text-blue-800"
-                          : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300"
-                      )}
-                    >
-                      {r}
-                    </button>
-                  ))}
+              {/* Body */}
+              <form onSubmit={handleConfirmCancel}>
+                <div className="px-8 py-4 space-y-3">
+                  <div className="space-y-2">
+                    {CANCEL_REASONS.map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setCancelReason(r)}
+                        className={cn(
+                          "w-full text-left px-4 py-3 rounded-2xl border text-xs font-bold transition-all",
+                          cancelReason === r
+                            ? "bg-blue-50 border-blue-300 text-blue-800"
+                            : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300"
+                        )}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                  {cancelReason === "Lý do khác" && (
+                    <textarea
+                      value={cancelNote}
+                      onChange={(e) => setCancelNote(e.target.value)}
+                      placeholder="Nhập lý do cụ thể..."
+                      className="w-full rounded-2xl border border-slate-200 p-4 text-sm font-semibold resize-none min-h-[80px] focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    />
+                  )}
                 </div>
-                {cancelReason === "Lý do khác" && (
-                  <textarea
-                    value={cancelNote}
-                    onChange={(e) => setCancelNote(e.target.value)}
-                    placeholder="Nhập lý do cụ thể..."
-                    className="w-full rounded-2xl border border-slate-200 p-4 text-sm font-semibold resize-none min-h-[80px] focus:outline-none focus:ring-2 focus:ring-blue-200"
-                  />
-                )}
-                <div className="flex gap-3 pt-2">
+
+                {/* Footer */}
+                <div className="px-8 pb-5 flex gap-3">
                   <button
                     type="button"
                     onClick={() => setCancelId(null)}
@@ -896,6 +926,184 @@ Trạng thái: ${booking.status}
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Visit Detail Modal */}
+      <AnimatePresence>
+        {selectedVisit && (() => {
+          const sv = selectedVisit;
+          const scfg = STATUS_CONFIG[sv.status] ?? STATUS_CONFIG["Đã hủy"];
+          const isPaid = sv.paymentStatus === "Đã thanh toán";
+          const isCancelledSv = sv.status === "Đã hủy";
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4"
+              onClick={(e) => { if (e.target === e.currentTarget) setSelectedVisit(null); }}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 24 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.94, y: 16 }}
+                transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+                className="bg-white rounded-[32px] shadow-2xl w-full max-w-[800px] overflow-hidden border border-slate-100"
+              >
+                {/* Top color bar */}
+                <div className={cn("h-1.5 w-full", isCancelledSv ? "bg-slate-300" : "bg-gradient-to-r from-blue-600 to-sky-400")} />
+
+                {/* Header */}
+                <div className="px-8 py-3.5 border-b border-slate-100 bg-slate-50/50 flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+                      <Activity className="w-5 h-5 text-blue-500" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                        <span className="font-mono text-[9px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">#LH-{sv.id}</span>
+                        <span className={cn("inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border", scfg.bg, scfg.text, scfg.border)}>
+                          <span className={cn("w-1 h-1 rounded-full", scfg.dot)} />
+                          {sv.status}
+                        </span>
+                        {isPaid && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border bg-green-50 text-green-600 border-green-200">
+                            ✓ Đã thanh toán
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-base font-black text-blue-950">{sv.type}</h3>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedVisit(null)}
+                    className="w-8 h-8 rounded-2xl hover:bg-slate-100 flex items-center justify-center transition-colors shrink-0 mt-0.5"
+                  >
+                    <X className="w-4 h-4 text-slate-500" />
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="px-8 py-3.5 space-y-2.5">
+                  {/* Info grid */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="bg-blue-50/60 rounded-2xl p-3 border border-blue-100/80">
+                      <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-0.5">Chuyên gia</p>
+                      <p className="text-sm font-black text-blue-950 truncate">{sv.staffName}</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Ngày khám</p>
+                      <p className="text-sm font-black text-slate-800">{sv.date || "—"}</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Khung giờ</p>
+                      <p className="text-sm font-black text-slate-800">{sv.time || "—"}</p>
+                    </div>
+                    <div className="bg-emerald-50 rounded-2xl p-3 border border-emerald-100">
+                      <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-0.5">Chi phí</p>
+                      <p className="text-sm font-black text-emerald-700">{sv.price}</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Hình thức / Gói</p>
+                      <p className="text-sm font-bold text-slate-800">
+                        {sv.careMode || (sv.packagePlan ? "Theo gói" : "Theo ca / Giờ")}
+                        {sv.packagePlan ? ` (${sv.packagePlan})` : ""}
+                      </p>
+                    </div>
+                    {sv.packageShift && (
+                      <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Ca đăng ký gói</p>
+                        <p className="text-sm font-bold text-slate-800">{sv.packageShift}</p>
+                      </div>
+                    )}
+                    {sv.duration && (
+                      <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Thời lượng ca</p>
+                        <p className="text-sm font-bold text-slate-800">{sv.duration}</p>
+                      </div>
+                    )}
+                    {sv.requiredSpecialty && (
+                      <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Yêu cầu chuyên khoa</p>
+                        <p className="text-sm font-bold text-slate-800">{sv.requiredSpecialty}</p>
+                      </div>
+                    )}
+                    <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Thanh toán</p>
+                      <p className="text-sm font-bold text-slate-700">{sv.paymentMethod || "Tiền mặt"}</p>
+                    </div>
+                    {sv.userPhone && (
+                      <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Số điện thoại</p>
+                        <p className="text-sm font-bold text-slate-700">{sv.userPhone}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Address */}
+                  {sv.address && (
+                    <div className="flex items-start gap-3 bg-blue-50/50 rounded-2xl p-3 border border-blue-100">
+                      <MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-0.5">Địa chỉ khám</p>
+                        <p className="text-sm font-semibold text-blue-800">{sv.address}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  {(sv.notes || (sv.paymentNote && !sv.paymentNote.startsWith("Lý do hủy:"))) && (
+                    <div className="flex items-start gap-3 bg-amber-50/50 rounded-2xl p-3 border border-amber-100">
+                      <FileText className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-0.5">Ghi chú / Triệu chứng</p>
+                        <p className="text-sm font-semibold text-slate-700 leading-relaxed">{sv.notes || sv.paymentNote}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cancel reason */}
+                  {isCancelledSv && (
+                    <div className="flex items-start gap-3 bg-rose-50 rounded-2xl p-3 border border-rose-200">
+                      <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-[9px] font-black text-rose-600 uppercase tracking-widest mb-0.5">Lịch hẹn bị hủy</p>
+                        <p className="text-sm font-semibold text-rose-700 leading-relaxed">
+                          {sv.paymentNote?.startsWith("Lý do hủy:") ? sv.paymentNote : "Yêu cầu đặt lịch này không thể thực hiện do chuyên viên bận hoặc không trùng khung giờ phục vụ."}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer actions */}
+                <div className="px-8 pb-4 flex gap-3">
+                  <button
+                    onClick={() => { handleDownloadSlip(sv); }}
+                    className="flex items-center gap-2 px-5 py-3 rounded-2xl border border-blue-100 bg-white text-xs font-black uppercase tracking-widest text-blue-500 hover:bg-blue-50 transition-colors"
+                  >
+                    <Download className="w-4 h-4" /> Tải phiếu
+                  </button>
+                  {sv.status === "Chờ duyệt" && (
+                    <button
+                      onClick={() => { setSelectedVisit(null); setCancelId(sv.id); setCancelReason("Bận công tác đột xuất"); setCancelNote(""); }}
+                      className="flex items-center gap-2 px-5 py-3 rounded-2xl border border-rose-200 bg-white text-xs font-black uppercase tracking-widest text-rose-500 hover:bg-rose-50 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" /> Hủy lịch
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setSelectedVisit(null)}
+                    className="ml-auto flex items-center gap-2 px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-widest transition-colors shadow-md shadow-blue-200"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+
       {/* Consolidated Settings Modal */}
       <AnimatePresence>
         {isProfileModalOpen && (

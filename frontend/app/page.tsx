@@ -382,7 +382,10 @@ function Doctor3DCarousel({
                       )}
                     />
                     <img
-                      src={person.avatar}
+                      src={
+                        person.avatar ||
+                        `https://i.pravatar.cc/150?u=${person.id || encodeURIComponent(person.name)}`
+                      }
                       className="relative z-10 w-32 h-32 rounded-[36px] border-4 border-white shadow-2xl object-cover"
                       alt={person.name}
                     />
@@ -447,7 +450,10 @@ function Doctor3DCarousel({
                       <div className="space-y-4">
                         <div className="flex items-center gap-4">
                           <img
-                            src={person.avatar}
+                            src={
+                              person.avatar ||
+                              `https://i.pravatar.cc/150?u=${person.id || encodeURIComponent(person.name)}`
+                            }
                             className="w-14 h-14 rounded-2xl border border-slate-200 object-cover"
                             alt={person.name}
                           />
@@ -2116,27 +2122,23 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
         </div>
       </footer>
 
-      {/* Single Centered Error Overlay - Giữa màn hình (Dấu X hình tròn + Chữ thông báo) */}
+      {/* Top Floating Modern Pill Notification */}
       <AnimatePresence>
         {loginError && (
           <motion.div
             key="centered-login-error"
-            initial={{ opacity: 0, scale: 0.6 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.6 }}
-            transition={{ type: "spring", stiffness: 400, damping: 22 }}
-            className="fixed inset-0 z-[200] flex flex-col items-center justify-center pointer-events-none p-4"
+            initial={{ opacity: 0, y: -24, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -16, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 450, damping: 26 }}
+            className="fixed top-8 left-1/2 -translate-x-1/2 z-[300] bg-white/95 backdrop-blur-2xl border border-rose-100/80 px-5 py-3.5 rounded-full shadow-[0_16px_36px_-10px_rgba(244,63,94,0.18)] flex items-center gap-3.5 pointer-events-auto border-l-4 border-l-rose-500 max-w-md w-auto"
           >
-            <div className="bg-white/95 backdrop-blur-xl border border-red-100 p-6 rounded-[32px] shadow-[0_20px_50px_rgba(239,68,68,0.25)] flex flex-col items-center gap-3.5 text-center pointer-events-auto max-w-xs w-full ring-4 ring-red-500/10">
-              {/* Hình tròn đỏ có dấu X */}
-              <div className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center text-white shadow-lg shadow-red-500/30 shrink-0">
-                <X className="w-9 h-9" strokeWidth={3} />
-              </div>
-              {/* Chữ thông báo */}
-              <p className="text-sm font-extrabold text-slate-800 leading-snug">
-                {loginError}
-              </p>
+            <div className="w-8 h-8 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-4 h-4 text-rose-500" />
             </div>
+            <span className="text-xs font-black text-slate-800 tracking-tight pr-2">
+              {loginError}
+            </span>
           </motion.div>
         )}
       </AnimatePresence>

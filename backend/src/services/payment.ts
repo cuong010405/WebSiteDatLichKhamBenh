@@ -16,9 +16,21 @@ function mapPayment(p: any) {
     visitType: p.Visit?.Type ?? "",
     visitTime: p.Visit?.Time ?? "",
     visitDate: p.Visit?.Date ?? "",
+    visitStatus: p.Visit?.Status ?? "",
+    startTime: p.Visit?.StartTime ?? "",
+    endTime: p.Visit?.EndTime ?? "",
+    duration: p.Visit?.Duration ?? "",
+    careMode: p.Visit?.CareMode ?? "",
+    packagePlan: p.Visit?.PackagePlan ?? "",
+    packageShift: p.Visit?.PackageShift ?? "",
+    address: p.Visit?.CustomerArea ?? "",
     patientName: p.Visit?.Patient?.Name ?? "",
     staffName: p.Visit?.Staff?.Name ?? "",
+    staffPhone: p.Visit?.Staff?.Phone ?? "",
+    staffSpecialty: p.Visit?.Staff?.Specialty ?? "",
     userName: p.Visit?.User?.FullName ?? "",
+    userPhone: p.Visit?.User?.Phone ?? "",
+    userEmail: p.Visit?.User?.Email ?? "",
   };
 }
 
@@ -79,9 +91,21 @@ export async function getPaymentList() {
       visitType: v.Type ?? "",
       visitTime: v.Time ?? "",
       visitDate: v.Date ?? "",
+      visitStatus: v.Status ?? "Đã hủy",
+      startTime: v.StartTime ?? "",
+      endTime: v.EndTime ?? "",
+      duration: v.Duration ?? "",
+      careMode: v.CareMode ?? "",
+      packagePlan: v.PackagePlan ?? "",
+      packageShift: v.PackageShift ?? "",
+      address: v.CustomerArea ?? "",
       patientName: v.Patient?.Name ?? "",
       staffName: v.Staff?.Name ?? "",
+      staffPhone: (v.Staff as any)?.Phone ?? "",
+      staffSpecialty: (v.Staff as any)?.Specialty ?? "",
       userName: v.User?.FullName ?? "",
+      userPhone: (v.User as any)?.Phone ?? "",
+      userEmail: (v.User as any)?.Email ?? "",
     }));
 
   const allList = [...mappedPayments, ...mappedCancelledVisits];
@@ -112,11 +136,16 @@ export async function createPayment(data: {
 }) {
   const id = crypto.randomUUID();
 
-  // Find the visit first to get PatientId
+  // Find the visit first to get PatientId and CareMode/PackagePlan
   const visit = await db.visit.findUnique({
     where: { Id: data.visitId },
-    select: { PatientId: true },
+    select: { PatientId: true, CareMode: true, PackagePlan: true },
   });
+
+  // For package/monthly visits, keep the visit "Đã xác nhận" so it stays on the schedule.
+  // Only single/hourly visits should move to "Đã hoàn tất".
+  const isPackage = visit?.CareMode === "package" || !!visit?.PackagePlan;
+  const newVisitStatus = isPackage ? "Đã xác nhận" : "Đã hoàn tất";
 
   // Create payment record
   const payment = await db.payment.create({
@@ -140,11 +169,11 @@ export async function createPayment(data: {
       PaymentMethod: data.method,
       PaymentAmount: data.amount,
       PaymentNote: data.note ?? null,
-      Status: "Đã hoàn tất",
+      Status: newVisitStatus,
     },
   });
 
-  if (updatedVisit.PatientId) {
+  if (!isPackage && updatedVisit.PatientId) {
     await db.patient.update({
       where: { Id: updatedVisit.PatientId },
       data: { Status: "Khám hoàn thành" },
@@ -155,27 +184,60 @@ export async function createPayment(data: {
 }
 
 export async function deletePayment(id: string) {
+  let visitId: string | null = null;
+  let targetPaymentId: string | null = null;
+
   if (id.startsWith("cancel-")) {
-    const visitId = id.replace("cancel-", "");
-    await db.visit.delete({ where: { Id: visitId } }).catch(() => {});
-    return { success: true };
+    visitId = id.replace("cancel-", "");
+  } else {
+    const payment = await db.payment.findUnique({ where: { Id: id } });
+    if (payment) {
+      targetPaymentId = payment.Id;
+      visitId = payment.VisitId;
+    } else {
+      visitId = id;
+    }
   }
 
-  const payment = await db.payment.findUnique({ where: { Id: id } });
-  if (!payment) throw new Error("Không tìm thấy hóa đơn");
+  // 1. Delete payment records
+  if (targetPaymentId) {
+    await db.payment.delete({ where: { Id: targetPaymentId } }).catch(() => {});
+  }
+  if (visitId) {
+    await db.payment.deleteMany({ where: { VisitId: visitId } }).catch(() => {});
+  }
 
-  // Revert visit payment status to cancelled so it won't show in pending payments
-  await db.visit.update({
-    where: { Id: payment.VisitId },
-    data: {
-      PaymentStatus: "Đã hủy",
-      PaymentMethod: null,
-      PaymentAmount: null,
-      PaymentNote: null,
-      Status: "Đã hủy",
-    },
-  });
+  // 2. Delete associated Visit and related logs
+  if (visitId) {
+    const visit = await db.visit.findUnique({ where: { Id: visitId } });
 
-  await db.payment.delete({ where: { Id: id } });
+    if (visit) {
+      const patientId = visit.PatientId;
+
+      // Delete CareLogs for this visit service/patient
+      if (patientId) {
+        await db.careLog.deleteMany({
+          where: {
+            PatientId: patientId,
+            ServiceName: visit.Type || undefined,
+          },
+        }).catch(() => {});
+      }
+
+      // Delete the Visit record itself
+      await db.visit.delete({ where: { Id: visitId } }).catch(() => {});
+
+      // Clean up Patient profile if patient has no other remaining visits
+      if (patientId) {
+        const remainingVisits = await db.visit.count({ where: { PatientId: patientId } });
+        if (remainingVisits === 0) {
+          await db.patientStaff.deleteMany({ where: { PatientId: patientId } }).catch(() => {});
+          await db.careLog.deleteMany({ where: { PatientId: patientId } }).catch(() => {});
+          await db.patient.delete({ where: { Id: patientId } }).catch(() => {});
+        }
+      }
+    }
+  }
+
   return { success: true };
 }

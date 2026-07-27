@@ -7,6 +7,7 @@ import {
   Stethoscope,
   History,
   ChevronRight,
+  ChevronDown,
   Search,
   Filter,
   Download,
@@ -22,10 +23,11 @@ import {
   Users,
   Activity,
   Heart,
+  Sparkles,
   Thermometer,
   Pill,
-  Sparkles,
   ImageIcon,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -442,12 +444,12 @@ function EditPatientDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] rounded-[32px] border-hairline shadow-2xl p-0 overflow-hidden bg-white">
-        <div className="h-1.5 w-full bg-gradient-to-r from-blue-400 to-indigo-500" />
-        <form onSubmit={handleSubmit} className="p-8 space-y-4">
-          <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-4 border-b border-slate-100">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-400 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md">
-              <Pencil className="w-5 h-5" />
+      <DialogContent className="sm:max-w-[600px] rounded-[28px] border-hairline shadow-2xl p-0 overflow-hidden bg-white">
+        <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500" />
+        <form onSubmit={handleSubmit} className="p-6 space-y-3">
+          <DialogHeader className="flex flex-row items-center gap-3 space-y-0 pb-3 border-b border-slate-100">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md">
+              <Pencil className="w-4 h-4" />
             </div>
             <div className="text-left flex-1">
               <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">
@@ -459,54 +461,27 @@ function EditPatientDialog({
             </div>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2 text-left">
-                <Label
-                  htmlFor="edit-name"
-                  className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary"
-                >
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="edit-name" className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                   Họ và tên bệnh nhân <span className="text-red-400">*</span>
                 </Label>
-                <Input
-                  id="edit-name"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="rounded-xl border-hairline h-10 bg-surface-secondary/20 focus:bg-white font-bold text-xs"
-                />
+                <Input id="edit-name" required value={name} onChange={(e) => setName(e.target.value)} className="rounded-xl h-9 font-bold text-xs" />
               </div>
-              <div className="space-y-2 text-left">
-                <Label
-                  htmlFor="edit-age"
-                  className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary"
-                >
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="edit-age" className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                   Tuổi <span className="text-red-400">*</span>
                 </Label>
-                <Input
-                  id="edit-age"
-                  required
-                  type="number"
-                  min="0"
-                  max="150"
-                  value={ageStr}
-                  onChange={(e) => setAgeStr(e.target.value)}
-                  className="rounded-xl border-hairline h-10 bg-surface-secondary/20 focus:bg-white font-bold text-xs"
-                />
+                <Input id="edit-age" required type="number" min="0" max="150" value={ageStr} onChange={(e) => setAgeStr(e.target.value)} className="rounded-xl h-9 font-bold text-xs" />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2 text-left">
-                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">
-                  Giới tính
-                </Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5 text-left">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Giới tính</Label>
                 <div className="relative">
-                  <select
-                    value={gender}
-                    onChange={(e) => setGender(e.target.value as "Nam" | "Nữ" | "Khác")}
-                    className="w-full rounded-xl border border-slate-200 h-10 bg-white font-bold text-xs text-slate-800 px-3 pr-8 appearance-none outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer hover:border-slate-300"
-                  >
+                  <select value={gender} onChange={(e) => setGender(e.target.value as "Nam" | "Nữ" | "Khác")} className="w-full rounded-xl border border-slate-200 h-9 bg-white font-bold text-xs text-slate-800 px-3 pr-8 appearance-none outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer hover:border-slate-300">
                     <option value="Nam">👨 Nam</option>
                     <option value="Nữ">👩 Nữ</option>
                     <option value="Khác">🧑 Khác</option>
@@ -514,42 +489,15 @@ function EditPatientDialog({
                   <svg className="w-3.5 h-3.5 text-blue-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
                 </div>
               </div>
-              <div className="space-y-2 text-left">
-                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary">
-                  Trạng thái lâm sàng
-                </Label>
-                <Select
-                  value={status}
-                  onValueChange={(val) => setStatus(val as any)}
-                >
-                  <SelectTrigger className="w-full rounded-xl border border-slate-200 h-10 bg-white font-bold text-xs shadow-none text-slate-800">
-                    <SelectValue placeholder="Chọn trạng thái..." />
-                  </SelectTrigger>
+              <div className="space-y-1.5 text-left">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Trạng thái lâm sàng</Label>
+                <Select value={status} onValueChange={(val) => setStatus(val as any)}>
+                  <SelectTrigger className="w-full rounded-xl border border-slate-200 h-9 bg-white font-bold text-xs shadow-none text-slate-800"><SelectValue placeholder="Chọn trạng thái..." /></SelectTrigger>
                   <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                    <SelectItem
-                      value="Đang điều trị"
-                      className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"
-                    >
-                      Đang điều trị
-                    </SelectItem>
-                    <SelectItem
-                      value="Chờ tái khám"
-                      className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"
-                    >
-                      Chờ tái khám
-                    </SelectItem>
-                    <SelectItem
-                      value="Đã xuất viện"
-                      className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"
-                    >
-                      Đã xuất viện
-                    </SelectItem>
-                    <SelectItem
-                      value="Chờ duyệt"
-                      className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50"
-                    >
-                      Chờ duyệt
-                    </SelectItem>
+                    <SelectItem value="Đang điều trị" className="rounded-lg py-2 font-bold text-xs focus:bg-slate-50">Đang điều trị</SelectItem>
+                    <SelectItem value="Chờ tái khám" className="rounded-lg py-2 font-bold text-xs focus:bg-slate-50">Chờ tái khám</SelectItem>
+                    <SelectItem value="Đã xuất viện" className="rounded-lg py-2 font-bold text-xs focus:bg-slate-50">Đã xuất viện</SelectItem>
+                    <SelectItem value="Chờ duyệt" className="rounded-lg py-2 font-bold text-xs focus:bg-slate-50">Chờ duyệt</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -561,38 +509,27 @@ function EditPatientDialog({
               onChange={setAssignedStaff}
             />
 
-            <div className="space-y-2 text-left">
-              <Label
-                htmlFor="edit-summary"
-                className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-tertiary"
-              >
-                Tiền sử & Chẩn đoán sơ bộ
-              </Label>
-              <Textarea
-                id="edit-summary"
-                value={summary}
-                onChange={(e) => setSummary(e.target.value)}
-                placeholder="Mô tả chẩn đoán lâm sàng..."
-                className="rounded-xl border-hairline bg-surface-secondary/20 focus:bg-white min-h-[90px] text-xs font-semibold leading-relaxed"
-              />
+            <div className="space-y-1.5 text-left">
+              <Label htmlFor="edit-summary" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tiền sử & Chẩn đoán sơ bộ</Label>
+              <Textarea id="edit-summary" value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Mô tả chẩn đoán lâm sàng..." className="rounded-xl border-hairline bg-surface-secondary/20 focus:bg-white min-h-[60px] text-xs font-semibold leading-relaxed resize-none" />
             </div>
           </div>
 
-          <DialogFooter className="pt-4 border-t border-slate-100 flex-col sm:flex-col gap-2">
-            <Button
-              type="submit"
-              disabled={!name || !ageStr || submitting}
-              className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl h-11 text-xs font-black uppercase tracking-[0.15em] hover:opacity-95 shadow-md border-b-2 border-white/10 active:border-b-0 active:translate-y-0.5"
-            >
-              {submitting ? "Đang lưu..." : "Lưu thay đổi"}
-            </Button>
+          <DialogFooter className="pt-3 border-t border-slate-100 flex flex-row justify-end gap-3">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50"
+              className="rounded-full h-10 px-6 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50"
             >
               Hủy bỏ
+            </Button>
+            <Button
+              type="submit"
+              disabled={!name || !ageStr || submitting}
+              className="rounded-full h-10 px-8 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md hover:opacity-95 group"
+            >
+              {submitting ? "Đang lưu..." : <><span>Lưu thay đổi</span><Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" /></>}
             </Button>
           </DialogFooter>
         </form>
@@ -664,6 +601,85 @@ function DeletePatientDialog({
   );
 }
 
+function FileUploadField({
+  value,
+  onChange,
+  label = "Hình ảnh đính kèm",
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  label?: string;
+}) {
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        onChange(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  return (
+    <div className="space-y-1.5 text-left">
+      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+        {label}
+      </Label>
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Input
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Dán URL ảnh hoặc nhấn Tải tệp..."
+            className="h-9 rounded-xl font-bold text-xs pr-8 bg-white"
+          />
+          {value && (
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 p-0.5 rounded-full hover:bg-red-50 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => fileInputRef.current?.click()}
+          className="h-9 px-3.5 rounded-xl border-slate-200 text-slate-700 font-bold text-xs hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 shrink-0 flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
+        >
+          <Upload className="w-3.5 h-3.5 text-blue-500" />
+          <span>Tải tệp</span>
+        </Button>
+      </div>
+      {value && (
+        <div className="mt-1 flex items-center gap-2 p-1.5 bg-slate-50 border border-slate-200/80 rounded-xl">
+          <img
+            src={value}
+            alt="Preview"
+            className="w-8 h-8 rounded-lg object-cover border border-slate-200 bg-white shrink-0"
+            onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+          />
+          <span className="text-[10px] text-slate-600 font-bold truncate max-w-[220px]">
+            {value.startsWith("data:image") ? "📷 Tệp ảnh đã chọn" : "🔗 " + value}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AddCareLogDialog({
   patient,
   staff,
@@ -690,14 +706,15 @@ function AddCareLogDialog({
   const [assessment, setAssessment] = React.useState("");
   const [attachment, setAttachment] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
-  const [success, setSuccess] = React.useState(false);
+
+  const validStaff = staff.filter((s) => s.id !== "PENDING");
 
   React.useEffect(() => {
     if (open) {
       const now = new Date();
       const formattedDate = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()} ${now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
       setCareDate(formattedDate);
-      if (staff.length > 0) setStaffName(staff[0].name);
+      if (validStaff.length > 0) setStaffName(validStaff[0].name);
     }
   }, [open, staff]);
 
@@ -731,15 +748,11 @@ function AddCareLogDialog({
       if (!res.ok) throw new Error("Thêm nhật ký thất bại");
       const created = await res.json();
       onAdded(created);
-      setSuccess(true);
-      setTimeout(() => {
-        setSuccess(false);
-        onOpenChange(false);
-        setMedications("");
-        setNotes("");
-        setAssessment("");
-        setAttachment("");
-      }, 1200);
+      onOpenChange(false);
+      setMedications("");
+      setNotes("");
+      setAssessment("");
+      setAttachment("");
     } catch (err) {
       console.error("Lỗi khi lưu nhật ký chăm sóc:", err);
     } finally {
@@ -749,47 +762,35 @@ function AddCareLogDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] rounded-[32px] border-hairline shadow-2xl p-0 overflow-hidden bg-white">
+      <DialogContent className="sm:max-w-[900px] rounded-[28px] border-hairline shadow-2xl p-0 overflow-hidden bg-white">
         <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500" />
-        <AnimatePresence mode="wait">
-          {success ? (
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="p-12 flex flex-col items-center gap-5 text-center">
-              <div className="w-20 h-20 rounded-3xl bg-green-50 border border-green-100 flex items-center justify-center">
-                <CheckCircle2 className="w-10 h-10 text-green-500" />
-              </div>
-              <div>
-                <p className="text-base font-black text-slate-900 uppercase tracking-tight">Ghi nhận nhật ký chăm sóc thành công!</p>
-                <p className="text-xs text-slate-500 font-semibold mt-1">Dữ liệu đã được lưu trực tiếp vào hồ sơ bệnh nhân {patient.name}.</p>
-              </div>
-            </motion.div>
-          ) : (
-            <form onSubmit={handleSubmit} className="p-8 space-y-5">
-              <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-4 border-b border-slate-100">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md">
-                  <Activity className="w-6 h-6" />
-                </div>
-                <div className="text-left flex-1">
-                  <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">
-                    Thêm nhật ký chăm sóc
-                  </DialogTitle>
-                  <DialogDescription className="text-slate-500 mt-1 text-[10px] font-semibold">
-                    Cập nhật sinh hiệu, thuốc đã sử dụng và đánh giá cho bệnh nhân <strong className="text-slate-800">{patient.name}</strong> ({patient.id}).
-                  </DialogDescription>
-                </div>
-              </DialogHeader>
+        <form onSubmit={handleSubmit} className="py-8 px-7 space-y-4">
+          <DialogHeader className="flex flex-row items-center gap-3 space-y-0 pb-4 border-b border-slate-100">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md">
+              <Plus className="w-5 h-5" />
+            </div>
+            <div className="text-left flex-1">
+              <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">
+                Thêm nhật ký chăm sóc
+              </DialogTitle>
+              <DialogDescription className="text-slate-500 mt-1 text-[10px] font-semibold">
+                Ghi nhận thông tin sinh hiệu, đánh giá và ghi chú cho bệnh nhân <strong className="text-slate-800">{patient.name}</strong> ({patient.id}).
+              </DialogDescription>
+            </div>
+          </DialogHeader>
 
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto px-1">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3.5">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5 text-left">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Thời gian chăm sóc</Label>
-                    <Input value={careDate} onChange={(e) => setCareDate(e.target.value)} required className="h-10 rounded-xl font-bold text-xs" />
+                    <Input value={careDate} onChange={(e) => setCareDate(e.target.value)} required className="h-9 rounded-xl font-bold text-xs" />
                   </div>
                   <div className="space-y-1.5 text-left">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nhân viên thực hiện</Label>
-                    <Select value={staffName} onValueChange={(v) => setStaffName(v)}>
-                      <SelectTrigger className="h-10 rounded-xl font-bold text-xs"><SelectValue placeholder="Chọn nhân viên..." /></SelectTrigger>
+                    <Select value={staffName} onValueChange={(v) => setStaffName(v ?? "")}>
+                      <SelectTrigger className="h-9 rounded-xl font-bold text-xs"><SelectValue placeholder="Chọn nhân viên..." /></SelectTrigger>
                       <SelectContent className="rounded-xl">
-                        {staff.map((s) => <SelectItem key={s.id} value={s.name} className="font-bold text-xs">{s.name} ({s.role.split("•")[0]})</SelectItem>)}
+                        {validStaff.map((s) => <SelectItem key={s.id} value={s.name} className="font-bold text-xs">{s.name} ({s.role.split("•")[0]})</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -797,80 +798,455 @@ function AddCareLogDialog({
 
                 <div className="space-y-1.5 text-left">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Dịch vụ đã thực hiện</Label>
-                  <Input value={serviceName} onChange={(e) => setServiceName(e.target.value)} required placeholder="VD: Truyền dịch y tế, Phục hồi chức năng..." className="h-10 rounded-xl font-bold text-xs" />
+                  <Input value={serviceName} onChange={(e) => setServiceName(e.target.value)} required placeholder="VD: Truyền dịch y tế, Phục hồi chức năng..." className="h-9 rounded-xl font-bold text-xs" />
                 </div>
 
-                {/* Vitals Grid */}
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 text-left">Chỉ số sinh hiệu bệnh nhân</p>
-                  <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-left">Chỉ số sinh hiệu bệnh nhân</p>
+                  <div className="grid grid-cols-5 gap-2.5">
                     <div className="space-y-1 text-left">
                       <label className="text-[9px] font-bold text-slate-400">Nhiệt độ (°C)</label>
-                      <Input value={temperature} onChange={(e) => setTemperature(e.target.value)} placeholder="36.8" className="h-9 rounded-lg font-mono font-bold text-xs bg-white" />
+                      <Input value={temperature} onChange={(e) => setTemperature(e.target.value)} placeholder="36.8" className="h-9 rounded-xl font-mono font-bold text-xs" />
                     </div>
                     <div className="space-y-1 text-left">
                       <label className="text-[9px] font-bold text-slate-400">Huyết áp (mmHg)</label>
-                      <Input value={bloodPressure} onChange={(e) => setBloodPressure(e.target.value)} placeholder="120/80" className="h-9 rounded-lg font-mono font-bold text-xs bg-white" />
+                      <Input value={bloodPressure} onChange={(e) => setBloodPressure(e.target.value)} placeholder="120/80" className="h-9 rounded-xl font-mono font-bold text-xs" />
                     </div>
                     <div className="space-y-1 text-left">
                       <label className="text-[9px] font-bold text-slate-400">Nhịp tim (bpm)</label>
-                      <Input value={heartRate} onChange={(e) => setHeartRate(e.target.value)} placeholder="75" className="h-9 rounded-lg font-mono font-bold text-xs bg-white" />
+                      <Input value={heartRate} onChange={(e) => setHeartRate(e.target.value)} placeholder="75" className="h-9 rounded-xl font-mono font-bold text-xs" />
                     </div>
                     <div className="space-y-1 text-left">
                       <label className="text-[9px] font-bold text-slate-400">SpO₂ (%)</label>
-                      <Input value={spo2} onChange={(e) => setSpo2(e.target.value)} placeholder="98" className="h-9 rounded-lg font-mono font-bold text-xs bg-white" />
+                      <Input value={spo2} onChange={(e) => setSpo2(e.target.value)} placeholder="98" className="h-9 rounded-xl font-mono font-bold text-xs" />
                     </div>
-                    <div className="space-y-1 text-left col-span-2">
-                      <label className="text-[9px] font-bold text-slate-400">Đường huyết (nếu có)</label>
-                      <Input value={bloodSugar} onChange={(e) => setBloodSugar(e.target.value)} placeholder="VD: 95 mg/dL" className="h-9 rounded-lg font-mono font-bold text-xs bg-white" />
+                    <div className="space-y-1 text-left">
+                      <label className="text-[9px] font-bold text-slate-400">Đường huyết</label>
+                      <Input value={bloodSugar} onChange={(e) => setBloodSugar(e.target.value)} placeholder="95 mg/dL" className="h-9 rounded-xl font-mono font-bold text-xs" />
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-1.5 text-left">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Thuốc đã sử dụng</Label>
-                  <Input value={medications} onChange={(e) => setMedications(e.target.value)} placeholder="VD: Paracetamol 500mg, NaCl 0.9% 500ml..." className="h-10 rounded-xl font-bold text-xs" />
+                  <Input value={medications} onChange={(e) => setMedications(e.target.value)} placeholder="VD: Paracetamol 500mg, NaCl 0.9% 500ml..." className="h-9 rounded-xl font-bold text-xs" />
                 </div>
 
                 <div className="space-y-1.5 text-left">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Đánh giá tình trạng bệnh nhân <span className="text-red-400">*</span></Label>
-                  <Textarea value={assessment} onChange={(e) => setAssessment(e.target.value)} required rows={2} placeholder="Đánh giá chi tiết sau ca chăm sóc..." className="rounded-xl font-bold text-xs resize-none" />
+                  <Textarea value={assessment} onChange={(e) => setAssessment(e.target.value)} required rows={1} placeholder="Đánh giá chi tiết sau ca chăm sóc..." className="rounded-xl font-bold text-xs resize-none min-h-[42px]" />
                 </div>
 
-                <div className="space-y-1.5 text-left">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ghi chú thêm</Label>
-                  <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Dặn dò gia đình, dặn theo dõi..." className="h-10 rounded-xl font-bold text-xs" />
-                </div>
-
-                <div className="space-y-1.5 text-left">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Hình ảnh đính kèm (URL nếu có)</Label>
-                  <Input value={attachment} onChange={(e) => setAttachment(e.target.value)} placeholder="https://..." className="h-10 rounded-xl font-bold text-xs" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ghi chú thêm</Label>
+                    <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Dặn dò gia đình, dặn theo dõi..." className="h-9 rounded-xl font-bold text-xs" />
+                  </div>
+                  <FileUploadField value={attachment} onChange={setAttachment} />
                 </div>
               </div>
 
               <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3">
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl h-10 px-5 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500">Hủy</Button>
-                <Button type="submit" disabled={!assessment || submitting} className="rounded-xl h-10 px-6 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md">
-                  {submitting ? "Đang lưu..." : "Lưu nhật ký chăm sóc"}
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-full h-10 px-6 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">Hủy</Button>
+                <Button type="submit" disabled={!assessment || submitting} className="rounded-full h-10 px-8 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md hover:opacity-95 group">
+                  {submitting ? "Đang lưu..." : <><span>Lưu nhật ký chăm sóc</span><Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" /></>}
                 </Button>
               </DialogFooter>
             </form>
-          )}
-        </AnimatePresence>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function EditCareLogDialog({
+  log,
+  staff,
+  open,
+  onOpenChange,
+  onUpdated,
+}: {
+  log: CareLog;
+  staff: Staff[];
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onUpdated: (log: CareLog) => void;
+}) {
+  const [careDate, setCareDate] = React.useState(log.careDate || "");
+  const [staffName, setStaffName] = React.useState(log.staffName || "");
+  const [serviceName, setServiceName] = React.useState(log.serviceName || "");
+  const [temperature, setTemperature] = React.useState(log.temperature || "");
+  const [bloodPressure, setBloodPressure] = React.useState(log.bloodPressure || "");
+  const [heartRate, setHeartRate] = React.useState(log.heartRate || "");
+  const [spo2, setSpo2] = React.useState(log.spo2 || "");
+  const [bloodSugar, setBloodSugar] = React.useState(log.bloodSugar || "");
+  const [medications, setMedications] = React.useState(log.medications || "");
+  const [notes, setNotes] = React.useState(log.notes || "");
+  const [assessment, setAssessment] = React.useState(log.assessment || "");
+  const [attachment, setAttachment] = React.useState(log.attachment || "");
+  const [submitting, setSubmitting] = React.useState(false);
+
+  const validStaff = staff.filter((s) => s.id !== "PENDING");
+
+  React.useEffect(() => {
+    if (open) {
+      setCareDate(log.careDate || "");
+      setStaffName(log.staffName || (validStaff.length > 0 ? validStaff[0].name : ""));
+      setServiceName(log.serviceName || "");
+      setTemperature(log.temperature || "");
+      setBloodPressure(log.bloodPressure || "");
+      setHeartRate(log.heartRate || "");
+      setSpo2(log.spo2 || "");
+      setBloodSugar(log.bloodSugar || "");
+      setMedications(log.medications || "");
+      setNotes(log.notes || "");
+      setAssessment(log.assessment || "");
+      setAttachment(log.attachment || "");
+    }
+  }, [open, log]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const payload = {
+        staffName,
+        serviceName,
+        careDate,
+        temperature: temperature || null,
+        bloodPressure: bloodPressure || null,
+        heartRate: heartRate || null,
+        spo2: spo2 || null,
+        bloodSugar: bloodSugar || null,
+        medications: medications || null,
+        notes: notes || null,
+        assessment: assessment || null,
+        attachment: attachment || null,
+      };
+
+      const res = await authFetch(`${API_URL}/care-logs/${log.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error("Cập nhật thất bại");
+      const updated = await res.json();
+      onUpdated(updated);
+      onOpenChange(false);
+    } catch (err) {
+      console.error("Lỗi cập nhật nhật ký:", err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[900px] rounded-[28px] border-hairline shadow-2xl p-0 overflow-hidden bg-white">
+        <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500" />
+        <form onSubmit={handleSubmit} className="py-8 px-7 space-y-4">
+          <DialogHeader className="flex flex-row items-center gap-3 space-y-0 pb-4 border-b border-slate-100">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md">
+              <Pencil className="w-4 h-4" />
+            </div>
+            <div className="text-left flex-1">
+              <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">Chỉnh sửa nhật ký chăm sóc</DialogTitle>
+              <DialogDescription className="text-slate-500 mt-1 text-[10px] font-semibold">Cập nhật sinh hiệu, thuốc đã sử dụng và đánh giá của ca #{log.id.slice(0, 8)}.</DialogDescription>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-3.5">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5 text-left">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Thời gian chăm sóc</Label>
+                <Input value={careDate} onChange={(e) => setCareDate(e.target.value)} required className="h-9 rounded-xl font-bold text-xs" />
+              </div>
+              <div className="space-y-1.5 text-left">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nhân viên thực hiện</Label>
+                <Select value={staffName} onValueChange={(v) => setStaffName(v ?? "")}>
+                  <SelectTrigger className="h-9 rounded-xl font-bold text-xs"><SelectValue placeholder="Chọn nhân viên..." /></SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {validStaff.map((s) => <SelectItem key={s.id} value={s.name} className="font-bold text-xs">{s.name} ({s.role.split("•")[0]})</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 text-left">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Dịch vụ đã thực hiện</Label>
+              <Input value={serviceName} onChange={(e) => setServiceName(e.target.value)} required placeholder="VD: Truyền dịch y tế, Phục hồi chức năng..." className="h-9 rounded-xl font-bold text-xs" />
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-left">Chỉ số sinh hiệu bệnh nhân</p>
+              <div className="grid grid-cols-5 gap-2.5">
+                <div className="space-y-1 text-left">
+                  <label className="text-[9px] font-bold text-slate-400">Nhiệt độ (°C)</label>
+                  <Input value={temperature} onChange={(e) => setTemperature(e.target.value)} placeholder="36.8" className="h-9 rounded-xl font-mono font-bold text-xs" />
+                </div>
+                <div className="space-y-1 text-left">
+                  <label className="text-[9px] font-bold text-slate-400">Huyết áp (mmHg)</label>
+                  <Input value={bloodPressure} onChange={(e) => setBloodPressure(e.target.value)} placeholder="120/80" className="h-9 rounded-xl font-mono font-bold text-xs" />
+                </div>
+                <div className="space-y-1 text-left">
+                  <label className="text-[9px] font-bold text-slate-400">Nhịp tim (bpm)</label>
+                  <Input value={heartRate} onChange={(e) => setHeartRate(e.target.value)} placeholder="75" className="h-9 rounded-xl font-mono font-bold text-xs" />
+                </div>
+                <div className="space-y-1 text-left">
+                  <label className="text-[9px] font-bold text-slate-400">SpO₂ (%)</label>
+                  <Input value={spo2} onChange={(e) => setSpo2(e.target.value)} placeholder="98" className="h-9 rounded-lg font-mono font-bold text-xs" />
+                </div>
+                <div className="space-y-1 text-left">
+                  <label className="text-[9px] font-bold text-slate-400">Đường huyết</label>
+                  <Input value={bloodSugar} onChange={(e) => setBloodSugar(e.target.value)} placeholder="95 mg/dL" className="h-9 rounded-lg font-mono font-bold text-xs" />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 text-left">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Thuốc đã sử dụng</Label>
+              <Input value={medications} onChange={(e) => setMedications(e.target.value)} placeholder="VD: Paracetamol 500mg, NaCl 0.9%..." className="h-9 rounded-xl font-bold text-xs" />
+            </div>
+
+            <div className="space-y-1.5 text-left">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Đánh giá tình trạng bệnh nhân <span className="text-red-400">*</span></Label>
+              <Textarea value={assessment} onChange={(e) => setAssessment(e.target.value)} rows={1} placeholder="Đánh giá chi tiết sau ca chăm sóc..." className="rounded-xl font-bold text-xs resize-none min-h-[42px]" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5 text-left">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ghi chú thêm</Label>
+                <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Dặn dò gia đình, dặn theo dõi..." className="h-9 rounded-xl font-bold text-xs" />
+              </div>
+              <FileUploadField value={attachment} onChange={setAttachment} />
+            </div>
+          </div>
+
+          <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-full h-10 px-6 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">Hủy</Button>
+            <Button type="submit" disabled={submitting} className="rounded-full h-10 px-8 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md hover:opacity-95 group">
+              {submitting ? "Đang lưu..." : <><span>Cập nhật nhật ký</span><Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" /></>}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CareLogItem({
+  log,
+  staff,
+  onDelete,
+  onUpdate,
+}: {
+  log: CareLog;
+  staff: Staff[];
+  onDelete: (id: string) => void;
+  onUpdate: (updated: CareLog) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [editOpen, setEditOpen] = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await authFetch(`${API_URL}/care-logs/${log.id}`, { method: "DELETE" });
+      onDelete(log.id);
+    } catch (err) {
+      console.error("Lỗi xóa nhật ký:", err);
+    }
+  };
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-[20px] border border-hairline overflow-hidden shadow-2xs hover:shadow-md transition-all"
+      >
+        {/* Compact Header (Always Visible & Clickable) */}
+        <div
+          onClick={() => setOpen(!open)}
+          className="px-5 py-3 flex items-center justify-between cursor-pointer hover:bg-slate-50/80 transition-colors select-none"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+              <Stethoscope className="w-4 h-4" />
+            </div>
+            <div className="text-left">
+              <p className="text-xs font-black text-slate-900 uppercase tracking-tight">
+                {log.serviceName || "Chăm sóc y tế"}
+              </p>
+              <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                👤 Thực hiện: <strong className="text-slate-800">{log.staffName}</strong> · 📅 {log.careDate}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-[9px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg border border-slate-200">
+              #{log.id.slice(0, 8)}
+            </span>
+            <div className="flex items-center gap-1 text-[10px] font-black uppercase text-primary bg-primary/10 px-2.5 py-1 rounded-xl">
+              <span>{open ? "Thu gọn" : "Xem chi tiết"}</span>
+              <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", open && "rotate-180")} />
+            </div>
+          </div>
+        </div>
+
+        {/* Expanded Content Details */}
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden border-t border-slate-100 bg-slate-50/50 p-5 text-left space-y-4"
+            >
+              {/* Vitals pills */}
+              <div className="flex flex-wrap gap-2.5">
+                {log.temperature && (
+                  <div className="flex items-center gap-1.5 bg-red-50 text-red-700 border border-red-100 px-2.5 py-1 rounded-xl text-[10px] font-bold">
+                    <Thermometer className="w-3.5 h-3.5 text-red-500" />
+                    <span>Nhiệt độ: <strong>{log.temperature}</strong></span>
+                  </div>
+                )}
+                {log.bloodPressure && (
+                  <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-100 px-2.5 py-1 rounded-xl text-[10px] font-bold">
+                    <Activity className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Huyết áp: <strong>{log.bloodPressure}</strong></span>
+                  </div>
+                )}
+                {log.heartRate && (
+                  <div className="flex items-center gap-1.5 bg-rose-50 text-rose-700 border border-rose-100 px-2.5 py-1 rounded-xl text-[10px] font-bold">
+                    <Heart className="w-3.5 h-3.5 text-rose-500" />
+                    <span>Nhịp tim: <strong>{log.heartRate}</strong></span>
+                  </div>
+                )}
+                {log.spo2 && (
+                  <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-100 px-2.5 py-1 rounded-xl text-[10px] font-bold">
+                    <Activity className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>SpO₂: <strong>{log.spo2}</strong></span>
+                  </div>
+                )}
+                {log.bloodSugar && (
+                  <div className="flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-100 px-2.5 py-1 rounded-xl text-[10px] font-bold">
+                    <span>Đường huyết: <strong>{log.bloodSugar}</strong></span>
+                  </div>
+                )}
+              </div>
+
+              {/* Assessment & Medications */}
+              <div className="space-y-2 text-xs text-slate-700">
+                {log.assessment && (
+                  <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs">
+                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Đánh giá tình trạng bệnh nhân</p>
+                    <p className="font-semibold text-slate-800 mt-1 leading-relaxed">{log.assessment}</p>
+                  </div>
+                )}
+                {log.medications && (
+                  <div className="flex items-start gap-2 text-[11px] font-medium text-slate-600">
+                    <Pill className="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-0.5" />
+                    <span><strong className="text-slate-800">Thuốc đã dùng:</strong> {log.medications}</span>
+                  </div>
+                )}
+                {log.notes && (
+                  <p className="text-[10px] italic text-slate-500">📝 Ghi chú: {log.notes}</p>
+                )}
+                {log.attachment && (
+                  <div className="pt-2">
+                    <p className="text-[9px] font-black uppercase text-slate-400 mb-1.5">Hình ảnh đính kèm</p>
+                    <img src={log.attachment} alt="care log attachment" className="w-24 h-24 object-cover rounded-xl border border-slate-200 shadow-xs" />
+                  </div>
+                )}
+              </div>
+
+              {/* Action buttons: Sửa & Xóa */}
+              <div className="pt-3 border-t border-slate-200/80 flex items-center justify-end gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => { e.stopPropagation(); setEditOpen(true); }}
+                  className="h-8 px-3 text-[10px] font-black uppercase tracking-wider rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50"
+                >
+                  <Pencil className="w-3.5 h-3.5 mr-1" /> Sửa
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => { e.stopPropagation(); setDeleteOpen(true); }}
+                  className="h-8 px-3 text-[10px] font-black uppercase tracking-wider rounded-xl border-red-200 text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1" /> Xóa
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
+      <EditCareLogDialog
+        log={log}
+        staff={staff}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onUpdated={onUpdate}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-[420px] rounded-[28px] border border-red-100 shadow-2xl p-0 overflow-hidden bg-white">
+          <div className="h-1.5 w-full bg-gradient-to-r from-red-400 to-rose-500" />
+          <div className="p-6">
+            <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-4 mb-4 text-left">
+              <div className="w-11 h-11 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-500 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">Xác nhận xóa</DialogTitle>
+                <DialogDescription className="text-slate-500 mt-1.5 text-[11px] font-semibold">Hành động này không thể hoàn tác.</DialogDescription>
+              </div>
+            </DialogHeader>
+            <div className="bg-red-50/80 border border-red-100 rounded-xl p-4 space-y-1.5 mb-5 text-left">
+              <p className="text-xs font-black text-slate-800 uppercase tracking-tight">{log.serviceName || "Nhật ký chăm sóc"}</p>
+              <p className="text-[10px] font-bold text-slate-500">👤 {log.staffName} · 📅 {log.careDate}</p>
+              <p className="text-[10px] font-bold text-slate-500">Mã: <span className="text-slate-700 font-mono">#{log.id.slice(0, 8)}</span></p>
+            </div>
+            <DialogFooter className="flex-col sm:flex-col gap-2">
+              <Button
+                onClick={() => { handleDeleteConfirm(); setDeleteOpen(false); }}
+                className="w-full rounded-xl h-11 text-xs font-black uppercase tracking-[0.15em] bg-gradient-to-r from-red-500 to-rose-600 text-white hover:opacity-95 shadow-md shadow-red-200 border-b-2 border-white/10 active:border-b-0 active:translate-y-0.5"
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-2" /> Xóa vĩnh viễn
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteOpen(false)}
+                className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50"
+              >
+                Giữ lại
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
 function PatientRow({
   patient,
   staff,
+  allVisits = [],
   onEdit,
   onDelete,
   onApprove,
 }: {
   patient: Patient;
   staff: Staff[];
+  allVisits?: Visit[];
   onEdit: (p: Patient) => void;
   onDelete: (id: string) => void;
   onApprove: (id: string) => void;
@@ -883,9 +1259,14 @@ function PatientRow({
   const [careLogs, setCareLogs] = React.useState<CareLog[]>([]);
   const [loadingCareLogs, setLoadingCareLogs] = React.useState(false);
 
-  const assignedStaffMembers = staff.filter((s) =>
-    patient.assignedStaff.includes(s.id),
-  );
+  const [careLogPage, setCareLogPage] = React.useState(1);
+  const CARE_LOGS_PER_PAGE = 4;
+  const [visitTabPage, setVisitTabPage] = React.useState(1);
+  const VISITS_TAB_PER_PAGE = 4;
+
+  const assignedStaffMembers = staff
+    .filter((s) => s.id !== "PENDING" && patient.assignedStaff?.includes(s.id))
+    .slice(-1);
 
   const fetchCareLogs = React.useCallback(() => {
     setLoadingCareLogs(true);
@@ -1139,15 +1520,66 @@ function PatientRow({
                       </h4>
                     </div>
                     <div className="bg-white rounded-[24px] border border-hairline overflow-hidden divide-y divide-hairline">
-                      <div className="p-4 flex items-center justify-between hover:bg-slate-50">
-                        <div>
-                          <p className="text-xs font-black text-slate-800">Thăm khám định kỳ tại nhà</p>
-                          <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Mới nhất · Phiên dịch vụ chuẩn</p>
-                        </div>
-                        <span className="text-[10px] font-black uppercase bg-emerald-50 text-emerald-600 border border-emerald-200 px-2.5 py-1 rounded-lg">
-                          Đã hoàn tất
-                        </span>
-                      </div>
+                      {(() => {
+                        const patientVisits = (allVisits || []).filter(
+                          (v) =>
+                            v.patientId === patient.id ||
+                            (v.patientName && v.patientName.toLowerCase() === patient.name.toLowerCase()) ||
+                            (v.userName && v.userName.toLowerCase() === patient.name.toLowerCase())
+                        );
+                        if (patientVisits.length === 0) {
+                          return (
+                            <div className="p-8 text-center text-xs font-bold text-slate-400">
+                              Chưa có lịch sử thăm khám nào.
+                            </div>
+                          );
+                        }
+                        const totalVisitPages = Math.max(1, Math.ceil(patientVisits.length / VISITS_TAB_PER_PAGE));
+                        const safeVisitPage = Math.min(visitTabPage, totalVisitPages);
+                        const paginatedVisits = patientVisits.slice(
+                          (safeVisitPage - 1) * VISITS_TAB_PER_PAGE,
+                          safeVisitPage * VISITS_TAB_PER_PAGE
+                        );
+                        return (
+                          <>
+                            {paginatedVisits.map((v) => (
+                              <div key={v.id} className="p-4 flex items-center justify-between hover:bg-slate-50">
+                                <div>
+                                  <p className="text-xs font-black text-slate-800">{v.type || "Khám bệnh tại nhà"}</p>
+                                  <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                                    📅 {v.date || "Chưa chọn ngày"} ({v.time}) · 👤 Người khám: <strong className="text-slate-800">{v.staffName || "Chưa phân công"}</strong>
+                                  </p>
+                                </div>
+                                <span
+                                  className={cn(
+                                    "text-[10px] font-black uppercase px-2.5 py-1 rounded-lg border",
+                                    v.status === "Đã hoàn tất"
+                                      ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                                      : v.status === "Đã xác nhận"
+                                        ? "bg-blue-50 text-blue-600 border-blue-200"
+                                        : "bg-amber-50 text-amber-600 border-amber-200"
+                                  )}
+                                >
+                                  {v.status}
+                                </span>
+                              </div>
+                            ))}
+                            {patientVisits.length > VISITS_TAB_PER_PAGE && (
+                              <div className="p-3.5 bg-slate-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-hairline">
+                                <span className="text-[10px] font-bold text-slate-500">
+                                  Hiển thị <span className="font-mono font-black text-slate-800">{(safeVisitPage - 1) * VISITS_TAB_PER_PAGE + 1}-{Math.min(safeVisitPage * VISITS_TAB_PER_PAGE, patientVisits.length)}</span> / <span className="font-mono font-black text-slate-800">{patientVisits.length}</span> lịch hẹn
+                                </span>
+                                <Pagination
+                                  currentPage={safeVisitPage}
+                                  totalPages={totalVisitPages}
+                                  onPageChange={setVisitTabPage}
+                                  className="py-0"
+                                />
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}
@@ -1187,88 +1619,42 @@ function PatientRow({
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {careLogs.map((log) => (
-                          <motion.div
-                            key={log.id}
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="bg-white rounded-[24px] border border-hairline p-6 shadow-sm hover:shadow-md transition-all space-y-4"
-                          >
-                            {/* Header log */}
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-                                  <Stethoscope className="w-4.5 h-4.5" />
-                                </div>
-                                <div>
-                                  <p className="text-xs font-black text-slate-900 uppercase tracking-tight">{log.serviceName || "Chăm sóc y tế"}</p>
-                                  <p className="text-[10px] text-slate-500 font-semibold">👤 Thực hiện: <strong className="text-slate-800">{log.staffName}</strong> · 📅 {log.careDate}</p>
-                                </div>
-                              </div>
-                              <span className="text-[9px] font-mono font-bold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-lg border border-slate-200">
-                                #{log.id.slice(0, 8)}
-                              </span>
-                            </div>
+                        {(() => {
+                          const totalLogPages = Math.max(1, Math.ceil(careLogs.length / CARE_LOGS_PER_PAGE));
+                          const safeLogPage = Math.min(careLogPage, totalLogPages);
+                          const paginatedLogs = careLogs.slice(
+                            (safeLogPage - 1) * CARE_LOGS_PER_PAGE,
+                            safeLogPage * CARE_LOGS_PER_PAGE
+                          );
 
-                            {/* Vitals pills */}
-                            <div className="flex flex-wrap gap-3">
-                              {log.temperature && (
-                                <div className="flex items-center gap-1.5 bg-red-50 text-red-700 border border-red-100 px-3 py-1.5 rounded-xl text-[10px] font-bold">
-                                  <Thermometer className="w-3.5 h-3.5 text-red-500" />
-                                  <span>Nhiệt độ: <strong>{log.temperature}</strong></span>
-                                </div>
-                              )}
-                              {log.bloodPressure && (
-                                <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1.5 rounded-xl text-[10px] font-bold">
-                                  <Activity className="w-3.5 h-3.5 text-blue-500" />
-                                  <span>Huyết áp: <strong>{log.bloodPressure}</strong></span>
-                                </div>
-                              )}
-                              {log.heartRate && (
-                                <div className="flex items-center gap-1.5 bg-rose-50 text-rose-700 border border-rose-100 px-3 py-1.5 rounded-xl text-[10px] font-bold">
-                                  <Heart className="w-3.5 h-3.5 text-rose-500" />
-                                  <span>Nhịp tim: <strong>{log.heartRate}</strong></span>
-                                </div>
-                              )}
-                              {log.spo2 && (
-                                <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-100 px-3 py-1.5 rounded-xl text-[10px] font-bold">
-                                  <Activity className="w-3.5 h-3.5 text-emerald-500" />
-                                  <span>SpO₂: <strong>{log.spo2}</strong></span>
-                                </div>
-                              )}
-                              {log.bloodSugar && (
-                                <div className="flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-100 px-3 py-1.5 rounded-xl text-[10px] font-bold">
-                                  <span>Đường huyết: <strong>{log.bloodSugar}</strong></span>
-                                </div>
-                              )}
-                            </div>
+                          return (
+                            <>
+                              {paginatedLogs.map((log) => (
+                                <CareLogItem
+                                  key={log.id}
+                                  log={log}
+                                  staff={staff}
+                                  onDelete={(id) => setCareLogs((prev) => prev.filter((l) => l.id !== id))}
+                                  onUpdate={(updated) => setCareLogs((prev) => prev.map((l) => (l.id === updated.id ? updated : l)))}
+                                />
+                              ))}
 
-                            {/* Assessment & Medications */}
-                            <div className="space-y-2 text-xs text-slate-700">
-                              {log.assessment && (
-                                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-                                  <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Đánh giá tình trạng bệnh nhân</p>
-                                  <p className="font-semibold text-slate-800 mt-1 leading-relaxed">{log.assessment}</p>
+                              {careLogs.length > CARE_LOGS_PER_PAGE && (
+                                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100">
+                                  <span className="text-[10px] font-bold text-slate-500">
+                                    Hiển thị <span className="font-mono font-black text-slate-800">{(safeLogPage - 1) * CARE_LOGS_PER_PAGE + 1}-{Math.min(safeLogPage * CARE_LOGS_PER_PAGE, careLogs.length)}</span> / <span className="font-mono font-black text-slate-800">{careLogs.length}</span> nhật ký
+                                  </span>
+                                  <Pagination
+                                    currentPage={safeLogPage}
+                                    totalPages={totalLogPages}
+                                    onPageChange={setCareLogPage}
+                                    className="py-0"
+                                  />
                                 </div>
                               )}
-                              {log.medications && (
-                                <div className="flex items-start gap-2 text-[11px] font-medium text-slate-600">
-                                  <Pill className="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-0.5" />
-                                  <span><strong className="text-slate-800">Thuốc đã dùng:</strong> {log.medications}</span>
-                                </div>
-                              )}
-                              {log.notes && (
-                                <p className="text-[10px] italic text-slate-500">📝 Ghi chú: {log.notes}</p>
-                              )}
-                              {log.attachment && (
-                                <div className="pt-2">
-                                  <p className="text-[9px] font-black uppercase text-slate-400 mb-1.5">Hình ảnh đính kèm</p>
-                                  <img src={log.attachment} alt="care log attachment" className="w-24 h-24 object-cover rounded-xl border border-slate-200 shadow-xs" />
-                                </div>
-                              )}
-                            </div>
-                          </motion.div>
-                        ))}
+                            </>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
@@ -1321,8 +1707,22 @@ export default function PatientsPage() {
 
   const [syncing, setSyncing] = React.useState(false);
 
+  const sortByNewestDate = React.useCallback((a: any, b: any) => {
+    const dateA = a.date || a.lastVisit || "";
+    const dateB = b.date || b.lastVisit || "";
+    if (dateA !== dateB) {
+      return dateB.localeCompare(dateA); // Newest date first (2026-07-27 > 2026-07-26)
+    }
+    const timeA = a.time || a.startTime || a.lastVisitTime || "";
+    const timeB = b.time || b.startTime || b.lastVisitTime || "";
+    return timeB.localeCompare(timeA);
+  }, []);
+
   const syncPatients = React.useCallback(async (silent = false) => {
-    if (!silent) setSyncing(true);
+    if (!silent) {
+      setSyncing(true);
+      show("ĐANG ĐỒNG BỘ DỮ LIỆU BỆNH NHÂN...");
+    }
     try {
       await authFetch(`${API_URL}/visits/sync-patients`, { method: "POST" });
       // Reload patients after sync
@@ -1331,7 +1731,7 @@ export default function PatientsPage() {
           authFetch(`${API_URL}/patients`).then((r) => r.json()),
           fetch(`${API_URL}/staff`).then((r) => r.json()),
         ]).then(([p, s]) => {
-          setPatientList(Array.isArray(p) ? p : []);
+          setPatientList(Array.isArray(p) ? [...p].sort(sortByNewestDate) : []);
           setStaffList(Array.isArray(s) ? s : []);
           resolve();
         }).catch(() => resolve());
@@ -1339,32 +1739,40 @@ export default function PatientsPage() {
     } catch (err) {
       console.error("Sync error:", err);
     } finally {
-      if (!silent) setSyncing(false);
+      if (!silent) {
+        setSyncing(false);
+        hide();
+      }
     }
-  }, []);
+  }, [sortByNewestDate, show, hide]);
 
   // Tải dữ liệu bệnh nhân + nhân viên (có thể gọi lại để refresh)
   const loadData = React.useCallback(async () => {
     setLoading(true);
+    show("ĐANG TẢI DỮ LIỆU BỆNH NHÂN...");
     try {
-      const [patientsData, staffData] = await Promise.all([
-        authFetch(`${API_URL}/patients`).then((res) => {
-          if (!res.ok) throw new Error("Không thể tải danh sách bệnh nhân");
-          return res.json();
-        }),
-        fetch(`${API_URL}/staff`).then((res) => {
-          if (!res.ok) throw new Error("Không thể tải danh sách nhân viên");
-          return res.json();
-        }),
-      ]);
-      setPatientList(Array.isArray(patientsData) ? patientsData : []);
-      setStaffList(Array.isArray(staffData) ? staffData : []);
+      // Fetch patients and staff independently so one failure doesn't block the other
+      const patientsRes = await authFetch(`${API_URL}/patients`);
+      if (patientsRes.ok) {
+        const patientsData = await patientsRes.json();
+        setPatientList(Array.isArray(patientsData) ? [...patientsData].sort(sortByNewestDate) : []);
+      } else {
+        const errBody = await patientsRes.text().catch(() => "");
+        console.error(`[PatientsPage] /patients trả ${patientsRes.status}:`, errBody);
+      }
+
+      const staffRes = await fetch(`${API_URL}/staff`);
+      if (staffRes.ok) {
+        const staffData = await staffRes.json();
+        setStaffList(Array.isArray(staffData) ? staffData : []);
+      }
     } catch (err: any) {
       console.error("[PatientsPage] Lỗi tải dữ liệu:", err?.message ?? err);
     } finally {
       setLoading(false);
+      hide();
     }
-  }, []);
+  }, [sortByNewestDate, show, hide]);
 
   React.useEffect(() => {
     // Tải dữ liệu ban đầu, sau đó tự động đồng bộ các lịch đã xác nhận
@@ -1374,7 +1782,7 @@ export default function PatientsPage() {
         await authFetch(`${API_URL}/visits/sync-patients`, { method: "POST" });
         // Reload patients after sync to pick up any newly linked profiles
         const freshPatients = await authFetch(`${API_URL}/patients`).then((r) => r.json());
-        setPatientList(Array.isArray(freshPatients) ? freshPatients : []);
+        setPatientList(Array.isArray(freshPatients) ? [...freshPatients].sort(sortByNewestDate) : []);
       } catch (err: any) {
         console.warn("[PatientsPage] Đồng bộ lịch hẹn thất bại:", err?.message ?? err);
       }
@@ -1387,16 +1795,16 @@ export default function PatientsPage() {
       .then((res) => { if (!res.ok) throw new Error(); return res.json(); })
       .then((data) => {
         const userVisits = Array.isArray(data)
-          ? data.filter((v: Visit) => v.userId).reverse()
+          ? [...data.filter((v: Visit) => v.userId)].sort(sortByNewestDate)
           : [];
         setVisitList(userVisits);
       })
       .catch(() => setVisitList([]))
       .finally(() => setLoadingVisits(false));
-  }, [loadData]);
+  }, [loadData, sortByNewestDate]);
 
   const handleAddPatient = async (newPatient: Patient) => {
-    show("Đang thêm bệnh nhân...")
+    show("ĐANG THÊM BỆNH NHÂN...");
     try {
       const res = await authFetch(`${API_URL}/patients`, {
         method: "POST",
@@ -1412,9 +1820,8 @@ export default function PatientsPage() {
     }
   };
 
-
   const handleEditPatient = async (updatedPatient: Patient) => {
-    show("Đang cập nhật...")
+    show("ĐANG CẬP NHẬT BỆNH NHÂN...");
     try {
       const res = await authFetch(`${API_URL}/patients/${updatedPatient.id}`, {
         method: "PUT",
@@ -1431,7 +1838,7 @@ export default function PatientsPage() {
   };
 
   const handleApprovePatient = async (id: string) => {
-    show("Đang phê duyệt...")
+    show("ĐANG PHÊ DUYỆT BỆNH NHÂN...");
     try {
       const res = await authFetch(`${API_URL}/patients/${id}`, {
         method: "PUT",
@@ -1449,6 +1856,7 @@ export default function PatientsPage() {
 
   // Approve a visit from app → automatically creates patient record on SQL Server backend
   const handleApproveVisit = (visit: Visit) => {
+    show("ĐANG PHÊ DUYỆT LỊCH HẸN...");
     authFetch(`${API_URL}/visits/${visit.id}`, {
       method: "PUT",
       body: JSON.stringify({ status: "Đã xác nhận" }),
@@ -1467,11 +1875,14 @@ export default function PatientsPage() {
       })
       .catch((err) => {
         console.error("[PatientsPage] Lỗi duyệt lịch hẹn:", err);
+      })
+      .finally(() => {
+        hide();
       });
   };
 
   const handleDeletePatient = async (id: string) => {
-    show("Đang xóa bệnh nhân...")
+    show("ĐANG XÓA BỆNH NHÂN...");
     try {
       const res = await authFetch(`${API_URL}/patients/${id}`, {
         method: "DELETE",
@@ -1585,7 +1996,7 @@ export default function PatientsPage() {
             Hệ thống quản lý bệnh án số hóa theo tiêu chuẩn lâm sàng đồng bộ thời gian thực. Theo dõi sát sao quá trình hồi phục và lịch trình thăm khám tại gia.
           </p>
         </motion.div>
-        <div className="shrink-0 relative group flex items-center gap-3">
+        <div className="shrink-0 relative group">
           <Button
             variant="outline"
             onClick={() => syncPatients(false)}
@@ -1596,7 +2007,6 @@ export default function PatientsPage() {
             {syncing ? "Đang đồng bộ..." : "Đồng bộ lịch hẹn"}
           </Button>
           <div className="absolute -inset-4 bg-primary/5 rounded-[40px] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-          <AddPatientDialog onAdd={handleAddPatient} staff={staffList} />
         </div>
       </div>
 
@@ -1651,9 +2061,8 @@ export default function PatientsPage() {
         <div className="h-1.5 w-full bg-linear-to-r from-primary/10 via-primary to-primary/10 opacity-50" />
 
         <div className="overflow-x-auto">
-          {loading ? (
-            <div className="py-24 flex flex-col items-center justify-center gap-4">
-              <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          {loading && patientList.length === 0 ? (
+            <div className="py-24 text-center">
               <p className="text-xs font-black uppercase tracking-widest text-slate-400">
                 Đang đồng bộ dữ liệu hệ thống...
               </p>
@@ -1686,6 +2095,7 @@ export default function PatientsPage() {
                       key={patient.id}
                       patient={patient}
                       staff={staffList}
+                      allVisits={visitList}
                       onEdit={handleEditPatient}
                       onDelete={handleDeletePatient}
                       onApprove={handleApprovePatient}

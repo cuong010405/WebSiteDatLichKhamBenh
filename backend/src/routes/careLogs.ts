@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getCareLogsByPatient, createCareLog, deleteCareLog } from "../services/careLog";
+import { getCareLogsByPatient, createCareLog, updateCareLog, deleteCareLog } from "../services/careLog";
 import { requireAuth } from "../middleware/auth";
 
 const router = Router();
@@ -19,6 +19,16 @@ router.post("/", requireAuth, async (req, res) => {
   try {
     const newLog = await createCareLog(req.body);
     res.status(201).json(newLog);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message || "Yêu cầu không hợp lệ" });
+  }
+});
+
+// PUT update care log
+router.put("/:id", requireAuth, async (req, res) => {
+  try {
+    const updated = await updateCareLog(req.params.id, req.body);
+    res.json(updated);
   } catch (error: any) {
     res.status(400).json({ error: error.message || "Yêu cầu không hợp lệ" });
   }

@@ -53,32 +53,33 @@ function mapStaffToDb(s: any) {
 const BUSY_VISIT_STATUSES = ["CONFIRMED", "IN_PROGRESS", "ĐÃ XÁC NHẬN", "ĐANG THỰC HIỆN"];
 
 function isTodayVisit(v: any): boolean {
-  const visitDateStr = (v.Date || v.date || "").trim();
-  if (!visitDateStr) return true; // Nếu không có ngày, mặc định coi như ca hôm nay
+  try {
+    if (!v) return false;
+    const visitDateStr = (v.Date || v.date || "").trim();
+    if (!visitDateStr) return true;
 
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
 
-  const todaySlash = `${day}/${month}/${year}`;
-  const todayDash = `${year}-${month}-${day}`;
+    const todaySlash = `${day}/${month}/${year}`;
+    const todayDash = `${year}-${month}-${day}`;
 
-  if (visitDateStr === todaySlash || visitDateStr === todayDash) return true;
+    if (visitDateStr === todaySlash || visitDateStr === todayDash) return true;
 
-  // Xử lý gói dịch vụ nhiều ngày (7 ngày, 14 ngày, 30 ngày)
-  const combined = `${v.PackagePlan || ""} ${v.packagePlan || ""} ${v.Duration || ""} ${v.duration || ""}`.toLowerCase();
-  if (combined.includes("7day") || combined.includes("14day") || combined.includes("30day") || combined.includes("gói") || combined.includes("ngày")) {
-    try {
+    // Xử lý gói dịch vụ nhiều ngày (7 ngày, 14 ngày, 30 ngày)
+    const combined = `${v.PackagePlan || ""} ${v.packagePlan || ""} ${v.Duration || ""} ${v.duration || ""}`.toLowerCase();
+    if (combined.includes("7day") || combined.includes("14day") || combined.includes("30day") || combined.includes("gói") || combined.includes("ngày")) {
       let startDate: Date | null = null;
       if (visitDateStr.includes("/")) {
         const [d, m, y] = visitDateStr.split("/");
-        startDate = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+        if (d && m && y) startDate = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
       } else if (visitDateStr.includes("-")) {
         const [y, m, d] = visitDateStr.split("-");
-        startDate = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+        if (y && m && d) startDate = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
       }
-      if (startDate) {
+      if (startDate && !isNaN(startDate.getTime())) {
         let days = 1;
         if (combined.includes("7day") || combined.includes("7 ngày")) days = 7;
         if (combined.includes("14day") || combined.includes("14 ngày")) days = 14;
@@ -89,20 +90,53 @@ function isTodayVisit(v: any): boolean {
         const todayClean = new Date(year, now.getMonth(), now.getDate());
         if (todayClean >= startDate && todayClean < endDate) return true;
       }
-    } catch (e) {}
+    }
+  } catch (e) {
+    return false;
   }
 
   return false;
 }
 
 export async function getStaffList() {
-  const staff = await db.staff.findMany({
-    include: { StaffLicense: true, Visit: true },
-    orderBy: { Name: "asc" },
-  });
-  return staff.map((s) => {
+  try {
+    const staff = await db.staff.findMany({
+      where: { Id: { not: "PENDING" } },
+      include: { StaffLicense: true, Visit: true },
+      orderBy: { Name: "asc" },
+    });
+    return staff.map((s) => {
+      const ui = mapStaffToUI(s);
+      const activeVisits = (s.Visit || []).filter((v: any) => {
+        const st = (v.Status || "").toUpperCase();
+        return BUSY_VISIT_STATUSES.includes(st) && isTodayVisit(v);
+      });
+      if (activeVisits.length > 0 && ui.status !== "Nghỉ phép") {
+        ui.status = "Đang bận";
+        ui.available = false;
+      }
+      (ui as any).activeVisitCount = activeVisits.length;
+      return ui;
+    });
+  } catch (err: any) {
+    console.error("Error in getStaffList:", err);
+    const staffSimple = await db.staff.findMany({
+      where: { Id: { not: "PENDING" } },
+      orderBy: { Name: "asc" },
+    });
+    return staffSimple.map((s) => mapStaffToUI({ ...s, StaffLicense: [], Visit: [] }));
+  }
+}
+
+export async function getStaffById(id: string) {
+  if (id === "PENDING") return null;
+  try {
+    const s = await db.staff.findUnique({
+      where: { Id: id },
+      include: { StaffLicense: true, Visit: true },
+    });
+    if (!s) return null;
     const ui = mapStaffToUI(s);
-    // Chỉ tính các phiếu đang ở trạng thái "Đã xác nhận" / "Đang thực hiện" TRONG NGÀY HÔM NAY
     const activeVisits = (s.Visit || []).filter((v: any) => {
       const st = (v.Status || "").toUpperCase();
       return BUSY_VISIT_STATUSES.includes(st) && isTodayVisit(v);
@@ -113,26 +147,12 @@ export async function getStaffList() {
     }
     (ui as any).activeVisitCount = activeVisits.length;
     return ui;
-  });
-}
-
-export async function getStaffById(id: string) {
-  const s = await db.staff.findUnique({
-    where: { Id: id },
-    include: { StaffLicense: true, Visit: true },
-  });
-  if (!s) return null;
-  const ui = mapStaffToUI(s);
-  const activeVisits = (s.Visit || []).filter((v: any) => {
-    const st = (v.Status || "").toUpperCase();
-    return BUSY_VISIT_STATUSES.includes(st) && isTodayVisit(v);
-  });
-  if (activeVisits.length > 0 && ui.status !== "Nghỉ phép") {
-    ui.status = "Đang bận";
-    ui.available = false;
+  } catch (err: any) {
+    console.error("Error in getStaffById:", err);
+    const s = await db.staff.findUnique({ where: { Id: id } });
+    if (!s) return null;
+    return mapStaffToUI({ ...s, StaffLicense: [], Visit: [] });
   }
-  (ui as any).activeVisitCount = activeVisits.length;
-  return ui;
 }
 
 export async function createStaff(data: z.infer<typeof staffSchema>) {

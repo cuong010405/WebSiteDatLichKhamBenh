@@ -215,12 +215,6 @@ export default function ReportsPage() {
   const [loading, setLoading] = React.useState(true);
   const [savingPayment, setSavingPayment] = React.useState(false);
   const [paymentMessage, setPaymentMessage] = React.useState<string | null>(null);
-  const [toast, setToast] = React.useState<{ msg: string; type: "ok" | "err" } | null>(null);
-
-  const showToast = (msg: string, type: "ok" | "err") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
-  };
 
   const fetchJson = async (url: string) => {
     const response = await authFetch(url);
@@ -287,9 +281,9 @@ export default function ReportsPage() {
         `Bao-Cao-Lich-Hen-${new Date().toISOString().split("T")[0]}.xls`,
         "BÁO CÁO VẬN HÀNH LÂM SÀNG & QUẢN LÝ LỊCH HẸN"
       );
-      showToast(`Đã xuất ${data.length} lịch hẹn sang Excel thành công!`, "ok");
+
     } catch (e: any) {
-      showToast(e?.message || "Không thể xuất báo cáo", "err");
+
     }
   };
 
@@ -315,9 +309,9 @@ export default function ReportsPage() {
         `Bao-Cao-Lam-Sang-${new Date().toISOString().split("T")[0]}.doc`,
         "BÁO CÁO VẬN HÀNH LÂM SÀNG & LỊCH HẸN"
       );
-      showToast(`Đã xuất ${data.length} lịch hẹn sang Word (.doc) thành công!`, "ok");
+
     } catch (e: any) {
-      showToast(e?.message || "Không thể xuất báo cáo Word", "err");
+
     }
   };
 
@@ -363,32 +357,6 @@ export default function ReportsPage() {
 
   return (
     <div className="p-10 max-w-7xl mx-auto w-full space-y-12">
-      {/* Toast */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className={cn(
-              "fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl text-sm font-bold border",
-              toast.type === "ok"
-                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                : "bg-red-50 text-red-700 border-red-200"
-            )}
-          >
-            {toast.type === "ok" ? (
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-            ) : (
-              <AlertCircle className="w-4 h-4 shrink-0" />
-            )}
-            {toast.msg}
-            <button onClick={() => setToast(null)} className="ml-1 opacity-50 hover:opacity-100">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
       {/* Hero Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <motion.div
@@ -887,7 +855,10 @@ export default function ReportsPage() {
                   <div className="flex items-center gap-4">
                     <div className="relative">
                       <img
-                        src={person.avatar}
+                        src={
+                          person.avatar ||
+                          `https://i.pravatar.cc/150?u=${encodeURIComponent(person.name)}`
+                        }
                         className="w-12 h-12 rounded-2xl object-cover border border-hairline"
                         alt={person.name}
                       />

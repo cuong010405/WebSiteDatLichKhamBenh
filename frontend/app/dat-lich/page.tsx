@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useLoading } from "@/lib/loading-context";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
@@ -103,6 +104,7 @@ const DEFAULT_SERVICES: ServiceItem[] = [
 // ─── User pill + dropdown (mirrors homepage exactly) ────────────────────────
 function NavUserMenu({ user, logout, onOpenSettings }: { user: any; logout: () => void; onOpenSettings?: () => void }) {
   const [open, setOpen] = React.useState(false);
+  const [visitCount, setVisitCount] = React.useState<number | null>(null);
   const ref = React.useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -113,6 +115,18 @@ function NavUserMenu({ user, logout, onOpenSettings }: { user: any; logout: () =
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  React.useEffect(() => {
+    if (!user?.id) return;
+    authFetch(`${API_URL}/visits?userId=${user.id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setVisitCount(data.length);
+        }
+      })
+      .catch(() => {});
+  }, [user?.id]);
 
   const initials = user?.fullName
     ? user.fullName.split(" ").map((n: string) => n[0]).join("").substring(0, 2)
@@ -197,12 +211,14 @@ function NavUserMenu({ user, logout, onOpenSettings }: { user: any; logout: () =
                 onClick={() => { router.push("/lich-hen"); setOpen(false); }}
                 className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl hover:bg-blue-50 transition-all text-left group cursor-pointer"
               >
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 group-hover:bg-indigo-100 flex items-center justify-center transition-colors">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 group-hover:bg-indigo-100 flex items-center justify-center transition-colors shrink-0">
                   <Calendar className="w-4 h-4 text-indigo-600" />
                 </div>
                 <div>
-                  <p className="text-xs font-black text-slate-800">Lịch hẹn của bạn</p>
-                  <p className="text-[10px] text-slate-400 font-semibold">Xem lịch sử đặt khám</p>
+                  <p className="text-xs font-black text-slate-800">Lịch hẹn của tôi</p>
+                  <p className="text-[10px] text-slate-400 font-semibold">
+                    {visitCount !== null ? `${visitCount} lịch đặt` : "Xem lịch sử đặt khám"}
+                  </p>
                 </div>
               </button>
 
@@ -230,6 +246,7 @@ function NavUserMenu({ user, logout, onOpenSettings }: { user: any; logout: () =
 
 export default function DatLichPage() {
   const { user, loading, updateUser, logout } = useAuth();
+  const { show, hide } = useLoading();
   const router = useRouter();
 
   React.useEffect(() => {
@@ -260,7 +277,7 @@ export default function DatLichPage() {
   const [careMode, setCareMode] = React.useState<"hourly" | "package">("hourly");
   const [hourlyHours, setHourlyHours] = React.useState<number>(4);
   const [packagePlan, setPackagePlan] = React.useState<"7days" | "14days" | "30days">("7days");
-  const [packageShift, setPackageShift] = React.useState<"4h" | "8h" | "12h" | "24h">("4h");
+  const [packageShift, setPackageShift] = React.useState<"2h" | "4h" | "8h" | "12h">("4h");
 
   // Helper for closing time limit (20:00)
   const getSlotStartHour = (slot: string) => {
@@ -283,6 +300,18 @@ export default function DatLichPage() {
         `Khung giờ ${slotTime} giới hạn tối đa ${maxH}h (hệ thống nghỉ lúc 20:00). Đã tự động chuyển sang ca ${newH}h!`,
         "info"
       );
+    } else if (careMode === "package") {
+      const shiftHoursMap: Record<string, number> = { "2h": 2, "4h": 4, "8h": 8, "12h": 12 };
+      const currentReqHours = shiftHoursMap[packageShift];
+      if (currentReqHours && currentReqHours > maxH) {
+        if (maxH >= 4) {
+          setPackageShift("4h");
+          addToast(`Khung giờ ${slotTime} giới hạn tối đa ${maxH}h trước 20:00. Đã tự động chuyển sang Ca 4h!`, "info");
+        } else if (maxH >= 2) {
+          setPackageShift("2h");
+          addToast(`Khung giờ ${slotTime} chỉ còn đủ ca 2h trước 20:00. Đã tự động chuyển sang Ca 2h!`, "info");
+        }
+      }
     }
   };
 
@@ -663,7 +692,10 @@ export default function DatLichPage() {
     const pricing = calculatePricing();
     const newId = crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase();
     const duration = careMode === "hourly" ? `${hourlyHours}h` : `Gói ${packagePlan === "7days" ? "7 ngày" : packagePlan === "14days" ? "14 ngày" : "30 ngày"}`;
-    const endTime = calculateEndTime(bookingSlot, careMode === "hourly" ? `${hourlyHours}h` : "4h");
+    const shiftHours = careMode === "hourly" ? hourlyHours : (
+      packageShift === "2h" ? 2 : packageShift === "4h" ? 4 : packageShift === "8h" ? 8 : packageShift === "12h" ? 12 : 4
+    );
+    const endTime = calculateEndTime(bookingSlot, `${shiftHours}h`);
     const effectiveArea = customerArea || bookingAddress || user?.address || "";
 
     const newVisitObj: Record<string, any> = {
@@ -671,6 +703,9 @@ export default function DatLichPage() {
       type: selectedService.name || selectedService.serviceName || "Khám bệnh tại nhà",
       date: bookingDate,
       userId: user?.id,
+      userName: user?.fullName || user?.email || "Bệnh nhân mới",
+      userPhone: user?.phone || "",
+      userEmail: user?.email || "",
       // staffId intentionally omitted — backend dispatch engine assigns it
       time: `${bookingSlot} - ${endTime}`,
       startTime: bookingSlot,
@@ -687,6 +722,7 @@ export default function DatLichPage() {
       // Dispatch metadata
       customerArea: effectiveArea,
       requiredSpecialty: requiredSpecialty || null,
+      bookedAt: `${new Date().getHours().toString().padStart(2, '0')}:${new Date().getMinutes().toString().padStart(2, '0')} ${new Date().getDate().toString().padStart(2, '0')}/${(new Date().getMonth() + 1).toString().padStart(2, '0')}/${new Date().getFullYear()}`,
     };
 
     if (bookingAddress && bookingAddress !== user?.address) {
@@ -705,6 +741,7 @@ export default function DatLichPage() {
       newVisitObj.paymentAmount = String(selectedService.price);
     }
 
+    show("ĐANG GỬI YÊU CẦU ĐẶT LỊCH HẸN...");
     authFetch(`${API_URL}/visits`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -730,21 +767,30 @@ export default function DatLichPage() {
         setBookingNotes("");
         setRequiredSpecialty("");
         setQrConfirmed(false);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("mintcare-visit-created"));
+        }
         fetchMyVisits();
       })
       .catch((err: any) => {
         addToast(err?.message || "Lỗi khi đặt lịch. Vui lòng thử lại.", "error");
+      })
+      .finally(() => {
+        hide();
       });
   };
 
   const handleCancelBooking = async (id: string) => {
     if (!confirm("Bạn có chắc muốn hủy lịch hẹn này?")) return;
+    show("ĐANG HỦY LỊCH HẸN...");
     try {
       await authFetch(`${API_URL}/visits/${id}`, { method: "DELETE" });
       addToast("Đã hủy lịch hẹn.", "success");
       fetchMyVisits();
     } catch {
       addToast("Lỗi khi hủy lịch.", "error");
+    } finally {
+      hide();
     }
   };
 
@@ -797,24 +843,24 @@ Trạng thái: ${booking.status}
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-blue-50/60 via-white to-slate-50 text-slate-900 font-sans">
-      {/* Toast - Error: hình tròn X giữa màn hình */}
-      <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center pointer-events-none">
+      {/* Toast - Error: Top Floating Modern Pill Notification */}
+      <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[300] flex flex-col items-center gap-2 pointer-events-none w-auto max-w-md px-4">
         <AnimatePresence>
           {toasts.filter(t => t.type === "error").map((t) => (
             <motion.div
               key={t.id}
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.5 }}
-              transition={{ type: "spring", stiffness: 400, damping: 22 }}
-              className="flex flex-col items-center gap-4 pointer-events-auto"
+              initial={{ opacity: 0, y: -24, scale: 0.92 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -16, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 450, damping: 26 }}
+              className="bg-white/95 backdrop-blur-2xl border border-rose-100/80 px-5 py-3.5 rounded-full shadow-[0_16px_36px_-10px_rgba(244,63,94,0.18)] flex items-center gap-3.5 pointer-events-auto border-l-4 border-l-rose-500"
             >
-              <div className="w-24 h-24 rounded-full bg-red-500 flex items-center justify-center shadow-2xl shadow-red-500/40">
-                <XCircle className="w-14 h-14 text-white" strokeWidth={2} />
+              <div className="w-8 h-8 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-4 h-4 text-rose-500" />
               </div>
-              <p className="text-base font-bold text-slate-800 bg-white/90 backdrop-blur-md px-6 py-3 rounded-2xl shadow-lg border border-red-100 text-center max-w-xs">
+              <span className="text-xs font-black text-slate-800 tracking-tight pr-2">
                 {t.msg}
-              </p>
+              </span>
             </motion.div>
           ))}
         </AnimatePresence>
@@ -1082,7 +1128,10 @@ Trạng thái: ${booking.status}
                     { hours: 8, label: "8 giờ", desc: "Cả ngày" },
                     { hours: 12, label: "12 giờ", desc: "Ca đêm" },
                   ].map((item) => {
-                    const isExceeding20h = currentSlotHour !== null && item.hours > (20 - currentSlotHour);
+                    const slotH2 = getSlotStartHour(bookingSlot) ?? 8;
+                    const endH2 = slotH2 + item.hours;
+                    const isExceeding20h = bookingSlot !== "" && endH2 > 20;
+                    const endLabel2 = bookingSlot ? `${String(endH2).padStart(2,"0")}:00` : null;
                     return (
                       <button
                         key={item.hours}
@@ -1090,7 +1139,7 @@ Trạng thái: ${booking.status}
                         disabled={isExceeding20h}
                         onClick={() => {
                           if (isExceeding20h) {
-                            addToast(`Khung giờ ${bookingSlot} bắt đầu lúc ${bookingSlot}, ca ${item.hours}h sẽ vượt quá 20:00 giờ nghỉ!`, "error");
+                            addToast(`Ca ${item.hours}h bắt đầu lúc ${bookingSlot} sẽ kết thúc lúc ${String(endH2).padStart(2,"00")}:00, vượt quá giờ nghỉ 20:00!`, "error");
                             return;
                           }
                           setHourlyHours(item.hours);
@@ -1113,7 +1162,7 @@ Trạng thái: ${booking.status}
                               ? "text-blue-100"
                               : "text-slate-400"
                         )}>
-                          {isExceeding20h ? "Vượt quá 20:00" : item.desc}
+                          {isExceeding20h ? `✗ ${endLabel2}` : (endLabel2 ? `→ ${endLabel2}` : item.desc)}
                         </span>
                       </button>
                     );
@@ -1175,28 +1224,50 @@ Trạng thái: ${booking.status}
                   </Label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {[
-                      { shift: "4h", label: "Ca 4h", desc: "Nửa ngày" },
-                      { shift: "8h", label: "Ca 8h", desc: "Hành chính" },
-                      { shift: "12h", label: "Ca 12h", desc: "Ca đêm" },
-                      { shift: "24h", label: "Ca 24/7", desc: "Toàn thời gian" },
-                    ].map((item) => (
-                      <button
-                        key={item.shift}
-                        type="button"
-                        onClick={() => setPackageShift(item.shift as any)}
-                        className={cn(
-                          "p-2.5 rounded-xl border text-center transition-all duration-200 cursor-pointer flex flex-col items-center justify-center",
-                          packageShift === item.shift
-                            ? "bg-emerald-700 border-emerald-700 text-white shadow-sm"
-                            : "bg-white border-emerald-200 text-slate-700 hover:bg-emerald-50"
-                        )}
-                      >
-                        <span className="text-xs font-black">{item.label}</span>
-                        <span className={cn("text-[8px] font-bold mt-0.5", packageShift === item.shift ? "text-emerald-200" : "text-slate-400")}>
-                          {item.desc}
-                        </span>
-                      </button>
-                    ))}
+                      { shift: "2h", hours: 2, label: "Ca 2h", desc: "Ngắn hạn" },
+                      { shift: "4h", hours: 4, label: "Ca 4h", desc: "Nửa ngày" },
+                      { shift: "8h", hours: 8, label: "Ca 8h", desc: "Hành chính" },
+                      { shift: "12h", hours: 12, label: "Ca 12h", desc: "Ca đêm" },
+                    ].map((item) => {
+                      const slotH = getSlotStartHour(bookingSlot) ?? 8;
+                      const endHour = slotH + item.hours;
+                      const isExceeding20h = bookingSlot !== "" && endHour > 20;
+                      const endLabel = bookingSlot ? `${String(endHour).padStart(2,"0")}:00` : null;
+                      return (
+                        <button
+                          key={item.shift}
+                          type="button"
+                          disabled={isExceeding20h}
+                          onClick={() => {
+                            if (isExceeding20h) {
+                              addToast(`Ca ${item.label} bắt đầu lúc ${bookingSlot} sẽ kết thúc lúc ${String(slotH + item.hours).padStart(2,"0")}:00, vượt quá giờ nghỉ 20:00!`, "error");
+                              return;
+                            }
+                            setPackageShift(item.shift as any);
+                          }}
+                          className={cn(
+                            "p-2.5 rounded-xl border text-center transition-all duration-200 flex flex-col items-center justify-center relative",
+                            isExceeding20h
+                              ? "bg-slate-100/80 border-slate-200 text-slate-400 cursor-not-allowed opacity-50"
+                              : packageShift === item.shift
+                                ? "bg-emerald-700 border-emerald-700 text-white shadow-sm cursor-pointer"
+                                : "bg-white border-emerald-200 text-slate-700 hover:bg-emerald-50 cursor-pointer"
+                          )}
+                        >
+                          <span className="text-xs font-black">{item.label}</span>
+                          <span className={cn(
+                            "text-[8px] font-bold mt-0.5",
+                            isExceeding20h
+                              ? "text-rose-500 font-black"
+                              : packageShift === item.shift
+                                ? "text-emerald-200"
+                                : "text-slate-400"
+                          )}>
+                            {isExceeding20h ? `✗ ${endLabel}` : (endLabel ? `→ ${endLabel}` : item.desc)}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -1223,28 +1294,43 @@ Trạng thái: ${booking.status}
                 <div className="grid grid-cols-3 gap-2">
                   {TIME_SLOTS.map((time) => {
                     const slotH = getSlotStartHour(time);
-                    const maxH = Math.max(0, 20 - slotH);
+                    const activeHours = careMode === "hourly" ? hourlyHours : (packageShift ? parseInt(packageShift) : 0);
+                    const activeEndH = activeHours > 0 ? slotH + activeHours : null;
+                    const isExceedsLimit = activeEndH !== null && activeEndH > 20;
                     return (
                       <button
                         key={time}
                         type="button"
-                        onClick={() => handleSelectBookingSlot(time)}
+                        onClick={() => {
+                          if (isExceedsLimit) {
+                            addToast(`Giờ bắt đầu ${time} với ${activeHours}h sẽ kết thúc lúc ${String(activeEndH).padStart(2,"00")}:00, vượt quá 20:00!`, "error");
+                            return;
+                          }
+                          handleSelectBookingSlot(time);
+                        }}
                         className={cn(
-                          "py-2.5 border text-xs font-black rounded-xl transition-all duration-200 flex flex-col items-center justify-center gap-0.5 cursor-pointer",
-                          bookingSlot === time
-                            ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/25 scale-105"
-                            : "bg-white border-blue-100 hover:border-blue-300 hover:bg-blue-50 text-slate-700"
+                          "py-2.5 border text-xs font-black rounded-xl transition-all duration-200 flex flex-col items-center justify-center gap-0.5",
+                          isExceedsLimit
+                            ? "bg-slate-100 border-rose-200 text-slate-400 opacity-50 cursor-not-allowed"
+                            : bookingSlot === time
+                              ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/25 scale-105 cursor-pointer"
+                              : "bg-white border-blue-100 hover:border-blue-300 hover:bg-blue-50 text-slate-700 cursor-pointer"
                         )}
                       >
                         <span>{time}</span>
-                        {careMode === "hourly" && maxH < 12 && (
-                          <span className={cn(
-                            "text-[8px] font-extrabold leading-none",
-                            bookingSlot === time ? "text-blue-100" : "text-blue-600/80"
-                          )}>
-                            (Tối đa {maxH}h)
-                          </span>
-                        )}
+                        <span className={cn(
+                          "text-[8px] font-extrabold leading-none",
+                          isExceedsLimit
+                            ? "text-rose-500"
+                            : bookingSlot === time ? "text-white/90" : careMode === "hourly" ? "text-blue-600/80" : "text-emerald-700/90"
+                        )}>
+                          {activeEndH !== null
+                            ? isExceedsLimit
+                              ? `✗ ${String(activeEndH).padStart(2,"0")}:00`
+                              : `→ ${String(activeEndH).padStart(2,"0")}:00`
+                            : null
+                          }
+                        </span>
                       </button>
                     );
                   })}

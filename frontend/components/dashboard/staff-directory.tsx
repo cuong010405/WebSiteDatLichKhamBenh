@@ -112,7 +112,7 @@ export function StaffDirectory() {
                     <div className="flex items-center gap-6">
                       <div className="relative">
                         <Avatar className="w-20 h-20 rounded-[28px] border-4 border-white shadow-md ring-1 ring-hairline group-hover:ring-primary/20 transition-all">
-                          <AvatarImage src={person.avatar} alt={person.name} className="object-cover" />
+                          <AvatarImage src={person.avatar || undefined} alt={person.name} className="object-cover" />
                           <AvatarFallback className="bg-surface-secondary text-primary-strong text-xl font-bold">{person.name[0]}</AvatarFallback>
                         </Avatar>
                         <div className={cn(
@@ -201,7 +201,7 @@ export function StaffDirectory() {
                 {/* Avatar floating */}
                 <div className="-mt-14 mb-4 flex items-end justify-between">
                   <Avatar className="w-24 h-24 rounded-[30px] border-4 border-white shadow-xl ring-2 ring-hairline">
-                    <AvatarImage src={selectedPerson.avatar} alt={selectedPerson.name} className="object-cover" />
+                    <AvatarImage src={selectedPerson.avatar || undefined} alt={selectedPerson.name} className="object-cover" />
                     <AvatarFallback className="bg-emerald-100 text-emerald-800 text-2xl font-black">
                       {selectedPerson.name?.[0] || "C"}
                     </AvatarFallback>
