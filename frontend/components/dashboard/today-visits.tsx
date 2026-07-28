@@ -60,8 +60,12 @@ export function TodayVisits() {
 
   React.useEffect(() => {
     loadVisits()
-    const interval = window.setInterval(loadVisits, 15000)
-    return () => window.clearInterval(interval)
+    const interval = window.setInterval(loadVisits, 10000)
+    window.addEventListener("focus", loadVisits)
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener("focus", loadVisits)
+    }
   }, [loadVisits]);
 
   const pendingCount = visits.filter(v => v.status === "Chờ duyệt").length

@@ -53,7 +53,7 @@ import { API_URL, authFetch } from "@/lib/api";
 import { useLoading } from "@/lib/loading-context";
 import { formatVietnameseDate, parseCurrencyNumber } from "@/lib/utils/format";
 
-const HOURS = Array.from({ length: 13 }, (_, i) => i + 8);
+const HOURS = Array.from({ length: 14 }, (_, i) => i + 8);
 
 function parseStartTime(timeStr?: string, startTimeStr?: string): string {
   if (startTimeStr && startTimeStr.includes(":")) return startTimeStr.trim();
@@ -115,15 +115,15 @@ function getPositionPercent(timeStr?: string, startTimeStr?: string): number {
   const [h, m] = start.split(":").map(Number);
   if (isNaN(h)) return 0;
   const startHour = 8;
-  const totalMinutes = 12 * 60;
+  const totalMinutes = (HOURS.length - 1) * 60;
   const minutes = (h - startHour) * 60 + (isNaN(m) ? 0 : m);
   return Math.max(0, Math.min(100, (minutes / totalMinutes) * 100));
 }
 
 function getWidthPercent(durationStr?: string, timeStr?: string, packageShiftStr?: string): number {
   const hours = parseDurationHours(durationStr, timeStr, packageShiftStr);
-  const totalHours = 12;
-  return Math.max(10, Math.min(100, (hours / totalHours) * 100));
+  const totalHours = HOURS.length - 1;
+  return Math.max(5, Math.min(100, (hours / totalHours) * 100));
 }
 
 function isVisitOnDate(v: Visit, targetDateStr?: string): boolean {
@@ -929,6 +929,20 @@ function ApproveVisitsDialog({
                           <span className="text-[10px] font-bold text-slate-500">
                             📅 {visit.date || "Hôm nay"} ({visit.time})
                           </span>
+                          {((visit as any).bookedAt || (visit as any).assignedAt) && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                              🕐 Đặt lúc: {(() => {
+                                const raw = (visit as any).bookedAt || (visit as any).assignedAt;
+                                try {
+                                  const d = new Date(raw);
+                                  if (isNaN(d.getTime())) return raw;
+                                  const time = d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+                                  const date = d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+                                  return `${time} - ${date}`;
+                                } catch { return raw; }
+                              })()}
+                            </span>
+                          )}
                         </div>
                         <h4 className="font-black text-sm uppercase text-slate-800 leading-tight mt-1.5">
                           {visit.type}
@@ -1436,6 +1450,13 @@ function SessionCard({
   // Tính phần trăm tiến độ dựa trên thời gian thực
   const progressPercent = React.useMemo(() => {
     if (!isOngoing) return 0;
+
+    // Kiểm tra ngày: dùng selectedDate (ngày đang xem trên lịch) thay vì visit.date
+    // để gói nhiều ngày (7/14/30 ngày) không tính sai khi xem ngày tương lai
+    const todayStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const checkDate = selectedDate || visit.date || "";
+    if (checkDate && checkDate > todayStr) return 0; // ngày tương lai → không hiện progress
+
     // Lấy giờ bắt đầu
     const rawStart = visit.startTime || (visit.time ? visit.time.split("-")[0]?.trim() : "");
     if (!rawStart) return 0;
@@ -1456,10 +1477,14 @@ function SessionCard({
       if (!isNaN(eh)) durationMin = (eh * 60 + (em || 0)) - startMin;
     }
     if (durationMin <= 0) return 0;
+
+    // Nếu ngày trong quá khứ (chưa hoàn tất) → 100%
+    if (checkDate && checkDate < todayStr) return 100;
+
     const elapsed = nowMinutes - startMin;
     if (elapsed <= 0) return 0;
     return Math.min(100, Math.round((elapsed / durationMin) * 100));
-  }, [isOngoing, nowMinutes, visit]);
+  }, [isOngoing, nowMinutes, visit, selectedDate]);
 
 
   const togglePopover = (e?: React.MouseEvent) => {
@@ -1549,7 +1574,7 @@ function SessionCard({
                         statusColor,
                       )}
                     >
-                      {visit.status}
+                      {isOngoing && progressPercent >= 100 ? "Đã hoàn thành" : visit.status}
                     </span>
                     <button
                       type="button"
@@ -1711,7 +1736,7 @@ function SessionCard({
                 <div className="mt-3 pt-3 border-t border-slate-100">
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-[8px] font-black text-primary-strong uppercase tracking-widest">
-                      Đang thực hiện
+                      {progressPercent >= 100 ? "Đã hoàn thành" : "Đang thực hiện"}
                     </span>
                     <span className="text-[8px] font-mono font-black text-on-surface-tertiary">
                       {progressPercent}%
@@ -1903,9 +1928,11 @@ export default function SchedulePage() {
   const [staffPage, setStaffPage] = React.useState(1);
   const STAFF_PER_PAGE = 5;
 
-  const loadData = React.useCallback(() => {
-    setLoading(true);
-    show("ĐANG TẢI LỊCH TRỰC HỆ THỐNG...");
+  const loadData = React.useCallback((isSilent = false) => {
+    if (!isSilent) {
+      setLoading(true);
+      show("ĐANG TẢI LỊCH TRỰC HỆ THỐNG...");
+    }
     Promise.all([
       fetch(`${API_URL}/visits`, { cache: "no-store", headers: { "Cache-Control": "no-cache" } }).then(async (r) => {
         const text = await r.text();
@@ -1950,16 +1977,25 @@ export default function SchedulePage() {
       })
       .catch((err) => console.error("[SchedulePage] Lỗi tải dữ liệu lịch trình:", err))
       .finally(() => {
-        setLoading(false);
-        hide();
+        if (!isSilent) {
+          setLoading(false);
+          hide();
+        }
       });
   }, [show, hide]);
 
   React.useEffect(() => {
-    loadData();
-    const handleFocus = () => loadData();
+    loadData(false);
+    const handleFocus = () => loadData(true);
+    const handleVisitCreated = () => loadData(true);
     window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
+    window.addEventListener("mintcare-visit-created", handleVisitCreated);
+    const intervalId = setInterval(() => loadData(true), 10000);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("mintcare-visit-created", handleVisitCreated);
+      clearInterval(intervalId);
+    };
   }, [loadData]);
 
 
@@ -2398,7 +2434,10 @@ export default function SchedulePage() {
                   </span>
                 </div>
               </div>
-              <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-xl grid grid-cols-12 border-b border-hairline h-[70px] w-full">
+              <div 
+                className="sticky top-0 z-30 bg-white/95 backdrop-blur-xl border-b border-hairline h-[70px] w-full"
+                style={{ display: "grid", gridTemplateColumns: `repeat(${HOURS.length - 1}, minmax(0, 1fr))` }}
+              >
                 {HOURS.slice(0, -1).map((hour) => (
                   <div
                     key={hour}
@@ -2479,9 +2518,10 @@ export default function SchedulePage() {
                     </div>
                     <div
                       className={cn(
-                        "relative grid grid-cols-12 h-[90px] border-b border-hairline last:border-b-0 group/timeline transition-colors overflow-visible",
+                        "relative h-[90px] border-b border-hairline last:border-b-0 group/timeline transition-colors overflow-visible",
                         idx % 2 === 0 ? "bg-white" : "bg-surface-secondary/15",
                       )}
+                      style={{ display: "grid", gridTemplateColumns: `repeat(${HOURS.length - 1}, minmax(0, 1fr))` }}
                     >
                       {HOURS.slice(0, -1).map((hour) => (
                         <div

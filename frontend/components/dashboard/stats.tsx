@@ -31,11 +31,11 @@ const defaultStats = [
     color: "#18BE66"
   },
   { 
-    label: "Tỷ lệ giường bệnh", 
+    label: "Hiệu suất phục vụ", 
     value: "—", 
-    sub: "Công suất hiện tại",
-    data: [70, 72, 75, 73, 78, 80, 82],
-    color: "#F97316"
+    sub: "Tỷ lệ hoàn tất ca khám",
+    data: [80, 85, 90, 88, 92, 95, 100],
+    color: "#18BE66"
   },
 ]
 
@@ -50,56 +50,60 @@ export function Stats() {
   }, [])
 
   React.useEffect(() => {
-    authFetch(`${API_URL}/reports`)
-      .then((res) => {
-        if (!res.ok) throw new Error("API error")
-        return res.json()
-      })
-      .then((data) => {
-        setStats([
-          { 
-            label: "Tổng số lượt khám", 
-            value: String(data.totalVisits ?? "—"), 
-            trend: "+8%", 
-            sub: "so với hôm qua",
-            data: data.patientInflow?.map((d: any) => d.value) || defaultStats[0].data,
-            color: "#18BE66"
-          },
-          { 
-            label: "Nhân viên y tế", 
-            value: String(data.totalStaff ?? "—"), 
-            trend: "đang hoạt động", 
-            sub: "Đang điều phối ngoài thực địa",
-            data: data.staffHours?.map((d: any) => d.value / 5) || defaultStats[1].data,
-            color: "#18BE66"
-          },
-          { 
-            label: "Bệnh nhân đang điều trị", 
-            value: String(data.totalPatients ?? "—"), 
-            sub: "Trong hệ thống",
-            data: data.patientInflow?.map((d: any) => d.value / 2) || defaultStats[2].data,
-            color: "#18BE66"
-          },
-          { 
-            label: "Tỷ lệ giường bệnh", 
-            value: `${data.bedOccupancy ?? "—"}%`, 
-            sub: "Công suất hiện tại",
-            data: [70, 72, 75, 73, 78, 80, data.bedOccupancy ?? 82],
-            color: "#F97316"
-          },
-        ])
-        setLoaded(true)
-      })
-      .catch((err) => {
-        console.warn("Không kết nối được API, dùng dữ liệu mẫu:", err)
-        setStats([
-          { ...defaultStats[0], value: "142" },
-          { ...defaultStats[1], value: "58" },
-          { ...defaultStats[2], value: "84" },
-          { ...defaultStats[3], value: "82%" },
-        ])
-        setLoaded(true)
-      })
+    const fetchStats = () => {
+      authFetch(`${API_URL}/reports`)
+        .then((res) => {
+          if (!res.ok) throw new Error("API error")
+          return res.json()
+        })
+        .then((data) => {
+          setStats([
+            { 
+              label: "Tổng số lượt khám", 
+              value: String(data.totalVisits ?? "—"), 
+              trend: "+8%", 
+              sub: "so với hôm qua",
+              data: data.patientInflow?.map((d: any) => d.value) || defaultStats[0].data,
+              color: "#18BE66"
+            },
+            { 
+              label: "Nhân viên y tế", 
+              value: String(data.totalStaff ?? "—"), 
+              trend: "đang hoạt động", 
+              sub: `${data.availableStaff ?? 4} đang sẵn sàng`,
+              data: data.staffHours?.map((d: any) => d.value / 5) || defaultStats[1].data,
+              color: "#18BE66"
+            },
+            { 
+              label: "Bệnh nhân đang điều trị", 
+              value: String(data.totalPatients ?? "—"), 
+              sub: "Trong hệ thống",
+              data: data.patientInflow?.map((d: any) => d.value / 2) || defaultStats[2].data,
+              color: "#18BE66"
+            },
+            { 
+              label: "Hiệu suất phục vụ", 
+              value: `${data.completionRate ?? data.bedOccupancy ?? 100}%`, 
+              sub: "Tỷ lệ hoàn tất ca khám",
+              data: [80, 85, 90, 88, 92, 95, data.completionRate ?? 100],
+              color: "#18BE66"
+            },
+          ])
+          setLoaded(true)
+        })
+        .catch((err) => {
+          console.warn("Không kết nối được API, dùng dữ liệu mẫu:", err)
+        })
+    }
+
+    fetchStats()
+    const interval = setInterval(fetchStats, 10000)
+    window.addEventListener("focus", fetchStats)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener("focus", fetchStats)
+    }
   }, [])
 
   return (

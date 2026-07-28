@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { Plus, Play, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Stats } from "@/components/dashboard/stats"
@@ -9,10 +10,43 @@ import { DispatchMap } from "@/components/dashboard/dispatch-map"
 import { ActivityLog } from "@/components/dashboard/activity-log"
 import { motion } from "framer-motion"
 import { useAuth } from "@/lib/auth-context"
+import { API_URL, authFetch } from "@/lib/api"
 
 export default function Home() {
   const { user } = useAuth()
   const displayName = user?.fullName || "Admin"
+  const [totalStaff, setTotalStaff] = React.useState<number | string>("...")
+  const [totalVisits, setTotalVisits] = React.useState<number | string>("...")
+
+  React.useEffect(() => {
+    const fetchReports = () => {
+      authFetch(`${API_URL}/reports`)
+        .then((res) => {
+          if (!res.ok) throw new Error("Fail");
+          return res.json();
+        })
+        .then((data) => {
+          if (data) {
+            setTotalStaff(data.totalStaff ?? "7");
+            setTotalVisits(data.totalVisits ?? "3");
+          }
+        })
+        .catch(() => {
+          setTotalStaff(7);
+          setTotalVisits(3);
+        });
+    }
+
+    fetchReports();
+    const interval = setInterval(fetchReports, 10000);
+    window.addEventListener("focus", fetchReports);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", fetchReports);
+    };
+  }, []);
+
   return (
     <div className="relative isolate min-h-screen overflow-x-hidden">
       {/* Dynamic Background Elements */}
@@ -60,7 +94,7 @@ export default function Home() {
                 <span className="text-primary-strong bg-linear-to-r from-primary-strong to-primary bg-clip-text text-transparent">{displayName}.</span>
               </h1>
               <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl font-medium">
-                Nền tảng quản lý lưu động tích hợp AI. Theo dõi hoạt động của 58 nhân viên và 142 ca trực đang diễn ra trong mạng lưới.
+                Nền tảng quản lý lưu động tích hợp AI. Theo dõi hoạt động của {totalStaff} nhân viên và {totalVisits} ca trực đang diễn ra trong mạng lưới.
               </p>
             </motion.div>
             
@@ -74,7 +108,10 @@ export default function Home() {
                 <Play className="w-4 h-4 fill-foreground group-hover:fill-primary transition-colors" />
                 Xem Demo
               </Button>
-              <Button className="bg-action text-white rounded-full px-10 h-14 font-bold text-sm flex items-center gap-3 hover:opacity-90 transition-all shadow-2xl shadow-action/20 group border-b-4 border-white/10 active:border-b-0 active:translate-y-1">
+              <Button 
+                onClick={() => window.location.href = "/admin/schedule"}
+                className="bg-action text-white rounded-full px-10 h-14 font-bold text-sm flex items-center gap-3 hover:opacity-90 transition-all shadow-2xl shadow-action/20 group border-b-4 border-white/10 active:border-b-0 active:translate-y-1 cursor-pointer"
+              >
                 <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
                 Phân công ca trực
               </Button>

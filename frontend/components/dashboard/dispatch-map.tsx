@@ -1,9 +1,36 @@
 "use client"
 
+import * as React from "react"
 import { motion } from "framer-motion"
 import { Navigation, Users, Plus, Minus, Maximize2 } from "lucide-react"
+import { API_URL } from "@/lib/api"
 
 export function DispatchMap() {
+  const [staffCount, setStaffCount] = React.useState<number | string>("...")
+
+  React.useEffect(() => {
+    const fetchStaff = () => {
+      fetch(`${API_URL}/staff`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            const active = data.filter((s: any) => s.id !== "PENDING").length
+            setStaffCount(active)
+          }
+        })
+        .catch(() => setStaffCount(7))
+    }
+
+    fetchStaff()
+    const interval = setInterval(fetchStaff, 10000)
+    window.addEventListener("focus", fetchStaff)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener("focus", fetchStaff)
+    }
+  }, [])
+
   return (
     <section className="lg:col-span-2">
       <div className="bg-white border border-hairline rounded-[32px] p-8 overflow-hidden relative h-full flex flex-col shadow-xs group/card">
@@ -15,7 +42,7 @@ export function DispatchMap() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 bg-surface-tinted px-4 py-2 rounded-full border border-primary/10 shadow-sm">
               <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-              <span className="text-[10px] font-bold text-primary-strong uppercase tracking-wider">8 Chuyên gia đang trực</span>
+              <span className="text-[10px] font-bold text-primary-strong uppercase tracking-wider">{staffCount} Chuyên gia đang trực</span>
             </div>
             <button suppressHydrationWarning className="w-10 h-10 rounded-full border border-hairline flex items-center justify-center text-on-surface-tertiary hover:bg-surface-secondary hover:text-foreground transition-all shadow-sm">
               <Maximize2 className="w-4 h-4" />

@@ -114,6 +114,19 @@ const methodIcon: Record<string, React.ReactNode> = {
 
 const PAYMENT_METHODS = ["Tiền mặt", "Chuyển khoản", "Ví điện tử", "Thẻ tín dụng"];
 
+const formatBookingTime = (raw: any) => {
+  if (!raw) return null;
+  try {
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return null;
+    const time = d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+    const date = d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return `${time} - ${date}`;
+  } catch {
+    return null;
+  }
+};
+
 const getPackageDetails = (item: {
   amount?: string;
   paymentAmount?: string;
@@ -335,11 +348,12 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
     URL.revokeObjectURL(url);
   };
 
-
   // Load visits chờ thanh toán (hiển thị tất cả ca chưa có hóa đơn, hỗ trợ thanh toán sớm & bình thường)
-  const fetchPendingVisits = React.useCallback(async () => {
-    setLoadingVisits(true);
-    show("ĐANG TẢI CA CHỞ THANH TOÁN...");
+  const fetchPendingVisits = React.useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoadingVisits(true);
+      show("ĐANG TẢI CA CHỜ THANH TOÁN...");
+    }
     try {
       const [resVisits, resPayments] = await Promise.all([
         fetch(`${API_URL}/visits`),
@@ -366,34 +380,59 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
         prev && pendingList.some((v: any) => v.id === prev) ? prev : (pendingList[0]?.id || "")
       );
     } catch {
-      setPendingVisits([]);
-      setSelectedVisitId("");
+      if (!silent) {
+        setPendingVisits([]);
+        setSelectedVisitId("");
+      }
     } finally {
-      setLoadingVisits(false);
-      hide();
+      if (!silent) {
+        setLoadingVisits(false);
+        hide();
+      }
     }
   }, [show, hide]);
 
   // Load lịch sử hóa đơn
-  const fetchPayments = React.useCallback(async () => {
-    setLoadingPayments(true);
-    show("ĐANG TẢI LỊCH SỬ HÓA ĐƠN...");
+  const fetchPayments = React.useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoadingPayments(true);
+      show("ĐANG TẢI LỊCH SỬ HÓA ĐƠN...");
+    }
     try {
       const res = await authFetch(`${API_URL}/payments`);
       const data = await res.json();
       setPayments(Array.isArray(data) ? data : []);
     } catch {
-      setPayments([]);
+      if (!silent) setPayments([]);
     } finally {
-      setLoadingPayments(false);
-      hide();
+      if (!silent) {
+        setLoadingPayments(false);
+        hide();
+      }
     }
   }, [show, hide]);
 
   React.useEffect(() => {
-    fetchPendingVisits();
-    fetchPayments();
+    fetchPendingVisits(false);
+    fetchPayments(false);
+
+    const interval = setInterval(() => {
+      fetchPendingVisits(true);
+      fetchPayments(true);
+    }, 10000);
+
+    const handleFocus = () => {
+      fetchPendingVisits(true);
+      fetchPayments(true);
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, [fetchPendingVisits, fetchPayments]);
+
 
   // Helper to determine price based on visit type
   const getPriceByVisitType = (type: string): string => {
@@ -575,7 +614,10 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                   <div className="text-[10px] space-y-1 text-slate-600 font-semibold pt-1 border-t border-primary/10">
                     <p>👤 Bệnh nhân: <span className="font-black text-slate-800">{selectedVisit.patientName || selectedVisit.userName || "—"}</span> {(selectedVisit as any).userPhone && `(SĐT: ${(selectedVisit as any).userPhone})`}</p>
                     <p>🛡️ Chuyên gia: <span className="font-black text-slate-800">{selectedVisit.staffName || "Chưa chọn"}</span></p>
-                    <p>⏰ Thời gian: <span className="font-mono font-bold text-slate-800">{selectedVisit.date && `${selectedVisit.date} · `}{selectedVisit.time}</span></p>
+                    <p>⏰ Thời gian khám: <span className="font-mono font-bold text-slate-800">{selectedVisit.date && `${selectedVisit.date} · `}{selectedVisit.time}</span></p>
+                    {formatBookingTime((selectedVisit as any).bookedAt || (selectedVisit as any).assignedAt) && (
+                      <p>🕐 Đặt lúc: <span className="font-mono font-bold text-blue-700">{formatBookingTime((selectedVisit as any).bookedAt || (selectedVisit as any).assignedAt)}</span></p>
+                    )}
                     <p>📌 Hình thức: <span className="font-bold text-emerald-700">
                       {selectedVisit.careMode === "hourly"
                         ? "⏱️ Theo giờ / Theo ngày"
@@ -759,7 +801,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                     </button>
                   </div>
                   <button
-                    onClick={fetchPendingVisits}
+                    onClick={() => fetchPendingVisits(false)}
                     suppressHydrationWarning
                     className="w-8.5 h-8.5 rounded-full border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 transition-colors cursor-pointer shrink-0 shadow-xs"
                     title="Làm mới"
@@ -810,6 +852,11 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                               <Clock className="w-3 h-3 text-slate-400" />
                               {v.date && `${v.date} · `}{v.time}
                             </p>
+                            {formatBookingTime((v as any).bookedAt || (v as any).assignedAt) && (
+                              <p className="text-[9.5px] font-black text-blue-600 flex items-center gap-1 mt-0.5">
+                                🕐 Đặt lúc: {formatBookingTime((v as any).bookedAt || (v as any).assignedAt)}
+                              </p>
+                            )}
                           </button>
                         ))
                       )}
@@ -886,7 +933,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                   <Download className="w-3.5 h-3.5 text-emerald-600" />
                 </button>
                 <button
-                  onClick={fetchPayments}
+                  onClick={() => fetchPayments(false)}
                   suppressHydrationWarning
                   className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors shrink-0"
                   title="Làm mới"

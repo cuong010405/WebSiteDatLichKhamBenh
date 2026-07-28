@@ -37,24 +37,36 @@ export function StaffDirectory() {
   const [selectedPerson, setSelectedPerson] = React.useState<any | null>(null)
 
   React.useEffect(() => {
-    fetch(`${API_URL}/staff`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json()
-      })
-      .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setStaff(data)
-        } else {
+    const loadStaffData = () => {
+      fetch(`${API_URL}/staff`)
+        .then((res) => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          return res.json()
+        })
+        .then((data) => {
+          if (Array.isArray(data) && data.length > 0) {
+            // Sort: available first, then busy
+            const sorted = [...data].sort((a, b) => (b.available ? 1 : 0) - (a.available ? 1 : 0))
+            setStaff(sorted)
+          } else {
+            setStaff(mockStaff as any[])
+          }
+          setLoading(false)
+        })
+        .catch(() => {
           setStaff(mockStaff as any[])
-        }
-        setLoading(false)
-      })
-      .catch(() => {
-        // Backend chưa sẵn sàng, dùng dữ liệu mẫu
-        setStaff(mockStaff as any[])
-        setLoading(false)
-      })
+          setLoading(false)
+        })
+    }
+
+    loadStaffData()
+    const interval = setInterval(loadStaffData, 10000)
+    window.addEventListener("focus", loadStaffData)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener("focus", loadStaffData)
+    }
   }, [])
 
   return (
@@ -124,7 +136,7 @@ export function StaffDirectory() {
                       </div>
                       <div>
                         <h3 className="font-bold text-foreground text-xl leading-tight group-hover:text-primary transition-colors duration-300">{person.name}</h3>
-                        <p className="text-xs text-on-surface-tertiary mt-1.5 font-bold uppercase tracking-wider">{String(person.role).split('•')[0]}</p>
+                        <p className="text-xs text-on-surface-tertiary mt-1.5 font-bold uppercase tracking-wider">{person.staffType || String(person.role).split('•')[0]}</p>
                         
                         <div className="flex items-center gap-4 mt-4">
                           <div className="flex items-center gap-1.5 text-[11px] font-bold text-primary-strong">
@@ -183,16 +195,17 @@ export function StaffDirectory() {
 
       {/* Modal xem full thông tin chuyên gia */}
       <Dialog open={!!selectedPerson} onOpenChange={(open) => !open && setSelectedPerson(null)}>
-        <DialogContent className="sm:max-w-[500px] rounded-[32px] border border-hairline shadow-2xl p-0 overflow-hidden bg-white">
+        <DialogContent showCloseButton={false} className="sm:max-w-[500px] rounded-[32px] border border-hairline shadow-2xl p-0 overflow-hidden bg-white">
           {selectedPerson && (
             <div>
               {/* Top Banner Gradient Header */}
               <div className="h-28 bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-600 relative p-6">
                 <span className={cn(
-                  "absolute top-4 right-4 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border text-white shadow-sm",
+                  "absolute top-4 right-4 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border text-white shadow-sm flex items-center gap-1.5",
                   selectedPerson.available ? "bg-emerald-600/80 border-emerald-400" : "bg-orange-500/80 border-orange-300"
                 )}>
-                  {selectedPerson.available ? "🟢 Sẵn sàng" : "🟠 Đang bận"}
+                  <span className={cn("w-1.5 h-1.5 rounded-full animate-pulse", selectedPerson.available ? "bg-white" : "bg-white")} />
+                  {selectedPerson.available ? "Sẵn sàng" : "Đang bận"}
                 </span>
               </div>
 

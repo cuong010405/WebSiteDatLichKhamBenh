@@ -458,7 +458,17 @@ export default function LichHenPage() {
         packageShift: v.packageShift ?? null,
         duration: v.duration ?? null,
         requiredSpecialty: v.requiredSpecialty ?? null,
-        bookedAt: v.bookedAt || (v.assignedAt ? new Date(v.assignedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) + " " + new Date(v.assignedAt).toLocaleDateString("vi-VN") : null),
+        bookedAt: (() => {
+          const raw = v.bookedAt || v.assignedAt;
+          if (!raw) return null;
+          try {
+            const d = new Date(raw);
+            if (isNaN(d.getTime())) return null;
+            const time = d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+            const date = d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+            return `${time} - ${date}`;
+          } catch { return null; }
+        })(),
       }));
       setBookings(formatted);
     } catch {

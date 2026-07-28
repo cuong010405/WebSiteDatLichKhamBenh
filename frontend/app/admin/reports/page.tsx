@@ -227,28 +227,28 @@ export default function ReportsPage() {
 
   const refreshReportData = React.useCallback(() => {
     setLoading(true);
-    // URL-encode Vietnamese query params
-    const visitParams = new URLSearchParams({
-      status: "Đã xác nhận",
-      paymentStatus: "Chưa thanh toán",
-    });
     return Promise.all([
       fetchJson(`${API_URL}/reports`),
       fetchJson(`${API_URL}/staff`),
-      fetchJson(`${API_URL}/visits?${visitParams.toString()}`),
       fetchJson(`${API_URL}/visits`),
     ])
-      .then(([reportData, staff, pendingVs, allVs]) => {
-        setStats(reportData);
+      .then(([reportData, staff, allVs]) => {
+        const normalizedAll = Array.isArray(allVs) ? allVs : [];
+        const computedPending = normalizedAll.filter(
+          (v: any) => v.status !== "Đã hủy" && v.paymentStatus !== "Đã thanh toán"
+        );
+        setStats({
+          ...reportData,
+          pendingPayments: computedPending.length,
+        });
         setStaffList(Array.isArray(staff) ? staff : []);
-        setPendingVisits(Array.isArray(pendingVs) ? pendingVs : []);
-        setAllVisits(Array.isArray(allVs) ? allVs : []);
+        setPendingVisits(computedPending);
+        setAllVisits(normalizedAll);
         if (
           !selectedPaymentVisitId &&
-          Array.isArray(pendingVs) &&
-          pendingVs.length > 0
+          computedPending.length > 0
         ) {
-          setSelectedPaymentVisitId(pendingVs[0].id);
+          setSelectedPaymentVisitId(computedPending[0].id);
         }
       })
       .catch((err) => console.error("[ReportsPage] Lỗi tải dữ liệu báo cáo:", err))

@@ -40,7 +40,7 @@ function mapVisitToUI(v: any) {
     customerArea: v.CustomerArea ?? null,
     requiredSpecialty: v.RequiredSpecialty ?? null,
     assignedAt: v.AssignedAt ?? null,
-    bookedAt: v.BookedAt ?? null,
+    bookedAt: v.AssignedAt ? v.AssignedAt.toISOString() : null,
   };
 }
 
@@ -323,22 +323,7 @@ export async function syncPatientsForVisits(): Promise<number> {
     },
   }).catch(() => {});
 
-  // Xóa 2 lịch hẹn cụ thể theo yêu cầu (ngày 2026-07-28 / mã 79C0D4C6 & AA98DABB)
-  const targetVisitsToDelete = await db.visit.findMany({
-    where: {
-      OR: [
-        { Id: { contains: "79C0D4C6" } },
-        { Id: { contains: "AA98DABB" } },
-        { Date: "2026-07-28" },
-      ],
-    },
-    select: { Id: true, PatientId: true },
-  });
 
-  for (const tv of targetVisitsToDelete) {
-    await db.payment.deleteMany({ where: { VisitId: tv.Id } }).catch(() => {});
-    await db.visit.delete({ where: { Id: tv.Id } }).catch(() => {});
-  }
 
   // Clean up patients that have no associated visits left
   const patientsWithoutVisits = await db.patient.findMany({
@@ -481,7 +466,7 @@ export async function getVisitList(
         select: { FullName: true, Phone: true, Email: true, Address: true, Age: true, Gender: true, MedicalHistory: true },
       },
     },
-    orderBy: [{ Date: "desc" }, { StartTime: "desc" }, { Id: "desc" }],
+    orderBy: [{ AssignedAt: { sort: "desc", nulls: "last" } }, { Date: "desc" }, { Id: "desc" }],
   });
 
   return visits.map(mapVisitToUI);
@@ -625,6 +610,7 @@ export async function createVisit(data: z.infer<typeof visitSchema>) {
     Time: validated.time,
     Duration: validated.duration,
     Status: validated.status,
+    AssignedAt: new Date(), // Thời điểm khách đặt lịch
     // Dispatch fields
     CareMode: validated.careMode || null,
     PackagePlan: validated.packagePlan || null,
@@ -857,10 +843,12 @@ export async function deleteVisit(id: string) {
 export async function getReportData() {
   const totalVisits = await db.visit.count();
   const totalPatients = await db.patient.count();
-  const totalStaff = await db.staff.count();
+  const totalStaff = await db.staff.count({ where: { Id: { not: "PENDING" } } });
+  const availableStaff = await db.staff.count({ where: { Id: { not: "PENDING" }, Available: true } });
 
   // Get real department breakdown from SQL Server
   const allStaff = await db.staff.findMany({
+    where: { Id: { not: "PENDING" } },
     select: { Department: true },
   });
   const deptCounts: Record<string, number> = {};
@@ -903,18 +891,26 @@ export async function getReportData() {
 
   const pendingPayments = await db.visit.count({
     where: {
-      Status: "Đã xác nhận",
-      PaymentStatus: { not: "Đã thanh toán" },
+      Status: { not: "Đã hủy" },
+      OR: [
+        { PaymentStatus: null },
+        { PaymentStatus: { not: "Đã thanh toán" } },
+      ],
     },
   });
+
+  const completedVisits = await db.visit.count({ where: { Status: "Đã hoàn tất" } });
+  const completionRate = totalVisits > 0 ? Math.round((completedVisits / totalVisits) * 100) : 100;
 
   return {
     totalVisits,
     totalPatients,
     totalStaff,
+    availableStaff,
     totalPaidVisits: paidCount,
     totalRevenue,
     pendingPayments,
+    completionRate,
     patientInflow: [
       { label: "T2", value: Math.max(40, totalPatients * 12 + 20) },
       { label: "T3", value: Math.max(50, totalPatients * 15 + 25) },
@@ -924,7 +920,7 @@ export async function getReportData() {
       { label: "T7", value: Math.max(70, totalVisits * 12 + 35) },
       { label: "CN", value: Math.max(75, totalVisits * 14 + 40) },
     ],
-    bedOccupancy: Math.min(98, 70 + totalPatients * 4),
+    bedOccupancy: completionRate,
     staffHours: [
       { label: "Thứ 2", value: Math.max(300, totalStaff * 80 + 100) },
       { label: "Thứ 3", value: Math.max(280, totalStaff * 75 + 80) },
