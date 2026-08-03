@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useLoading } from "@/lib/loading-context";
 import { motion, AnimatePresence } from "framer-motion";
+import { ForgotPasswordFlow } from "@/components/auth/forgot-password";
 import {
   Search,
   Filter,
@@ -19,6 +20,7 @@ import {
   Calendar,
   Clock,
   CreditCard,
+  Check,
   CheckCircle2,
   AlertCircle,
   XCircle,
@@ -698,7 +700,7 @@ export default function BookingPage() {
 
   // Authentication Modal States
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
-  const [authView, setAuthView] = React.useState<"login" | "register">("login");
+  const [authView, setAuthView] = React.useState<"login" | "register" | "forgot_password">("login");
   const [showPassword, setShowPassword] = React.useState(false);
   const [loginError, setLoginError] = React.useState("");
   const loginErrorTimerRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -738,6 +740,30 @@ export default function BookingPage() {
   const [regEmail, setRegEmail] = React.useState("");
   const [regPassword, setRegPassword] = React.useState("");
   const [regConfirmPassword, setRegConfirmPassword] = React.useState("");
+
+  // Dynamic Inline Red Password Error Message
+  const regPasswordError = React.useMemo(() => {
+    if (!regPassword) return "";
+    if (regPassword.length < 8) {
+      return "Mật khẩu phải có ít nhất 8 ký tự.";
+    }
+    if (!/[A-Z]/.test(regPassword)) {
+      return "Mật khẩu phải có ít nhất 1 chữ hoa (A-Z).";
+    }
+    if (!/[a-z]/.test(regPassword)) {
+      return "Mật khẩu phải có ít nhất 1 chữ thường (a-z).";
+    }
+    if (!/[0-9]/.test(regPassword)) {
+      return "Mật khẩu phải chứa số (0-9).";
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>_\-\\\/\[\]]/.test(regPassword)) {
+      return "Mật khẩu phải chứa ký tự đặc biệt (!@#$...).";
+    }
+    if (regConfirmPassword && regPassword !== regConfirmPassword) {
+      return "Mật khẩu xác nhận không khớp.";
+    }
+    return "";
+  }, [regPassword, regConfirmPassword]);
 
   const [staff, setStaff] = React.useState<any[]>(mockStaff);
   const [services, setServices] = React.useState<any[]>(DEFAULT_SERVICES);
@@ -1142,8 +1168,8 @@ export default function BookingPage() {
       addToast("Vui lòng điền đầy đủ thông tin đăng ký.", "error");
       return;
     }
-    if (regPassword !== regConfirmPassword) {
-      addToast("Mật khẩu xác nhận không khớp.", "error");
+    if (regPasswordError) {
+      addToast(regPasswordError, "error");
       return;
     }
 
@@ -2166,13 +2192,23 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
             >
               {/* Close Button */}
               <button
-                onClick={() => setIsAuthModalOpen(false)}
+                onClick={() => {
+                  setIsAuthModalOpen(false);
+                  setAuthView("login");
+                }}
                 className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 hover:bg-slate-50 p-2 rounded-full transition-all z-20"
               >
                 <X className="w-5 h-5" />
               </button>
 
-              {/* Modal Header */}
+              {authView === "forgot_password" ? (
+                <ForgotPasswordFlow
+                  onBackToLogin={() => setAuthView("login")}
+                  customAddToast={addToast}
+                />
+              ) : (
+                <>
+                  {/* Modal Header */}
               <div className="p-8 pb-4 text-center space-y-4">
                 <div className="mx-auto w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center border border-blue-100 shadow-sm text-blue-600">
                   <Stethoscope className="w-6 h-6 animate-pulse" />
@@ -2242,7 +2278,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                   {/* Left Form: Login */}
                   <form
                     onSubmit={handleLocalLogin}
-                    className="w-1/2 px-8 pb-8 pt-2 space-y-5 flex flex-col justify-between"
+                    className="w-1/2 px-8 pb-8 pt-2 space-y-4 flex flex-col justify-start"
                   >
                     <div className="space-y-4">
                       {/* Email Input */}
@@ -2295,13 +2331,8 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                       <div className="text-right">
                         <button
                           type="button"
-                          onClick={() =>
-                            addToast(
-                              "Mẹo: Mật khẩu mặc định của Evelyn Green là '123456'",
-                              "info",
-                            )
-                          }
-                          className="text-[10px] font-bold text-blue-600 hover:text-blue-700 hover:underline"
+                          onClick={() => setAuthView("forgot_password")}
+                          className="text-[10px] font-bold text-purple-600 hover:text-purple-700 hover:underline cursor-pointer"
                         >
                           Quên mật khẩu?
                         </button>
@@ -2450,9 +2481,9 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                   {/* Right Form: Register */}
                   <form
                     onSubmit={handleLocalRegister}
-                    className="w-1/2 px-8 pb-8 pt-2 space-y-4 flex flex-col justify-between"
+                    className="w-1/2 px-8 pb-6 pt-1 space-y-3 flex flex-col justify-start"
                   >
-                    <div className="space-y-3.5">
+                    <div className="space-y-3">
                       {/* Name Input */}
                       <div className="space-y-1.5">
                         <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
@@ -2545,6 +2576,19 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                         </div>
                       </div>
 
+                      {/* Red Inline Password Requirement Warning (Reserved height slot to prevent layout jump) */}
+                      <div className="min-h-[20px] flex items-center">
+                        <p
+                          className={cn(
+                            "text-[11px] font-bold text-red-500 dark:text-rose-400 flex items-center gap-1.5 pl-1 transition-opacity duration-150",
+                            regPasswordError ? "opacity-100" : "opacity-0 pointer-events-none"
+                          )}
+                        >
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                          <span>{regPasswordError || "Mật khẩu hợp lệ"}</span>
+                        </p>
+                      </div>
+
                       <div className="flex items-center gap-2 pl-1">
                         <input
                           type="checkbox"
@@ -2573,10 +2617,12 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                   </form>
                 </motion.div>
               </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+            </>
+          )}
+        </motion.div>
+      </div>
+    )}
+  </AnimatePresence>
 
       {/* Post-Registration Age & Gender Popup Modal */}
       <AnimatePresence>

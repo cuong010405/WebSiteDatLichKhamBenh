@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { registerUser, loginUser, verifyToken } from "../services/auth";
 import { db } from "../db";
+import bcrypt from "bcryptjs";
 
 const router = Router();
 
@@ -157,6 +158,38 @@ router.put("/profile", async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error("PUT /api/auth/profile error:", err);
     return res.status(500).json({ error: "Lỗi cập nhật hồ sơ" });
+  }
+});
+
+// POST /api/auth/reset-password — Đặt lại mật khẩu theo email (không cần đăng nhập)
+router.post("/reset-password", async (req: Request, res: Response) => {
+  const { email, newPassword } = req.body;
+
+  if (!email || !newPassword) {
+    return res.status(400).json({ error: "Vui lòng cung cấp email và mật khẩu mới" });
+  }
+  if (typeof newPassword !== "string" || newPassword.length < 8) {
+    return res.status(400).json({ error: "Mật khẩu mới phải có ít nhất 8 ký tự" });
+  }
+
+  try {
+    const emailNorm = (email as string).toLowerCase().trim();
+    const user = await db.user.findUnique({ where: { Email: emailNorm } });
+    if (!user) {
+      // Trả generic message để tránh user enumeration
+      return res.status(404).json({ error: "Không tìm thấy tài khoản với email này" });
+    }
+
+    const hash = await bcrypt.hash(newPassword, 10);
+    await db.user.update({
+      where: { Id: user.Id },
+      data: { PasswordHash: hash },
+    });
+
+    return res.json({ success: true, message: "Đổi mật khẩu thành công" });
+  } catch (err: any) {
+    console.error("POST /api/auth/reset-password error:", err);
+    return res.status(500).json({ error: "Lỗi đổi mật khẩu. Vui lòng thử lại sau." });
   }
 });
 

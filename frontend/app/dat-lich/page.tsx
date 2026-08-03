@@ -1273,7 +1273,7 @@ Trạng thái: ${booking.status}
               </div>
             )}
 
-            {/* Row 2: Date + Time Slots */}
+            {/* Row 2: Date + Payment in one row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="space-y-2">
                 <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-blue-400">
@@ -1289,71 +1289,6 @@ Trạng thái: ${booking.status}
 
               <div className="space-y-2">
                 <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-blue-400">
-                  Khung giờ rảnh rỗi
-                </Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {TIME_SLOTS.map((time) => {
-                    const slotH = getSlotStartHour(time);
-                    const activeHours = careMode === "hourly" ? hourlyHours : (packageShift ? parseInt(packageShift) : 0);
-                    const activeEndH = activeHours > 0 ? slotH + activeHours : null;
-                    const isExceedsLimit = activeEndH !== null && activeEndH > 20;
-                    return (
-                      <button
-                        key={time}
-                        type="button"
-                        onClick={() => {
-                          if (isExceedsLimit) {
-                            addToast(`Giờ bắt đầu ${time} với ${activeHours}h sẽ kết thúc lúc ${String(activeEndH).padStart(2,"00")}:00, vượt quá 20:00!`, "error");
-                            return;
-                          }
-                          handleSelectBookingSlot(time);
-                        }}
-                        className={cn(
-                          "py-2.5 border text-xs font-black rounded-xl transition-all duration-200 flex flex-col items-center justify-center gap-0.5",
-                          isExceedsLimit
-                            ? "bg-slate-100 border-rose-200 text-slate-400 opacity-50 cursor-not-allowed"
-                            : bookingSlot === time
-                              ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/25 scale-105 cursor-pointer"
-                              : "bg-white border-blue-100 hover:border-blue-300 hover:bg-blue-50 text-slate-700 cursor-pointer"
-                        )}
-                      >
-                        <span>{time}</span>
-                        <span className={cn(
-                          "text-[8px] font-extrabold leading-none",
-                          isExceedsLimit
-                            ? "text-rose-500"
-                            : bookingSlot === time ? "text-white/90" : careMode === "hourly" ? "text-blue-600/80" : "text-emerald-700/90"
-                        )}>
-                          {activeEndH !== null
-                            ? isExceedsLimit
-                              ? `✗ ${String(activeEndH).padStart(2,"0")}:00`
-                              : `→ ${String(activeEndH).padStart(2,"0")}:00`
-                            : null
-                          }
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Row 3: Address + Payment */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-blue-400">
-                  Địa chỉ khám bệnh tại nhà
-                </Label>
-                <Input
-                  value={bookingAddress}
-                  onChange={(e) => setBookingAddress(e.target.value)}
-                  placeholder="Nhập địa chỉ khám tại nhà (số nhà, đường, quận/huyện...)"
-                  className="w-full rounded-2xl border-blue-100 h-12 bg-white font-bold text-sm shadow-none text-slate-800 focus:ring-2 focus:ring-blue-600/20 hover:border-blue-200 transition-colors"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-blue-400">
                   Phương thức thanh toán
                 </Label>
                 <Select
@@ -1363,7 +1298,7 @@ Trạng thái: ${booking.status}
                     setQrConfirmed(false);
                   }}
                 >
-                  <SelectTrigger className="w-full rounded-2xl border-blue-100 h-12 bg-white font-bold text-sm shadow-none text-slate-800 focus:ring-2 focus:ring-blue-600/20 hover:border-blue-200 transition-colors">
+                  <SelectTrigger className="w-full rounded-2xl border-blue-100 !h-12 bg-white font-bold text-sm shadow-none text-slate-800 focus:ring-2 focus:ring-blue-600/20 hover:border-blue-200 transition-colors">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-2xl border-blue-100 shadow-2xl shadow-blue-900/10 p-2 bg-white">
@@ -1375,6 +1310,70 @@ Trạng thái: ${booking.status}
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            {/* Row 3: Time Slots (full width) */}
+            <div className="space-y-2">
+              <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-blue-400">
+                Khung giờ rảnh rỗi
+              </Label>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                {TIME_SLOTS.map((time) => {
+                  const slotH = getSlotStartHour(time);
+                  const activeHours = careMode === "hourly" ? hourlyHours : (packageShift ? parseInt(packageShift) : 0);
+                  const activeEndH = activeHours > 0 ? slotH + activeHours : null;
+                  const isExceedsLimit = activeEndH !== null && activeEndH > 20;
+                  return (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() => {
+                        if (isExceedsLimit) {
+                          addToast(`Giờ bắt đầu ${time} với ${activeHours}h sẽ kết thúc lúc ${String(activeEndH).padStart(2,"00")}:00, vượt quá 20:00!`, "error");
+                          return;
+                        }
+                        handleSelectBookingSlot(time);
+                      }}
+                      className={cn(
+                        "py-2.5 border text-xs font-black rounded-xl transition-all duration-200 flex flex-col items-center justify-center gap-0.5",
+                        isExceedsLimit
+                          ? "bg-slate-100 border-rose-200 text-slate-400 opacity-50 cursor-not-allowed"
+                          : bookingSlot === time
+                            ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/25 scale-105 cursor-pointer"
+                            : "bg-white border-blue-100 hover:border-blue-300 hover:bg-blue-50 text-slate-700 cursor-pointer"
+                      )}
+                    >
+                      <span>{time}</span>
+                      <span className={cn(
+                        "text-[8px] font-extrabold leading-none",
+                        isExceedsLimit
+                          ? "text-rose-500"
+                          : bookingSlot === time ? "text-white/90" : careMode === "hourly" ? "text-blue-600/80" : "text-emerald-700/90"
+                      )}>
+                        {activeEndH !== null
+                          ? isExceedsLimit
+                            ? `✗ ${String(activeEndH).padStart(2,"0")}:00`
+                            : `→ ${String(activeEndH).padStart(2,"0")}:00`
+                          : null
+                        }
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Row 4: Address full width */}
+            <div className="space-y-2">
+              <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-blue-400">
+                Địa chỉ khám bệnh tại nhà
+              </Label>
+              <Input
+                value={bookingAddress}
+                onChange={(e) => setBookingAddress(e.target.value)}
+                placeholder="Nhập địa chỉ khám tại nhà (số nhà, đường, phường/xã, quận/huyện, thành phố...)"
+                className="w-full rounded-2xl border-blue-100 h-12 bg-white font-bold text-sm shadow-none text-slate-800 focus:ring-2 focus:ring-blue-600/20 hover:border-blue-200 transition-colors"
+              />
             </div>
 
             {/* Notes */}

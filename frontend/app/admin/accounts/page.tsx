@@ -15,7 +15,9 @@ import {
   Lock,
   Eye,
   EyeOff,
-  UserPlus
+  UserPlus,
+  AlertCircle,
+  Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,6 +86,28 @@ export default function AccountsPage() {
   const [showPass, setShowPass] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState("");
 
+  // Password Criteria for Checklist
+  const passwordCriteria = React.useMemo(() => {
+    return {
+      hasMinLength: password.length >= 8,
+      hasUppercase: /[A-Z]/.test(password),
+      hasLowercase: /[a-z]/.test(password),
+      hasNumber: /[0-9]/.test(password),
+      hasSpecialChar: /[!@#$%^&*(),.?":{}|<>_\-\\\/\[\]]/.test(password),
+    };
+  }, [password]);
+
+  // Derived error string from criteria
+  const passwordError = React.useMemo(() => {
+    if (!password) return "";
+    if (!passwordCriteria.hasMinLength) return "Mật khẩu phải có ít nhất 8 ký tự.";
+    if (!passwordCriteria.hasUppercase) return "Mật khẩu phải chứa ít nhất 1 chữ hoa (A-Z).";
+    if (!passwordCriteria.hasLowercase) return "Mật khẩu phải chứa ít nhất 1 chữ thường (a-z).";
+    if (!passwordCriteria.hasNumber) return "Mật khẩu phải chứa số (0-9).";
+    if (!passwordCriteria.hasSpecialChar) return "Mật khẩu phải chứa ký tự đặc biệt (!@#$...).";
+    return "";
+  }, [passwordCriteria, password]);
+
   const loadUsers = () => {
     setLoading(true);
     show("ĐANG TẢI DỮ LIỆU TÀI KHOẢN...");
@@ -107,6 +131,10 @@ export default function AccountsPage() {
   const handleAddAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
+    if (passwordError) {
+      setErrorMsg(passwordError);
+      return;
+    }
     show("ĐANG THÊM TÀI KHOẢN...");
     try {
       const res = await authFetch(`${API_URL}/users`, {
@@ -139,6 +167,10 @@ export default function AccountsPage() {
     e.preventDefault();
     if (!selectedUser) return;
     setErrorMsg("");
+    if (password && passwordError) {
+      setErrorMsg(passwordError);
+      return;
+    }
     show("ĐANG CẬP NHẬT TÀI KHOẢN...");
     try {
       const res = await authFetch(`${API_URL}/users/${selectedUser.id}`, {
@@ -292,6 +324,59 @@ export default function AccountsPage() {
                     <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Địa chỉ Email</Label>
                     <Input type="email" required placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
                   </div>
+
+                  {/* Password Requirements Checklist filling empty space */}
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/60 space-y-1.5 text-left mt-2">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                      Yêu cầu mật khẩu:
+                    </span>
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors ${passwordCriteria.hasMinLength ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"}`}>
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </div>
+                        <span className={`text-[11px] font-medium transition-colors ${passwordCriteria.hasMinLength ? "text-emerald-700 font-semibold" : "text-slate-500"}`}>
+                          Ít nhất 8 ký tự
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors ${passwordCriteria.hasUppercase ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"}`}>
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </div>
+                        <span className={`text-[11px] font-medium transition-colors ${passwordCriteria.hasUppercase ? "text-emerald-700 font-semibold" : "text-slate-500"}`}>
+                          Có chữ hoa (A-Z)
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors ${passwordCriteria.hasLowercase ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"}`}>
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </div>
+                        <span className={`text-[11px] font-medium transition-colors ${passwordCriteria.hasLowercase ? "text-emerald-700 font-semibold" : "text-slate-500"}`}>
+                          Có chữ thường (a-z)
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors ${passwordCriteria.hasNumber ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"}`}>
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </div>
+                        <span className={`text-[11px] font-medium transition-colors ${passwordCriteria.hasNumber ? "text-emerald-700 font-semibold" : "text-slate-500"}`}>
+                          Có số (0-9)
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 col-span-2">
+                        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors ${passwordCriteria.hasSpecialChar ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"}`}>
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </div>
+                        <span className={`text-[11px] font-medium transition-colors ${passwordCriteria.hasSpecialChar ? "text-emerald-700 font-semibold" : "text-slate-500"}`}>
+                          Có ký tự đặc biệt
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Right Column */}
@@ -342,7 +427,7 @@ export default function AccountsPage() {
               <div className="space-y-2 text-left">
                 <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Mật khẩu ban đầu</Label>
                 <div className="relative">
-                  <Input type={showPass ? "text" : "password"} required placeholder="Mật khẩu ít nhất 6 ký tự" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none pl-3 pr-10 text-slate-800 transition-all" />
+                  <Input type={showPass ? "text" : "password"} required placeholder="Mật khẩu ít nhất 8 ký tự" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none pl-3 pr-10 text-slate-800 transition-all" />
                   <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                     {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -524,6 +609,59 @@ export default function AccountsPage() {
                 <div className="space-y-2 text-left">
                   <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Địa chỉ Email</Label>
                   <Input type="email" required placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                </div>
+
+                {/* Password Requirements Checklist filling empty space */}
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/60 space-y-1.5 text-left mt-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                    Yêu cầu mật khẩu:
+                  </span>
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors ${passwordCriteria.hasMinLength ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"}`}>
+                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      </div>
+                      <span className={`text-[11px] font-medium transition-colors ${passwordCriteria.hasMinLength ? "text-emerald-700 font-semibold" : "text-slate-500"}`}>
+                        Ít nhất 8 ký tự
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors ${passwordCriteria.hasUppercase ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"}`}>
+                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      </div>
+                      <span className={`text-[11px] font-medium transition-colors ${passwordCriteria.hasUppercase ? "text-emerald-700 font-semibold" : "text-slate-500"}`}>
+                        Có chữ hoa (A-Z)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors ${passwordCriteria.hasLowercase ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"}`}>
+                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      </div>
+                      <span className={`text-[11px] font-medium transition-colors ${passwordCriteria.hasLowercase ? "text-emerald-700 font-semibold" : "text-slate-500"}`}>
+                        Có chữ thường (a-z)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors ${passwordCriteria.hasNumber ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"}`}>
+                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      </div>
+                      <span className={`text-[11px] font-medium transition-colors ${passwordCriteria.hasNumber ? "text-emerald-700 font-semibold" : "text-slate-500"}`}>
+                        Có số (0-9)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 col-span-2">
+                      <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors ${passwordCriteria.hasSpecialChar ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"}`}>
+                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      </div>
+                      <span className={`text-[11px] font-medium transition-colors ${passwordCriteria.hasSpecialChar ? "text-emerald-700 font-semibold" : "text-slate-500"}`}>
+                        Có ký tự đặc biệt
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
