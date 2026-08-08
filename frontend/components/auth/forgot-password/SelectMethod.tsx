@@ -80,10 +80,10 @@ export function SelectMethod({
           </div>
           <div>
             <span className="text-base font-bold text-slate-900 dark:text-white block">
-              Email
+              Gmail
             </span>
             <span className="text-xs text-slate-500 dark:text-slate-400 block mt-0.5">
-              Nhận mã xác thực qua Email.
+              Nhận mã xác thực qua Gmail.
             </span>
           </div>
         </motion.div>
@@ -132,7 +132,7 @@ export function SelectMethod({
       <form onSubmit={handleSubmit} className="space-y-4 pt-2">
         <div className="space-y-2">
           <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-            {method === "email" ? "Địa chỉ Email" : "Số điện thoại"}
+            {method === "email" ? "Gmail" : "Số điện thoại"}
           </label>
           <div className="relative">
             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
@@ -144,7 +144,7 @@ export function SelectMethod({
               value={contactValue}
               onChange={(e) => setContactValue(e.target.value)}
               placeholder={
-                method === "email" ? "evelyn.green@gmail.com" : "0912345678"
+                method === "email" ? "ten@gmail.com" : "0912345678"
               }
               className="w-full h-12 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 pl-11 pr-4 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all"
             />

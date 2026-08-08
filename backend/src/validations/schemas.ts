@@ -13,7 +13,7 @@ export const staffSchema = z.object({
     .default("0000000000"),
   email: z
     .string()
-    .email("Email không hợp lệ")
+    .email("Địa chỉ Email không hợp lệ")
     .or(z.literal(""))
     .optional()
     .default(""),

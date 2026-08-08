@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { assertNoDuplicate } from "./duplicateValidation";
 
 const prisma = new PrismaClient();
 
@@ -24,6 +25,14 @@ export async function createServiceType(data: {
   Color?: string;
   Active?: boolean;
 }) {
+  // Kiểm tra trùng tên loại dịch vụ trước khi tạo
+  await assertNoDuplicate({
+    model: "serviceType",
+    checks: [
+      { field: "Name", value: data.Name, fieldDisplayName: "Tên loại dịch vụ" },
+    ],
+  });
+
   return prisma.serviceType.create({
     data: {
       Id: data.Id || crypto.randomUUID(),
@@ -44,6 +53,17 @@ export async function updateServiceType(
     Active?: boolean;
   }
 ) {
+  // Kiểm tra trùng tên loại dịch vụ với bản ghi khác khi cập nhật
+  if (data.Name) {
+    await assertNoDuplicate({
+      model: "serviceType",
+      checks: [
+        { field: "Name", value: data.Name, fieldDisplayName: "Tên loại dịch vụ" },
+      ],
+      excludeId: { field: "Id", value: id },
+    });
+  }
+
   return prisma.serviceType.update({
     where: { Id: id },
     data: {

@@ -1,4 +1,6 @@
 import { db } from "../db";
+import { assertNoDuplicate } from "./duplicateValidation";
+
 
 export interface LicenseInput {
   staffId: string;
@@ -32,6 +34,18 @@ export async function getLicensesByStaffId(staffId: string) {
 }
 
 export async function createLicense(data: LicenseInput) {
+  // Kiểm tra trùng mã số CCHN trước khi tạo
+  await assertNoDuplicate({
+    model: "staffLicense",
+    checks: [
+      {
+        field: "LicenseNumber",
+        value: data.licenseNumber,
+        fieldDisplayName: "Mã số chứng chỉ hành nghề",
+      },
+    ],
+  });
+
   const created = await db.staffLicense.create({
     data: {
       Id: crypto.randomUUID(),
@@ -55,6 +69,21 @@ export async function updateLicense(id: string, data: Partial<LicenseInput>) {
   if (data.expiryDate !== undefined) dbData.ExpiryDate = data.expiryDate ?? null;
   if (data.specialty !== undefined) dbData.Specialty = data.specialty ?? null;
   if (data.note !== undefined) dbData.Note = data.note ?? null;
+
+  // Kiểm tra trùng mã số CCHN với chứng chỉ khác khi cập nhật
+  if (data.licenseNumber) {
+    await assertNoDuplicate({
+      model: "staffLicense",
+      checks: [
+        {
+          field: "LicenseNumber",
+          value: data.licenseNumber,
+          fieldDisplayName: "Mã số chứng chỉ hành nghề",
+        },
+      ],
+      excludeId: { field: "Id", value: id },
+    });
+  }
 
   const updated = await db.staffLicense.update({
     where: { Id: id },

@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { staffSchema } from "../validations/schemas";
 import { z } from "zod";
+import { assertNoDuplicate } from "./duplicateValidation";
 
 function mapStaffToUI(s: any) {
   return {
@@ -157,6 +158,21 @@ export async function getStaffById(id: string) {
 
 export async function createStaff(data: z.infer<typeof staffSchema>) {
   const validated = staffSchema.parse(data);
+
+  // Kiểm tra trùng trước khi tạo chuyên gia/nhân viên
+  await assertNoDuplicate({
+    model: "staff",
+    checks: [
+      { field: "Id", value: validated.id, fieldDisplayName: "Mã nhân viên" },
+      ...(validated.email && validated.email !== "unknown@mintcare.com"
+        ? [{ field: "Email", value: validated.email, fieldDisplayName: "Gmail" }]
+        : []),
+      ...(validated.phone && validated.phone !== "0000000000"
+        ? [{ field: "Phone", value: validated.phone, fieldDisplayName: "Số điện thoại" }]
+        : []),
+    ],
+  });
+
   const created = await db.staff.create({
     data: mapStaffToDb(validated),
   });
@@ -198,6 +214,23 @@ export async function updateStaff(id: string, data: Partial<z.infer<typeof staff
       throw new Error(`🔒 Không thể chuyển sang "Nghỉ phép" vì chuyên gia đang có ${activeVisitsToday.length} ca trực Đã xác nhận trong ngày hôm nay!`);
     }
   }
+
+  // Kiểm tra trùng Gmail/Phone với nhân viên khác khi cập nhật
+  const emailToCheck = rest.email;
+  const phoneToCheck = rest.phone;
+
+  await assertNoDuplicate({
+    model: "staff",
+    checks: [
+      ...(emailToCheck && emailToCheck !== "unknown@mintcare.com"
+        ? [{ field: "Email", value: emailToCheck, fieldDisplayName: "Gmail" }]
+        : []),
+      ...(phoneToCheck && phoneToCheck !== "0000000000"
+        ? [{ field: "Phone", value: phoneToCheck, fieldDisplayName: "Số điện thoại" }]
+        : []),
+    ],
+    excludeId: { field: "Id", value: id },
+  });
 
   const updated = await db.staff.update({
     where: { Id: id },

@@ -321,8 +321,8 @@ export default function AccountsPage() {
                   </div>
 
                   <div className="space-y-2 text-left">
-                    <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Địa chỉ Email</Label>
-                    <Input type="email" required placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                    <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Gmail</Label>
+                    <Input type="email" required placeholder="ten@gmail.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
                   </div>
 
                   {/* Password Requirements Checklist filling empty space */}
@@ -607,8 +607,8 @@ export default function AccountsPage() {
                 </div>
 
                 <div className="space-y-2 text-left">
-                  <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Địa chỉ Email</Label>
-                  <Input type="email" required placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                  <Label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Gmail</Label>
+                  <Input type="email" required placeholder="ten@gmail.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
                 </div>
 
                 {/* Password Requirements Checklist filling empty space */}

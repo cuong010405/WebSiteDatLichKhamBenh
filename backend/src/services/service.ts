@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { serviceSchema } from "../validations/service-schema";
 import { z } from "zod";
+import { assertNoDuplicate } from "./duplicateValidation";
 
 function mapServiceToUI(s: any) {
   return {
@@ -51,6 +52,15 @@ export async function getServiceById(id: string) {
 
 export async function createService(data: z.infer<typeof serviceSchema>) {
   const validated = serviceSchema.parse(data);
+
+  // Kiểm tra trùng tên dịch vụ trước khi tạo
+  await assertNoDuplicate({
+    model: "service",
+    checks: [
+      { field: "Name", value: validated.name, fieldDisplayName: "Tên dịch vụ" },
+    ],
+  });
+
   const created = await db.service.create({
     data: mapServiceToDb(validated),
   });
@@ -66,6 +76,17 @@ export async function updateService(id: string, data: Partial<z.infer<typeof ser
   if (rest.duration !== undefined) dbData.Duration = rest.duration;
   if (rest.type !== undefined) dbData.Type = rest.type;
   if (rest.active !== undefined) dbData.Active = rest.active;
+
+  // Kiểm tra trùng tên dịch vụ với dịch vụ khác khi cập nhật
+  if (rest.name) {
+    await assertNoDuplicate({
+      model: "service",
+      checks: [
+        { field: "Name", value: rest.name, fieldDisplayName: "Tên dịch vụ" },
+      ],
+      excludeId: { field: "Id", value: id },
+    });
+  }
 
   const updated = await db.service.update({
     where: { Id: id },

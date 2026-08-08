@@ -18,7 +18,7 @@ import {
   Star, MessageSquare, Phone, LayoutGrid, List,
   Sparkles, ShieldCheck, Pencil, Trash2, X,
   AlertTriangle, CheckCircle2, Upload, ImageIcon,
-  FileText, Award, Eye, Calendar, Plus,
+  FileText, Award, Eye, Calendar, Plus, AlertCircle,
 } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -104,7 +104,7 @@ function AvatarUpload({
 }
 
 /* ─── Add Staff Dialog ─── */
-function AddStaffDialog({ onAdd, departments, positions }: { onAdd: (s: Staff) => void; departments: string[]; positions: string[] }) {
+function AddStaffDialog({ onAdd, departments, positions }: { onAdd: (s: Staff) => Promise<{ success: boolean; error?: string } | undefined>; departments: string[]; positions: string[] }) {
   const [open, setOpen] = React.useState(false)
   const [name, setName] = React.useState("")
   const [role, setRole] = React.useState("")
@@ -138,17 +138,19 @@ function AddStaffDialog({ onAdd, departments, positions }: { onAdd: (s: Staff) =
   const [licenseNote, setLicenseNote] = React.useState("")
 
   const [staffType, setStaffType] = React.useState<string>("Điều dưỡng viên")
+  const [addError, setAddError] = React.useState("")
 
   const reset = () => {
     setName(""); setRole(""); setDepartment(""); setPhone("")
     setEmail(""); setLocation(""); setAvatar(""); setStaffType("Điều dưỡng viên")
     setStatus("Sẵn sàng"); setAvailable(true)
     setLicenseNumber(""); setIssuedBy("Bộ Y tế"); setIssuedDate(""); setExpiryDate(""); setSpecialty(""); setLicenseNote("")
-    setStaffSpecialty(""); setStaffExperience("")
+    setStaffSpecialty(""); setStaffExperience(""); setAddError("")
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setAddError("")
     const selectedRole = role || staffType
     const selectedDept = department || (staffType === "Chuyên viên vật lý trị liệu" ? "Phục hồi chức năng" : "Khoa Điều dưỡng")
     if (!name) return
@@ -171,7 +173,11 @@ function AddStaffDialog({ onAdd, departments, positions }: { onAdd: (s: Staff) =
     }
 
     try {
-      await onAdd(newStaff)
+      const res = await onAdd(newStaff)
+      if (res && !res.success) {
+        setAddError(res.error || "Không thể thêm mới chuyên gia!")
+        return
+      }
       if (licenseNumber && issuedDate) {
         authFetch(`${API_URL}/licenses`, {
           method: "POST",
@@ -189,10 +195,9 @@ function AddStaffDialog({ onAdd, departments, positions }: { onAdd: (s: Staff) =
       }
       reset()
       setOpen(false)
-    } catch (err) {
+    } catch (err: any) {
       console.error("Add staff error:", err)
-      reset()
-      setOpen(false)
+      setAddError(err.message || "Không thể thêm mới chuyên gia!")
     } finally {
       setSubmitting(false)
     }
@@ -212,7 +217,7 @@ function AddStaffDialog({ onAdd, departments, positions }: { onAdd: (s: Staff) =
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset() }}>
         <DialogContent className="sm:max-w-[980px] rounded-[28px] border border-slate-200/80 shadow-2xl shadow-black/10 p-0 overflow-hidden bg-white">
           <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 to-green-500" />
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <form onSubmit={handleSubmit} className="px-6 py-[10px] space-y-3">
                 <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-5 border-b border-slate-100">
                   <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-600 text-white flex items-center justify-center shrink-0 shadow-md">
                     <UserPlus className="w-5 h-5" />
@@ -235,8 +240,8 @@ function AddStaffDialog({ onAdd, departments, positions }: { onAdd: (s: Staff) =
                       <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="090 123 4567" className="w-full rounded-xl border border-slate-200 h-10 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
                     </div>
                     <div className="space-y-1.5 text-left">
-                      <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Email công vụ</label>
-                      <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ten@mintcare.com" className="w-full rounded-xl border border-slate-200 h-10 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                      <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Gmail</label>
+                      <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ten@gmail.com" className="w-full rounded-xl border border-slate-200 h-10 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
                     </div>
                   </div>
 
@@ -378,18 +383,29 @@ function AddStaffDialog({ onAdd, departments, positions }: { onAdd: (s: Staff) =
                   </div>
                 </div>
 
-                <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3 bg-white">
-                  <Button type="button" variant="outline" onClick={() => setOpen(false)} className="rounded-full h-10 px-6 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">
-                    Hủy bỏ
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={!name || !role || !department || submitting}
-                    className="rounded-full h-10 px-8 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-95 transition-all shadow-md disabled:opacity-40 group"
-                  >
-                    {submitting ? "Đang lưu..." : "Tạo hồ sơ"}
-                    <Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" />
-                  </Button>
+                <div className="h-7 flex items-center">
+                  {addError && (
+                    <p className="px-3 py-1.5 bg-red-50 border border-red-200 text-red-600 rounded-lg text-[11px] font-bold flex items-center gap-1.5 w-fit">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>{addError}</span>
+                    </p>
+                  )}
+                </div>
+
+                <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3 bg-white pb-0">
+                  <div className="flex gap-3">
+                    <Button type="button" variant="outline" onClick={() => setOpen(false)} className="rounded-full h-10 px-6 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">
+                      Hủy bỏ
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={!name || !role || !department || submitting}
+                      className="rounded-full h-10 px-8 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-95 transition-all shadow-md disabled:opacity-40 group"
+                    >
+                      {submitting ? "Đang lưu..." : "Tạo hồ sơ"}
+                      <Sparkles className="w-3.5 h-3.5 ml-2 group-hover:rotate-180 transition-transform duration-500" />
+                    </Button>
+                  </div>
                 </DialogFooter>
               </form>
         </DialogContent>
@@ -601,7 +617,7 @@ function StaffDetailDialog({
                   <span className="text-xs font-black text-slate-800 mt-1 block">{person.phone || "Chưa cập nhật"}</span>
                 </div>
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Email công vụ</span>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Gmail</span>
                   <span className="text-xs font-black text-slate-800 mt-1 block">{person.email || "Chưa cập nhật"}</span>
                 </div>
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
@@ -808,7 +824,7 @@ function EditStaffDialog({
   person: Staff
   open: boolean
   onOpenChange: (v: boolean) => void
-  onSave: (updated: Staff) => void
+  onSave: (updated: Staff) => Promise<{ success: boolean; error?: string } | undefined> | void
   departments: string[]
   positions: string[]
 }) {
@@ -835,7 +851,7 @@ function EditStaffDialog({
     }
   }, [open])
 
-  const [success, setSuccess] = React.useState(false)
+  const [editError, setEditError] = React.useState("")
 
   React.useEffect(() => {
     if (open) {
@@ -850,7 +866,7 @@ function EditStaffDialog({
       setAvailable(person.available ?? true)
       setSpecialty(person.specialty || "")
       setExperience(person.experience || "")
-      setSuccess(false)
+      setEditError("")
       const dbStaffType = (person as any).staffType
       if (dbStaffType) {
         setStaffType(dbStaffType)
@@ -865,11 +881,20 @@ function EditStaffDialog({
     }
   }, [open, person])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setEditError("")
     const finalRole = role || staffType
-    onSave({ ...person, name, role: finalRole, department, phone, email, location, avatar, status, available, specialty: specialty || null, experience: experience || null, staffType } as any)
-    onOpenChange(false)
+    try {
+      const res = await onSave({ ...person, name, role: finalRole, department, phone, email, location, avatar, status, available, specialty: specialty || null, experience: experience || null, staffType } as any)
+      if (res && !res.success) {
+        setEditError(res.error || "Không thể cập nhật thông tin chuyên gia!")
+        return
+      }
+      onOpenChange(false)
+    } catch (err: any) {
+      setEditError(err.message || "Không thể cập nhật thông tin chuyên gia!")
+    }
   }
 
   return (
@@ -899,8 +924,8 @@ function EditStaffDialog({
                     <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded-xl border border-slate-200 h-9 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
                   </div>
                   <div className="space-y-1.5 text-left">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email công vụ</Label>
-                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ten@mintcare.com" className="w-full rounded-xl border border-slate-200 h-9 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Gmail</Label>
+                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ten@gmail.com" className="w-full rounded-xl border border-slate-200 h-9 bg-white font-bold text-xs shadow-none px-3 text-slate-800 transition-all" />
                   </div>
                 </div>
 
@@ -1052,6 +1077,15 @@ function EditStaffDialog({
                 </div>
               </div>
 
+              <div className="h-7 flex items-center">
+                {editError && (
+                  <p className="px-3 py-1.5 bg-red-50 border border-red-200 text-red-600 rounded-lg text-[11px] font-bold flex items-center gap-1.5 w-fit">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                    <span>{editError}</span>
+                  </p>
+                )}
+              </div>
+
               <DialogFooter className="pt-4 border-t border-slate-100 flex flex-row justify-end gap-3 bg-white">
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-full h-10 px-6 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">
                   Hủy bỏ
@@ -1113,7 +1147,7 @@ function StaffCard({
   person, onEdit, onDelete, departments, positions, onLicensesUpdated,
 }: {
   person: Staff
-  onEdit: (p: Staff) => void
+  onEdit: (p: Staff) => Promise<{ success: boolean; error?: string } | undefined>
   onDelete: (id: string) => void
   departments: string[]
   positions: string[]
@@ -1281,12 +1315,15 @@ export default function StaffPage() {
       if (res.ok) {
         const created = await res.json()
         setStaffList((prev) => [created, ...prev])
+        return { success: true }
       } else {
-        setStaffList((prev) => [newStaff, ...prev])
+        const errData = await res.json().catch(() => ({}))
+        const errorMsg = errData.error || "Không thể thêm mới chuyên gia!"
+        return { success: false, error: errorMsg }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Lỗi thêm chuyên gia:", err)
-      setStaffList((prev) => [newStaff, ...prev])
+      return { success: false, error: err.message || "Không thể thêm mới chuyên gia!" }
     } finally {
       hide()
     }
@@ -1303,15 +1340,15 @@ export default function StaffPage() {
       if (res.ok) {
         const saved = await res.json()
         setStaffList((prev) => prev.map((s) => (s.id === saved.id ? saved : s)))
+        return { success: true }
       } else {
         const errData = await res.json().catch(() => ({}))
-        alert(errData.error || "Không thể chuyển trạng thái của chuyên gia!")
-        loadStaff()
+        const errorMsg = errData.error || "Không thể cập nhật thông tin chuyên gia!"
+        return { success: false, error: errorMsg }
       }
     } catch (err: any) {
       console.error("Lỗi cập nhật chuyên gia:", err)
-      alert(err.message || "Không thể cập nhật thông tin chuyên gia!")
-      loadStaff()
+      return { success: false, error: err.message || "Không thể cập nhật thông tin chuyên gia!" }
     } finally {
       hide()
     }

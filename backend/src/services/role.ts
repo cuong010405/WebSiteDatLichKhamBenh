@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { assertNoDuplicate } from "./duplicateValidation";
 
 const prisma = new PrismaClient();
 
@@ -27,6 +28,15 @@ export async function createRole(data: {
   Description?: string;
   Active?: boolean;
 }) {
+  // Kiểm tra trùng Mã và Tên chức danh trước khi tạo
+  await assertNoDuplicate({
+    model: "role",
+    checks: [
+      { field: "Id", value: data.Id, fieldDisplayName: "Mã chức danh" },
+      { field: "Name", value: data.Name, fieldDisplayName: "Tên chức danh" },
+    ],
+  });
+
   return prisma.role.create({
     data: {
       Id: data.Id,
@@ -41,6 +51,17 @@ export async function updateRole(
   id: string,
   data: { Name?: string; Description?: string; Active?: boolean }
 ) {
+  // Kiểm tra trùng Tên chức danh với bản ghi khác khi cập nhật
+  if (data.Name) {
+    await assertNoDuplicate({
+      model: "role",
+      checks: [
+        { field: "Name", value: data.Name, fieldDisplayName: "Tên chức danh" },
+      ],
+      excludeId: { field: "Id", value: id },
+    });
+  }
+
   return prisma.role.update({
     where: { Id: id },
     data,

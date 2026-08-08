@@ -45,8 +45,8 @@ export function LoginDialog() {
             </DialogHeader>
             <div className="grid gap-6 py-6">
               <div className="grid gap-2">
-                <Label htmlFor="email" className="text-sm font-medium">Địa chỉ Email</Label>
-                <Input id="email" type="email" placeholder="alex.miller@mintcare.com" className="rounded-xl border-hairline focus:ring-primary focus:border-primary h-12" />
+                <Label htmlFor="email" className="text-sm font-medium">Gmail</Label>
+                <Input id="email" type="email" placeholder="ten@gmail.com" className="rounded-xl border-hairline focus:ring-primary focus:border-primary h-12" />
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center justify-between">

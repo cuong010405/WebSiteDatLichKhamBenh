@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { db } from "../db";
 import bcrypt from "bcryptjs";
+import { assertNoDuplicate } from "../services/duplicateValidation";
 
 const router = Router();
 
@@ -52,7 +53,7 @@ router.post("/", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Vui lòng điền đầy đủ email, mật khẩu và họ tên" });
   }
   if (!isValidEmail(email)) {
-    return res.status(400).json({ error: "Địa chỉ email không hợp lệ" });
+    return res.status(400).json({ error: "Địa chỉ Email không hợp lệ" });
   }
   if (typeof password !== "string" || password.length < 6) {
     return res.status(400).json({ error: "Mật khẩu phải có ít nhất 6 ký tự" });
@@ -62,10 +63,16 @@ router.post("/", async (req: Request, res: Response) => {
   }
 
   try {
-    const existing = await db.user.findUnique({ where: { Email: email.toLowerCase().trim() } });
-    if (existing) {
-      return res.status(400).json({ error: "Email này đã được sử dụng" });
-    }
+    // Kiểm tra trùng Gmail và Số điện thoại - dùng chung qua assertNoDuplicate
+    await assertNoDuplicate({
+      model: "user",
+      checks: [
+        { field: "Email", value: email.toLowerCase().trim(), fieldDisplayName: "Gmail" },
+        ...(phone?.trim()
+          ? [{ field: "Phone", value: phone.trim(), fieldDisplayName: "Số điện thoại" }]
+          : []),
+      ],
+    });
 
     const hash = await bcrypt.hash(password, 10);
     const user = await db.user.create({
@@ -92,6 +99,10 @@ router.post("/", async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error("POST /api/users error:", err);
+    // Bắt cả lỗi từ assertNoDuplicate (trùng Email/Phone)
+    if (err.message && !err.message.includes("Lỗi tạo tài khoản")) {
+      return res.status(400).json({ error: err.message });
+    }
     return res.status(500).json({ error: "Lỗi tạo tài khoản" });
   }
 });
@@ -103,7 +114,7 @@ router.put("/:id", async (req: Request, res: Response) => {
 
   // Input validation
   if (email && !isValidEmail(email)) {
-    return res.status(400).json({ error: "Địa chỉ email không hợp lệ" });
+    return res.status(400).json({ error: "Địa chỉ Gmail không hợp lệ" });
   }
   if (password && (typeof password !== "string" || password.length < 6)) {
     return res.status(400).json({ error: "Mật khẩu mới phải có ít nhất 6 ký tự" });
@@ -115,13 +126,23 @@ router.put("/:id", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Không tìm thấy tài khoản" });
     }
 
-    // Check for email uniqueness if changing email
+    // Kiểm tra trùng Gmail và Số điện thoại khi thay đổi - loại trừ chính tài khoản đang sửa
+    const checks: any[] = [];
     if (email && email.toLowerCase().trim() !== existing.Email) {
-      const emailTaken = await db.user.findUnique({ where: { Email: email.toLowerCase().trim() } });
-      if (emailTaken) {
-        return res.status(400).json({ error: "Email này đã được sử dụng bởi tài khoản khác" });
-      }
+      checks.push({ field: "Email", value: email.toLowerCase().trim(), fieldDisplayName: "Gmail" });
     }
+    if (phone && phone.trim() !== existing.Phone) {
+      checks.push({ field: "Phone", value: phone.trim(), fieldDisplayName: "Số điện thoại" });
+    }
+
+    if (checks.length > 0) {
+      await assertNoDuplicate({
+        model: "user",
+        checks,
+        excludeId: { field: "Id", value: id },
+      });
+    }
+
 
     const updateData: any = {
       Email: email ? email.toLowerCase().trim() : existing.Email,

@@ -740,6 +740,12 @@ export default function BookingPage() {
   const [regEmail, setRegEmail] = React.useState("");
   const [regPassword, setRegPassword] = React.useState("");
   const [regConfirmPassword, setRegConfirmPassword] = React.useState("");
+  const [regApiError, setRegApiError] = React.useState("");
+
+  // Password Visibility States
+  const [showLoginPassword, setShowLoginPassword] = React.useState(false);
+  const [showRegPassword, setShowRegPassword] = React.useState(false);
+  const [showRegConfirmPassword, setShowRegConfirmPassword] = React.useState(false);
 
   // Dynamic Inline Red Password Error Message
   const regPasswordError = React.useMemo(() => {
@@ -1173,6 +1179,7 @@ export default function BookingPage() {
       return;
     }
 
+    setRegApiError("");
     try {
       const u = await register({
         email: regEmail.trim(),
@@ -1189,13 +1196,16 @@ export default function BookingPage() {
       setRegEmail("");
       setRegPassword("");
       setRegConfirmPassword("");
+      setRegApiError("");
 
       // Open Birth Year & Gender Modal after registration
       setBirthYear("");
       setSelectedGender("Nam");
       setIsBirthYearModalOpen(true);
     } catch (err: any) {
-      addToast(err.message || "Đăng ký thất bại", "error");
+      const msg = err.message || "Đăng ký thất bại";
+      setRegApiError(msg);
+      addToast(msg, "error");
     }
   };
 
@@ -2071,13 +2081,13 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
               </div>
               <div className="space-y-2">
                 <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
-                  Địa chỉ Email liên hệ
+                  Gmail
                 </Label>
                 <Input
                   value={contactEmail}
                   type="email"
                   onChange={(e) => setContactEmail(e.target.value)}
-                  placeholder="name@example.com"
+                  placeholder="ten@gmail.com"
                   className="rounded-2xl border-blue-100 h-12 bg-slate-50 focus:bg-white transition-all font-bold text-sm shadow-none text-blue-950"
                 />
               </div>
@@ -2148,26 +2158,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
         </div>
       </footer>
 
-      {/* Top Floating Modern Pill Notification */}
-      <AnimatePresence>
-        {loginError && (
-          <motion.div
-            key="centered-login-error"
-            initial={{ opacity: 0, y: -24, scale: 0.92 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -16, scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 450, damping: 26 }}
-            className="fixed top-8 left-1/2 -translate-x-1/2 z-[300] bg-white/95 backdrop-blur-2xl border border-rose-100/80 px-5 py-3.5 rounded-full shadow-[0_16px_36px_-10px_rgba(244,63,94,0.18)] flex items-center gap-3.5 pointer-events-auto border-l-4 border-l-rose-500 max-w-md w-auto"
-          >
-            <div className="w-8 h-8 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
-              <AlertCircle className="w-4 h-4 text-rose-500" />
-            </div>
-            <span className="text-xs font-black text-slate-800 tracking-tight pr-2">
-              {loginError}
-            </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Top Floating Notification Removed */}
 
       {/* Authentication Modal - Sliding Login & Register */}
       <AnimatePresence>
@@ -2281,17 +2272,17 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                     className="w-1/2 px-8 pb-8 pt-2 space-y-4 flex flex-col justify-start"
                   >
                     <div className="space-y-4">
-                      {/* Email Input */}
+                      {/* Gmail Input */}
                       <div className="space-y-2">
                         <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
-                          Địa chỉ Email
+                          Gmail
                         </Label>
                         <div className="relative">
                           <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <Input
                             type="email"
                             required
-                            placeholder="evelyn.green@gmail.com"
+                            placeholder="ten@gmail.com"
                             value={loginEmail}
                             onChange={(e) => setLoginEmail(e.target.value)}
                             className="rounded-2xl border-blue-100 pl-11 h-12 bg-slate-50 focus:bg-white transition-all font-semibold text-sm shadow-none text-blue-950"
@@ -2307,19 +2298,26 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                         <div className="relative">
                           <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <Input
-                            type={showPassword ? "text" : "password"}
+                            type={showLoginPassword ? "text" : "password"}
                             required
                             placeholder="••••••"
                             value={loginPassword}
-                            onChange={(e) => setLoginPassword(e.target.value)}
-                            className="rounded-2xl border-blue-100 pl-11 pr-11 h-12 bg-slate-50 focus:bg-white transition-all font-semibold text-sm shadow-none text-blue-950"
+                            onChange={(e) => {
+                              setLoginPassword(e.target.value);
+                              setLoginError("");
+                            }}
+                            className={cn(
+                              "rounded-2xl border-blue-100 pl-11 pr-11 h-12 bg-slate-50 focus:bg-white transition-all font-semibold text-sm shadow-none text-blue-950",
+                              loginError && "border-red-400 focus:border-red-500 focus:ring-red-100"
+                            )}
                           />
                           <button
                             type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                            onClick={() => setShowLoginPassword(!showLoginPassword)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                            title={showLoginPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                           >
-                            {showPassword ? (
+                            {showLoginPassword ? (
                               <EyeOff className="w-4 h-4" />
                             ) : (
                               <Eye className="w-4 h-4" />
@@ -2328,11 +2326,20 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                         </div>
                       </div>
 
-                      <div className="text-right">
+                      {/* Inline Error Message below Password & Forgot Password Link */}
+                      <div className="flex items-center justify-between min-h-[22px] px-1">
+                        <div>
+                          {loginError && (
+                            <p className="text-[11px] font-bold text-red-500 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                              <span>{loginError}</span>
+                            </p>
+                          )}
+                        </div>
                         <button
                           type="button"
                           onClick={() => setAuthView("forgot_password")}
-                          className="text-[10px] font-bold text-purple-600 hover:text-purple-700 hover:underline cursor-pointer"
+                          className="text-[10px] font-bold text-purple-600 hover:text-purple-700 hover:underline cursor-pointer ml-auto shrink-0"
                         >
                           Quên mật khẩu?
                         </button>
@@ -2514,25 +2521,31 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                             required
                             placeholder="VD: 091 234 5678"
                             value={regPhone}
-                            onChange={(e) => setRegPhone(e.target.value)}
+                            onChange={(e) => {
+                              setRegPhone(e.target.value);
+                              setRegApiError("");
+                            }}
                             className="rounded-2xl border-blue-100 pl-11 h-11 bg-slate-50 focus:bg-white transition-all font-semibold text-sm shadow-none text-blue-950"
                           />
                         </div>
                       </div>
 
-                      {/* Email Input */}
+                      {/* Gmail Input */}
                       <div className="space-y-1.5">
                         <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
-                          Địa chỉ Email
+                          Gmail
                         </Label>
                         <div className="relative">
                           <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <Input
                             type="email"
                             required
-                            placeholder="name@example.com"
+                            placeholder="ten@gmail.com"
                             value={regEmail}
-                            onChange={(e) => setRegEmail(e.target.value)}
+                            onChange={(e) => {
+                              setRegEmail(e.target.value);
+                              setRegApiError("");
+                            }}
                             className="rounded-2xl border-blue-100 pl-11 h-11 bg-slate-50 focus:bg-white transition-all font-semibold text-sm shadow-none text-blue-950"
                           />
                         </div>
@@ -2547,13 +2560,29 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                           <div className="relative">
                             <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                             <Input
-                              type={showPassword ? "text" : "password"}
+                              type={showRegPassword ? "text" : "password"}
                               required
                               placeholder="••••••"
                               value={regPassword}
                               onChange={(e) => setRegPassword(e.target.value)}
-                              className="rounded-2xl border-blue-100 pl-9.5 h-11 bg-slate-50 focus:bg-white transition-all font-semibold text-sm shadow-none text-blue-950"
+                              className={cn(
+                                "rounded-2xl border-blue-100 pl-9.5 pr-9.5 h-11 bg-slate-50 focus:bg-white transition-all font-semibold text-sm shadow-none text-blue-950",
+                                regPassword && regPasswordError && "border-red-400 focus:border-red-500 focus:ring-red-100",
+                                regPassword && !regPasswordError && "border-emerald-500 focus:border-emerald-600 focus:ring-emerald-100"
+                              )}
                             />
+                            <button
+                              type="button"
+                              onClick={() => setShowRegPassword(!showRegPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                              title={showRegPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                            >
+                              {showRegPassword ? (
+                                <EyeOff className="w-3.5 h-3.5" />
+                              ) : (
+                                <Eye className="w-3.5 h-3.5" />
+                              )}
+                            </button>
                           </div>
                         </div>
                         <div className="space-y-1.5">
@@ -2563,30 +2592,59 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                           <div className="relative">
                             <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                             <Input
-                              type={showPassword ? "text" : "password"}
+                              type={showRegConfirmPassword ? "text" : "password"}
                               required
                               placeholder="••••••"
                               value={regConfirmPassword}
                               onChange={(e) =>
                                 setRegConfirmPassword(e.target.value)
                               }
-                              className="rounded-2xl border-blue-100 pl-9.5 h-11 bg-slate-50 focus:bg-white transition-all font-semibold text-sm shadow-none text-blue-950"
+                              className={cn(
+                                "rounded-2xl border-blue-100 pl-9.5 pr-9.5 h-11 bg-slate-50 focus:bg-white transition-all font-semibold text-sm shadow-none text-blue-950",
+                                regConfirmPassword && regPasswordError && "border-red-400 focus:border-red-500 focus:ring-red-100",
+                                regConfirmPassword && !regPasswordError && "border-emerald-500 focus:border-emerald-600 focus:ring-emerald-100"
+                              )}
                             />
+                            <button
+                              type="button"
+                              onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                              title={showRegConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                            >
+                              {showRegConfirmPassword ? (
+                                <EyeOff className="w-3.5 h-3.5" />
+                              ) : (
+                                <Eye className="w-3.5 h-3.5" />
+                              )}
+                            </button>
                           </div>
                         </div>
                       </div>
 
-                      {/* Red Inline Password Requirement Warning (Reserved height slot to prevent layout jump) */}
+                      {/* Inline Password Requirement Status Message (Green when valid, Red when error) */}
                       <div className="min-h-[20px] flex items-center">
-                        <p
-                          className={cn(
-                            "text-[11px] font-bold text-red-500 dark:text-rose-400 flex items-center gap-1.5 pl-1 transition-opacity duration-150",
-                            regPasswordError ? "opacity-100" : "opacity-0 pointer-events-none"
-                          )}
-                        >
-                          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
-                          <span>{regPasswordError || "Mật khẩu hợp lệ"}</span>
-                        </p>
+                        {regPassword ? (
+                          regPasswordError ? (
+                            <p className="text-[11px] font-bold text-red-500 dark:text-rose-400 flex items-center gap-1.5 pl-1 transition-all">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                              <span>{regPasswordError}</span>
+                            </p>
+                          ) : (
+                            <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 pl-1 transition-all">
+                              <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                              <span>
+                                {regConfirmPassword && regPassword === regConfirmPassword
+                                  ? "Mật khẩu hợp lệ và đã khớp!"
+                                  : "Mật khẩu hợp lệ!"}
+                              </span>
+                            </p>
+                          )
+                        ) : (
+                          <p className="opacity-0 pointer-events-none text-[11px] flex items-center gap-1.5 pl-1">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>Mật khẩu hợp lệ</span>
+                          </p>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-2 pl-1">
@@ -2605,6 +2663,13 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                         </label>
                       </div>
                     </div>
+
+                    {regApiError && (
+                      <p className="text-[11px] font-bold text-red-500 dark:text-rose-400 flex items-center gap-1.5 pl-1 transition-all animate-in fade-in slide-in-from-top-1 duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                        <span>{regApiError}</span>
+                      </p>
+                    )}
 
                     <div className="pt-2">
                       <Button

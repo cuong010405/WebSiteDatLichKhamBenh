@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { db } from "../db";
+import { assertNoDuplicate } from "./duplicateValidation";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 const JWT_EXPIRES_IN = "7d";
@@ -26,7 +27,7 @@ export async function registerUser(data: {
   const email = data.email.toLowerCase().trim();
 
   if (!isValidEmail(email)) {
-    throw new Error("Địa chỉ email không hợp lệ");
+    throw new Error("Địa chỉ Email không hợp lệ");
   }
   if (!data.password || data.password.length < 6) {
     throw new Error("Mật khẩu phải có ít nhất 6 ký tự");
@@ -35,10 +36,17 @@ export async function registerUser(data: {
     throw new Error("Họ tên phải có ít nhất 2 ký tự");
   }
 
-  const existing = await db.user.findUnique({ where: { Email: email } });
-  if (existing) {
-    throw new Error("Email đã được đăng ký");
-  }
+  // Kiểm tra trùng Gmail và Số điện thoại trước khi đăng ký
+  await assertNoDuplicate({
+    model: "user",
+    checks: [
+      { field: "Email", value: email, fieldDisplayName: "Gmail" },
+      ...(data.phone?.trim()
+        ? [{ field: "Phone", value: data.phone.trim(), fieldDisplayName: "Số điện thoại" }]
+        : []),
+    ],
+  });
+
 
   const hash = await bcrypt.hash(data.password, 10);
   const role = data.role === "admin" ? "admin" : "customer";
@@ -86,6 +94,7 @@ export async function loginUser(data: { email: string; password: string }) {
   if (!data.password) {
     throw new Error("Email hoặc mật khẩu không chính xác");
   }
+
 
   const user = await db.user.findUnique({ where: { Email: email } });
   if (!user) {

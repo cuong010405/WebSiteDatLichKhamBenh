@@ -31,6 +31,7 @@ export function ForgotPasswordModal({
     contactValue,
     setContactValue,
     maskedContact,
+    generatedOtp,
     otp,
     setOtp,
     countdown,
@@ -139,6 +140,7 @@ export function ForgotPasswordModal({
                 <OtpVerification
                   key="otp_verification"
                   maskedContact={maskedContact}
+                  generatedOtp={generatedOtp}
                   otp={otp}
                   setOtp={setOtp}
                   countdown={countdown}

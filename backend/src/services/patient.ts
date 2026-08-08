@@ -2,6 +2,7 @@ import { db } from "../db";
 import { patientSchema } from "../validations/schemas";
 import { z } from "zod";
 import { syncPatientsForVisits } from "./visit";
+import { assertNoDuplicate } from "./duplicateValidation";
 
 export async function getPatientList() {
   // Automatically sync any visits that haven't been linked to a Patient profile yet
@@ -97,6 +98,14 @@ export async function getPatientById(id: string) {
 export async function createPatient(data: z.infer<typeof patientSchema>) {
   const validated = patientSchema.parse(data);
   const { assignedStaff, ...rest } = validated;
+
+  // Kiểm tra trùng Mã bệnh nhân trước khi tạo
+  await assertNoDuplicate({
+    model: "patient",
+    checks: [
+      { field: "Id", value: rest.id, fieldDisplayName: "Mã bệnh nhân" },
+    ],
+  });
 
   return await db.$transaction(async (tx) => {
     const created = await tx.patient.create({

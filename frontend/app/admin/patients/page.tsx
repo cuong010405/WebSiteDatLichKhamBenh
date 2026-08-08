@@ -788,8 +788,8 @@ function AddCareLogDialog({
                   <div className="space-y-1.5 text-left">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nhân viên thực hiện</Label>
                     <Select value={staffName} onValueChange={(v) => setStaffName(v ?? "")}>
-                      <SelectTrigger className="h-9 rounded-xl font-bold text-xs"><SelectValue placeholder="Chọn nhân viên..." /></SelectTrigger>
-                      <SelectContent className="rounded-xl">
+                      <SelectTrigger className="!h-[35px] rounded-xl font-bold text-xs w-full"><SelectValue placeholder="Chọn nhân viên..." /></SelectTrigger>
+                      <SelectContent className="rounded-xl min-w-[320px]">
                         {validStaff.map((s) => <SelectItem key={s.id} value={s.name} className="font-bold text-xs">{s.name} ({s.role.split("•")[0]})</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -964,8 +964,8 @@ function EditCareLogDialog({
               <div className="space-y-1.5 text-left">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nhân viên thực hiện</Label>
                 <Select value={staffName} onValueChange={(v) => setStaffName(v ?? "")}>
-                  <SelectTrigger className="h-9 rounded-xl font-bold text-xs"><SelectValue placeholder="Chọn nhân viên..." /></SelectTrigger>
-                  <SelectContent className="rounded-xl">
+                  <SelectTrigger className="!h-[35px] rounded-xl font-bold text-xs w-full"><SelectValue placeholder="Chọn nhân viên..." /></SelectTrigger>
+                  <SelectContent className="rounded-xl min-w-[320px]">
                     {validStaff.map((s) => <SelectItem key={s.id} value={s.name} className="font-bold text-xs">{s.name} ({s.role.split("•")[0]})</SelectItem>)}
                   </SelectContent>
                 </Select>

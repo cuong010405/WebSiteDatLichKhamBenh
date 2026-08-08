@@ -118,6 +118,14 @@ export function useForgotPassword(
     return "strong";
   }, [passedCriteriaCount]);
 
+  const [generatedOtp, setGeneratedOtp] = useState("123456");
+
+  const generateRandomOtp = useCallback(() => {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setGeneratedOtp(code);
+    return code;
+  }, []);
+
   // Step 1 Submit
   const handleSelectMethodSubmit = useCallback(() => {
     if (!contactValue.trim()) return;
@@ -130,20 +138,22 @@ export function useForgotPassword(
       return;
     }
 
-    addToast("Mã xác thực đã được gửi (Demo).", "success");
+    const newOtpCode = generateRandomOtp();
+    addToast(`Mã xác thực đã được gửi: ${newOtpCode}`, "success");
     setStep("otp_verification");
     setOtp(Array(6).fill(""));
     setCountdown(60);
     setIsTimerActive(true);
-  }, [contactValue, method, isEmailValid, isPhoneValid, addToast]);
+  }, [contactValue, method, isEmailValid, isPhoneValid, addToast, generateRandomOtp]);
 
   // Resend OTP
   const handleResendOtp = useCallback(() => {
+    const newOtpCode = generateRandomOtp();
     setCountdown(60);
     setIsTimerActive(true);
     setOtp(Array(6).fill(""));
-    addToast("Mã xác thực đã được gửi lại (Demo).", "success");
-  }, [addToast]);
+    addToast(`Mã xác thực mới của bạn là: ${newOtpCode}`, "success");
+  }, [addToast, generateRandomOtp]);
 
   // Verify OTP
   const handleVerifyOtp = useCallback(() => {
@@ -156,13 +166,13 @@ export function useForgotPassword(
       addToast("Mã xác thực đã hết hạn.", "error");
       return;
     }
-    if (enteredOtp !== "123456") {
+    if (enteredOtp !== generatedOtp) {
       addToast("Mã xác thực không chính xác.", "error");
       return;
     }
 
     setStep("reset_password");
-  }, [otp, countdown, isTimerActive, addToast]);
+  }, [otp, countdown, isTimerActive, generatedOtp, addToast]);
 
   // Submit New Password — gọi API thật để lưu vào SQL
   const handleResetPasswordSubmit = useCallback(async () => {
@@ -230,6 +240,7 @@ export function useForgotPassword(
     contactValue,
     setContactValue,
     maskedContact,
+    generatedOtp,
     otp,
     setOtp,
     countdown,

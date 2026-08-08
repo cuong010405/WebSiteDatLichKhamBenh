@@ -223,7 +223,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(data.user);
       return data.user as AuthUser;
     } catch (err: any) {
-      console.warn("Backend register failed, using local fallback:", err);
+      if (err.message && !err.message.includes("fetch") && err.message !== "Failed to fetch") {
+        throw err;
+      }
+      console.warn("Backend register failed (Network issue), using local fallback:", err);
       const data = registerLocal(payload);
       localStorage.setItem(LOCAL_TOKEN_KEY, data.token);
       localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(data.user));

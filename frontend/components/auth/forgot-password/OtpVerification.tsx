@@ -6,6 +6,7 @@ import { ArrowLeft, RotateCcw, ShieldCheck, CheckCircle2 } from "lucide-react";
 
 interface OtpVerificationProps {
   maskedContact: string;
+  generatedOtp?: string;
   otp: string[];
   setOtp: React.Dispatch<React.SetStateAction<string[]>>;
   countdown: number;
@@ -17,6 +18,7 @@ interface OtpVerificationProps {
 
 export function OtpVerification({
   maskedContact,
+  generatedOtp,
   otp,
   setOtp,
   countdown,
@@ -168,7 +170,7 @@ export function OtpVerification({
       {/* Demo Tip Notice */}
       <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800 text-center">
         <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-          💡 Mã xác thực Demo: <strong className="text-blue-600 dark:text-blue-400 font-bold">123456</strong>
+          💡 Mã xác thực Demo: <strong className="text-blue-600 dark:text-blue-400 font-bold">{generatedOtp || "123456"}</strong>
         </p>
       </div>
 

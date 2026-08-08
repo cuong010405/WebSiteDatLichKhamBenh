@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { assertNoDuplicate } from "./duplicateValidation";
 
 const prisma = new PrismaClient();
 
@@ -27,6 +28,15 @@ export async function createDepartment(data: {
   Description?: string;
   Active?: boolean;
 }) {
+  // Kiểm tra trùng Mã khoa và Tên khoa trước khi tạo
+  await assertNoDuplicate({
+    model: "department",
+    checks: [
+      { field: "Id", value: data.Id, fieldDisplayName: "Mã khoa phòng" },
+      { field: "Name", value: data.Name, fieldDisplayName: "Tên khoa phòng" },
+    ],
+  });
+
   return prisma.department.create({
     data: {
       Id: data.Id,
@@ -41,6 +51,17 @@ export async function updateDepartment(
   id: string,
   data: { Name?: string; Description?: string; Active?: boolean }
 ) {
+  // Kiểm tra trùng Tên khoa với bản ghi khác khi cập nhật
+  if (data.Name) {
+    await assertNoDuplicate({
+      model: "department",
+      checks: [
+        { field: "Name", value: data.Name, fieldDisplayName: "Tên khoa phòng" },
+      ],
+      excludeId: { field: "Id", value: id },
+    });
+  }
+
   return prisma.department.update({
     where: { Id: id },
     data,

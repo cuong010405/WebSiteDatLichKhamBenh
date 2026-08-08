@@ -498,6 +498,12 @@ export function Header() {
                         </button>
                       </div>
                     </div>
+                    {errorMsg && (
+                      <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-bold flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                        <span>{errorMsg}</span>
+                      </div>
+                    )}
                     <Button
                       type="submit"
                       className="w-full bg-primary hover:bg-primary-strong text-white rounded-xl py-5 text-xs font-black uppercase tracking-widest mt-2"
@@ -522,12 +528,12 @@ export function Header() {
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[9px] font-black uppercase tracking-wider text-slate-400">
-                        Email
+                        Gmail
                       </Label>
                       <Input
                         type="email"
                         required
-                        placeholder="name@example.com"
+                        placeholder="ten@gmail.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         className="rounded-xl"
@@ -558,6 +564,12 @@ export function Header() {
                         className="rounded-xl"
                       />
                     </div>
+                    {errorMsg && (
+                      <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-bold flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                        <span>{errorMsg}</span>
+                      </div>
+                    )}
                     <Button
                       type="submit"
                       className="w-full bg-primary hover:bg-primary-strong text-white rounded-xl py-5 text-xs font-black uppercase tracking-widest mt-2"
