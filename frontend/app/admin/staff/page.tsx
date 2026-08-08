@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils"
 import { Staff, StaffStatus } from "@/lib/types"
 import { API_URL, authFetch } from "@/lib/api"
 import { useLoading } from "@/lib/loading-context"
+import { Pagination } from "@/components/ui/pagination"
 
 /* ─── Avatar Upload Input ─── */
 function AvatarUpload({
@@ -1392,6 +1393,16 @@ export default function StaffPage() {
     )
   })
 
+  const STAFF_PER_PAGE = 6
+  const [currentPage, setCurrentPage] = React.useState(1)
+
+  React.useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, staffFilter])
+
+  const totalPages = Math.ceil(filteredStaff.length / STAFF_PER_PAGE) || 1
+  const paginatedStaff = filteredStaff.slice((currentPage - 1) * STAFF_PER_PAGE, currentPage * STAFF_PER_PAGE)
+
   return (
     <div className="p-10 max-w-7xl mx-auto w-full space-y-16 pb-32">
       {/* Header */}
@@ -1464,24 +1475,30 @@ export default function StaffPage() {
           <p className="text-xs font-black uppercase tracking-widest text-slate-400">Đang tải danh sách nhân viên y tế...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-stretch">
-          <AnimatePresence>
-            {filteredStaff.length > 0 ? (
-              filteredStaff.map((person) => (
-                <StaffCard key={person.id} person={person} onEdit={handleEdit} onDelete={handleDelete} departments={departments} positions={positions} onLicensesUpdated={handleLicensesUpdated} />
-              ))
-            ) : (
-              <p className="col-span-3 py-20 text-center font-bold text-slate-400 uppercase text-xs tracking-widest">Không tìm thấy chuyên gia nào</p>
-            )}
-          </AnimatePresence>
+        <div className="space-y-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-stretch">
+            <AnimatePresence>
+              {paginatedStaff.length > 0 ? (
+                paginatedStaff.map((person) => (
+                  <StaffCard key={person.id} person={person} onEdit={handleEdit} onDelete={handleDelete} departments={departments} positions={positions} onLicensesUpdated={handleLicensesUpdated} />
+                ))
+              ) : (
+                <p className="col-span-3 py-20 text-center font-bold text-slate-400 uppercase text-xs tracking-widest">Không tìm thấy chuyên gia nào</p>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="pt-6 flex justify-center border-t border-slate-100">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
         </div>
       )}
-
-      <div className="pt-14 flex justify-center">
-        <Button variant="outline" className="rounded-full px-14 h-14 border-hairline text-[11px] font-black uppercase tracking-[0.25em] hover:bg-surface-secondary transition-all shadow-xl shadow-black/[0.01]">
-          Mở rộng danh sách nhân viên
-        </Button>
-      </div>
     </div>
   )
 }

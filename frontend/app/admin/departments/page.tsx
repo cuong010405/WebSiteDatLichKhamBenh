@@ -230,18 +230,16 @@ function ItemCard({ item, type, icon: Icon, onEdit, onToggle, onDelete }: { item
             </div>
           )}
           <div className="flex-1" />
-          <div className="overflow-hidden transition-all duration-300 ease-out max-h-0 group-hover:max-h-[48px] opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto">
-            <div className="px-5 pb-4 flex gap-2">
-              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={(e) => { e.stopPropagation(); setEditOpen(true) }} className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-blue-100 text-blue-600 border border-blue-200 text-[8px] font-black uppercase tracking-widest hover:bg-blue-200/70 transition-colors">
-                <Pencil className="w-2.5 h-2.5" /> Sửa
-              </motion.button>
-              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={(e) => { e.stopPropagation(); setToggleOpen(true) }} className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-amber-100 text-amber-600 border border-amber-200 text-[8px] font-black uppercase tracking-widest hover:bg-amber-200/70 transition-colors">
-                {item.active ? <ToggleRight className="w-2.5 h-2.5" /> : <ToggleLeft className="w-2.5 h-2.5" />}{item.active ? "Tắt" : "Bật"}
-              </motion.button>
-              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={(e) => { e.stopPropagation(); setDeleteOpen(true) }} className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-red-100 text-red-500 border border-red-200 text-[8px] font-black uppercase tracking-widest hover:bg-red-200/70 transition-colors">
-                <Trash2 className="w-2.5 h-2.5" /> Xóa
-              </motion.button>
-            </div>
+          <div className="px-5 pb-4 flex gap-2">
+            <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={(e) => { e.stopPropagation(); setEditOpen(true) }} className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-blue-100 text-blue-600 border border-blue-200 text-[8px] font-black uppercase tracking-widest hover:bg-blue-200/70 transition-colors">
+              <Pencil className="w-2.5 h-2.5" /> Sửa
+            </motion.button>
+            <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={(e) => { e.stopPropagation(); setToggleOpen(true) }} className={cn("flex-1 flex items-center justify-center gap-1 h-8 rounded-lg border text-[8px] font-black uppercase tracking-widest transition-colors", item.active ? "bg-amber-100 text-amber-600 border-amber-200 hover:bg-amber-200/70" : "bg-emerald-100 text-emerald-600 border-emerald-200 hover:bg-emerald-200/70")}>
+              {item.active ? <ToggleRight className="w-2.5 h-2.5" /> : <ToggleLeft className="w-2.5 h-2.5" />}{item.active ? "Tắt" : "Bật"}
+            </motion.button>
+            <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={(e) => { e.stopPropagation(); setDeleteOpen(true) }} className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-100 text-red-500 border border-red-200 hover:bg-red-200/70 transition-colors shrink-0">
+              <Trash2 className="w-3 h-3" />
+            </motion.button>
           </div>
         </div>
       </motion.div>

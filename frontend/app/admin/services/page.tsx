@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils"
 import { API_URL, authFetch } from "@/lib/api"
 import { useLoading } from "@/lib/loading-context"
 import { formatCurrencyInput, parseCurrencyNumber } from "@/lib/utils/format"
+import { Pagination } from "@/components/ui/pagination"
 
 /* ══════════════════════════════════════════
    INTERFACES
@@ -340,12 +341,34 @@ function ServiceCard({ service, serviceTypes, onEdit, onToggle, onDelete }: { se
               </div>
             </div>
           </div>
-          <div className="overflow-hidden transition-all duration-300 ease-out max-h-0 group-hover:max-h-[48px] opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto">
-            <div className="px-5 pb-4 flex gap-2">
-              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={(e) => { e.stopPropagation(); setEditOpen(true) }} className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-blue-100 text-blue-600 border border-blue-200 text-[8px] font-black uppercase tracking-widest hover:bg-blue-200/70 transition-colors"><Pencil className="w-2.5 h-2.5" /> Sửa</motion.button>
-              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={(e) => { e.stopPropagation(); setToggleOpen(true) }} className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-amber-100 text-amber-600 border border-amber-200 text-[8px] font-black uppercase tracking-widest hover:bg-amber-200/70 transition-colors">{service.active ? <ToggleRight className="w-2.5 h-2.5" /> : <ToggleLeft className="w-2.5 h-2.5" />}{service.active ? "Tắt" : "Bật"}</motion.button>
-              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={(e) => { e.stopPropagation(); setDeleteOpen(true) }} className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-red-100 text-red-500 border border-red-200 text-[8px] font-black uppercase tracking-widest hover:bg-red-200/70 transition-colors"><Trash2 className="w-2.5 h-2.5" /> Xóa</motion.button>
-            </div>
+          <div className="p-5 pt-2 relative z-10 flex gap-2">
+            <Button
+              onClick={(e) => { e.stopPropagation(); setEditOpen(true) }}
+              className="flex-1 h-10 rounded-xl bg-blue-50/80 hover:bg-blue-600 hover:text-white text-blue-600 border border-blue-100 text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-none"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Sửa
+            </Button>
+            <Button
+              onClick={(e) => { e.stopPropagation(); setToggleOpen(true) }}
+              className={cn(
+                "flex-1 h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-none",
+                service.active
+                  ? "bg-amber-50/80 hover:bg-amber-500 hover:text-white text-amber-600 border-amber-100"
+                  : "bg-emerald-50/80 hover:bg-emerald-600 hover:text-white text-emerald-600 border-emerald-100"
+              )}
+            >
+              {service.active ? <ToggleLeft className="w-3.5 h-3.5" /> : <ToggleRight className="w-3.5 h-3.5" />}
+              {service.active ? "Tắt" : "Bật"}
+            </Button>
+            <Button
+              onClick={(e) => { e.stopPropagation(); setDeleteOpen(true) }}
+              variant="outline"
+              className="h-10 w-10 p-0 rounded-xl border border-red-100 text-red-500 hover:bg-red-500 hover:text-white transition-all shrink-0 cursor-pointer shadow-none bg-red-50/80"
+              title="Xóa dịch vụ"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
           </div>
         </div>
       </motion.div>
@@ -586,12 +609,34 @@ function ServiceTypeCard({ item, onEdit, onToggle, onDelete }: { item: ServiceTy
           </div>
           {item.description && <div className="px-5 pb-3 relative z-10"><p className="text-[10px] font-semibold text-slate-500 leading-relaxed text-left line-clamp-2">{item.description}</p></div>}
           <div className="flex-1" />
-          <div className="overflow-hidden transition-all duration-300 ease-out max-h-0 group-hover:max-h-[48px] opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto">
-            <div className="px-5 pb-4 flex gap-2">
-              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={(e) => { e.stopPropagation(); setEditOpen(true) }} className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-blue-100 text-blue-600 border border-blue-200 text-[8px] font-black uppercase tracking-widest hover:bg-blue-200/70 transition-colors"><Pencil className="w-2.5 h-2.5" /> Sửa</motion.button>
-              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={(e) => { e.stopPropagation(); setToggleOpen(true) }} className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-amber-100 text-amber-600 border border-amber-200 text-[8px] font-black uppercase tracking-widest hover:bg-amber-200/70 transition-colors">{item.active ? <ToggleRight className="w-2.5 h-2.5" /> : <ToggleLeft className="w-2.5 h-2.5" />}{item.active ? "Tắt" : "Bật"}</motion.button>
-              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={(e) => { e.stopPropagation(); setDeleteOpen(true) }} className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-red-100 text-red-500 border border-red-200 text-[8px] font-black uppercase tracking-widest hover:bg-red-200/70 transition-colors"><Trash2 className="w-2.5 h-2.5" /> Xóa</motion.button>
-            </div>
+          <div className="p-5 pt-2 relative z-10 flex gap-2">
+            <Button
+              onClick={(e) => { e.stopPropagation(); setEditOpen(true) }}
+              className="flex-1 h-10 rounded-xl bg-blue-50/80 hover:bg-blue-600 hover:text-white text-blue-600 border border-blue-100 text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-none"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Sửa
+            </Button>
+            <Button
+              onClick={(e) => { e.stopPropagation(); setToggleOpen(true) }}
+              className={cn(
+                "flex-1 h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-none",
+                item.active
+                  ? "bg-amber-50/80 hover:bg-amber-500 hover:text-white text-amber-600 border-amber-100"
+                  : "bg-emerald-50/80 hover:bg-emerald-600 hover:text-white text-emerald-600 border-emerald-100"
+              )}
+            >
+              {item.active ? <ToggleLeft className="w-3.5 h-3.5" /> : <ToggleRight className="w-3.5 h-3.5" />}
+              {item.active ? "Tắt" : "Bật"}
+            </Button>
+            <Button
+              onClick={(e) => { e.stopPropagation(); setDeleteOpen(true) }}
+              variant="outline"
+              className="h-10 w-10 p-0 rounded-xl border border-red-100 text-red-500 hover:bg-red-500 hover:text-white transition-all shrink-0 cursor-pointer shadow-none bg-red-50/80"
+              title="Xóa loại dịch vụ"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
           </div>
         </div>
       </motion.div>
@@ -953,6 +998,20 @@ export default function ServicesPage() {
     )
   })
 
+  const ITEMS_PER_PAGE = 6
+  const currentTotal = isServicesTab ? filteredServices.length : isStaffTab ? filteredStaff.length : filteredServiceTypes.length
+  const totalPages = Math.ceil(currentTotal / ITEMS_PER_PAGE) || 1
+
+  const [currentPage, setCurrentPage] = React.useState(1)
+
+  React.useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, activeTab, staffFilter])
+
+  const paginatedServices = filteredServices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+  const paginatedServiceTypes = filteredServiceTypes.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+  const paginatedStaff = filteredStaff.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+
   return (
     <div className="p-10 max-w-7xl mx-auto w-full space-y-16 pb-32">
       {/* Header */}
@@ -1030,43 +1089,55 @@ export default function ServicesPage() {
           <p className="text-xs font-black uppercase tracking-widest text-slate-400">Đang tải danh sách...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-stretch">
-          <AnimatePresence>
-            {isServicesTab ? (
-              filteredServices.length > 0 ? (
-                filteredServices.map((service) => (
-                  <ServiceCard key={service.id} service={service} serviceTypes={serviceTypes} onEdit={handleEditService} onToggle={handleToggleService} onDelete={handleDeleteService} />
-                ))
+        <div className="space-y-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-stretch">
+            <AnimatePresence>
+              {isServicesTab ? (
+                paginatedServices.length > 0 ? (
+                  paginatedServices.map((service) => (
+                    <ServiceCard key={service.id} service={service} serviceTypes={serviceTypes} onEdit={handleEditService} onToggle={handleToggleService} onDelete={handleDeleteService} />
+                  ))
+                ) : (
+                  <div className="col-span-3 py-20 flex flex-col items-center gap-4">
+                    <div className="w-16 h-16 rounded-3xl bg-slate-100 flex items-center justify-center"><Stethoscope className="w-8 h-8 text-slate-300" /></div>
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-400">Không tìm thấy dịch vụ nào</p>
+                  </div>
+                )
+              ) : isStaffTab ? (
+                paginatedStaff.length > 0 ? (
+                  paginatedStaff.map((staff) => (
+                    <StaffCard key={staff.id} staff={staff} />
+                  ))
+                ) : (
+                  <div className="col-span-3 py-20 flex flex-col items-center gap-4">
+                    <div className="w-16 h-16 rounded-3xl bg-slate-100 flex items-center justify-center"><Users className="w-8 h-8 text-slate-300" /></div>
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-400">Không tìm thấy nhân viên y tế nào</p>
+                  </div>
+                )
               ) : (
-                <div className="col-span-3 py-20 flex flex-col items-center gap-4">
-                  <div className="w-16 h-16 rounded-3xl bg-slate-100 flex items-center justify-center"><Stethoscope className="w-8 h-8 text-slate-300" /></div>
-                  <p className="text-xs font-black uppercase tracking-widest text-slate-400">Không tìm thấy dịch vụ nào</p>
-                </div>
-              )
-            ) : isStaffTab ? (
-              filteredStaff.length > 0 ? (
-                filteredStaff.map((staff) => (
-                  <StaffCard key={staff.id} staff={staff} />
-                ))
-              ) : (
-                <div className="col-span-3 py-20 flex flex-col items-center gap-4">
-                  <div className="w-16 h-16 rounded-3xl bg-slate-100 flex items-center justify-center"><Users className="w-8 h-8 text-slate-300" /></div>
-                  <p className="text-xs font-black uppercase tracking-widest text-slate-400">Không tìm thấy nhân viên y tế nào</p>
-                </div>
-              )
-            ) : (
-              filteredServiceTypes.length > 0 ? (
-                filteredServiceTypes.map((item) => (
-                  <ServiceTypeCard key={item.id} item={item} onEdit={handleEditServiceType} onToggle={handleToggleServiceType} onDelete={handleDeleteServiceType} />
-                ))
-              ) : (
-                <div className="col-span-3 py-20 flex flex-col items-center gap-4">
-                  <div className="w-16 h-16 rounded-3xl bg-slate-100 flex items-center justify-center"><Tag className="w-8 h-8 text-slate-300" /></div>
-                  <p className="text-xs font-black uppercase tracking-widest text-slate-400">Không tìm thấy loại dịch vụ nào</p>
-                </div>
-              )
-            )}
-          </AnimatePresence>
+                paginatedServiceTypes.length > 0 ? (
+                  paginatedServiceTypes.map((item) => (
+                    <ServiceTypeCard key={item.id} item={item} onEdit={handleEditServiceType} onToggle={handleToggleServiceType} onDelete={handleDeleteServiceType} />
+                  ))
+                ) : (
+                  <div className="col-span-3 py-20 flex flex-col items-center gap-4">
+                    <div className="w-16 h-16 rounded-3xl bg-slate-100 flex items-center justify-center"><Tag className="w-8 h-8 text-slate-300" /></div>
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-400">Không tìm thấy loại dịch vụ nào</p>
+                  </div>
+                )
+              )}
+            </AnimatePresence>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="pt-6 flex justify-center border-t border-slate-100">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>
