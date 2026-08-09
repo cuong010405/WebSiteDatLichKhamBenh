@@ -207,36 +207,17 @@ export async function deletePayment(id: string) {
     await db.payment.deleteMany({ where: { VisitId: visitId } }).catch(() => {});
   }
 
-  // 2. Delete associated Visit and related logs
+  // 2. Reset Visit payment status back to "Chưa thanh toán" (keep the Visit intact!)
   if (visitId) {
-    const visit = await db.visit.findUnique({ where: { Id: visitId } });
-
-    if (visit) {
-      const patientId = visit.PatientId;
-
-      // Delete CareLogs for this visit service/patient
-      if (patientId) {
-        await db.careLog.deleteMany({
-          where: {
-            PatientId: patientId,
-            ServiceName: visit.Type || undefined,
-          },
-        }).catch(() => {});
-      }
-
-      // Delete the Visit record itself
-      await db.visit.delete({ where: { Id: visitId } }).catch(() => {});
-
-      // Clean up Patient profile if patient has no other remaining visits
-      if (patientId) {
-        const remainingVisits = await db.visit.count({ where: { PatientId: patientId } });
-        if (remainingVisits === 0) {
-          await db.patientStaff.deleteMany({ where: { PatientId: patientId } }).catch(() => {});
-          await db.careLog.deleteMany({ where: { PatientId: patientId } }).catch(() => {});
-          await db.patient.delete({ where: { Id: patientId } }).catch(() => {});
-        }
-      }
-    }
+    await db.visit.update({
+      where: { Id: visitId },
+      data: {
+        PaymentStatus: "Chưa thanh toán",
+        PaymentAmount: null,
+        PaymentMethod: null,
+        PaymentNote: null,
+      },
+    }).catch(() => {});
   }
 
   return { success: true };

@@ -8,21 +8,49 @@ import {
   deleteVisit,
   syncPatientsForVisits,
 } from "../services/visit";
-import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requireAuth, requireAdmin, optionalAuth, getStaffIdForUser } from "../middleware/auth";
 
 const router = Router();
 
-router.get("/", async (req, res) => {
+// GET /api/visits - Get visits according to user role or query params
+router.get("/", optionalAuth, async (req, res) => {
   try {
-    const userId =
-      typeof req.query.userId === "string" ? req.query.userId : undefined;
+    const authUser = req.authUser;
     const status =
       typeof req.query.status === "string" ? req.query.status : undefined;
     const paymentStatus =
       typeof req.query.paymentStatus === "string"
         ? req.query.paymentStatus
         : undefined;
-    const visits = await getVisitList(userId, status, paymentStatus);
+
+    let targetUserId: string | undefined = undefined;
+    let targetStaffId: string | undefined = undefined;
+
+    if (authUser) {
+      if (authUser.role === "admin") {
+        targetUserId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+        targetStaffId = typeof req.query.staffId === "string" ? req.query.staffId : undefined;
+      } else if (authUser.role === "vltl" || authUser.role === "chuyen_gia" || authUser.role === "dieu_duong") {
+        const staffId = await getStaffIdForUser(authUser);
+        if (!staffId) {
+          return res.json([]);
+        }
+        targetStaffId = staffId;
+      } else {
+        // customer role
+        targetUserId = authUser.id;
+      }
+    } else {
+      // Unauthenticated request (e.g., customer page fetching by userId)
+      if (typeof req.query.userId === "string" && req.query.userId.trim()) {
+        targetUserId = req.query.userId.trim();
+      } else {
+        // No auth and no userId -> return empty to avoid leaking all bookings
+        return res.json([]);
+      }
+    }
+
+    const visits = await getVisitList(targetUserId, status, paymentStatus, targetStaffId);
     res.json(visits);
   } catch (error: any) {
     console.error("Visits route error:", error);
@@ -43,7 +71,13 @@ router.post("/sync-patients", requireAuth, requireAdmin, async (req, res) => {
 
 router.post("/", requireAuth, async (req, res) => {
   try {
-    const newVisit = await createVisit(req.body);
+    const authUser = req.authUser!;
+    // For non-admin customers, set UserId to authUser.id for security
+    const body = { ...req.body };
+    if (authUser.role === "customer") {
+      body.userId = authUser.id;
+    }
+    const newVisit = await createVisit(body);
     res.status(201).json(newVisit);
   } catch (error: any) {
     console.error("Visits POST error:", error);
@@ -52,12 +86,25 @@ router.post("/", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", requireAuth, async (req, res) => {
   try {
+    const authUser = req.authUser!;
     const visit = await getVisitById(req.params.id);
     if (!visit) {
       return res.status(404).json({ error: "Không tìm thấy lịch hẹn" });
     }
+
+    // Ownership / Role Check
+    if (authUser.role === "customer" && visit.userId !== authUser.id) {
+      return res.status(403).json({ error: "Không có quyền xem lịch hẹn của người khác" });
+    }
+    if (authUser.role === "chuyen_gia" || authUser.role === "dieu_duong") {
+      const staffId = await getStaffIdForUser(authUser);
+      if (!staffId || visit.staffId !== staffId) {
+        return res.status(403).json({ error: "Không có quyền xem lịch hẹn không thuộc công tác của bạn" });
+      }
+    }
+
     res.json(visit);
   } catch (error: any) {
     res.status(500).json({ error: error.message || "Lỗi máy chủ nội bộ" });
@@ -68,6 +115,7 @@ router.get("/:id", async (req, res) => {
 router.post("/:id/cancel", requireAuth, async (req, res) => {
   const { id } = req.params;
   const { reason, note } = req.body;
+  const authUser = req.authUser!;
 
   if (!reason) {
     return res.status(400).json({ error: "Vui lòng chọn lý do hủy lịch hẹn" });
@@ -81,6 +129,11 @@ router.post("/:id/cancel", requireAuth, async (req, res) => {
 
     if (!visit) {
       return res.status(404).json({ error: "Không tìm thấy lịch hẹn" });
+    }
+
+    // Ownership check for customers
+    if (authUser.role === "customer" && visit.UserId !== authUser.id) {
+      return res.status(403).json({ error: "Không có quyền hủy lịch hẹn này" });
     }
 
     // Rule: Admin confirmed/ongoing/completed visits cannot be canceled
@@ -100,10 +153,8 @@ router.post("/:id/cancel", requireAuth, async (req, res) => {
       },
     });
 
-    // Send Activity Log / Notification to Admin
     const customerName = visit.User?.FullName || "Khách hàng";
 
-    // 1) Ghi vào bảng Notification (SQL) — lưu thông báo từ khách hàng
     try {
       await db.notification.create({
         data: {
@@ -120,7 +171,6 @@ router.post("/:id/cancel", requireAuth, async (req, res) => {
       console.warn("Lỗi tạo Notification:", notifErr);
     }
 
-    // 2) Ghi vào bảng ActivityLog (hiển thị tại trang Dashboard admin)
     try {
       await db.activityLog.create({
         data: {
@@ -146,16 +196,44 @@ router.post("/:id/cancel", requireAuth, async (req, res) => {
   }
 });
 
-router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
+// Update visit status / assignment
+router.put("/:id", requireAuth, async (req, res) => {
   try {
-    const updated = await updateVisit(req.params.id, req.body);
-    res.json(updated);
+    const authUser = req.authUser!;
+    const existing = await getVisitById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ error: "Không tìm thấy lịch hẹn" });
+    }
+
+    // Role permission check: Staff can only update status for their own visits
+    if (authUser.role === "chuyen_gia" || authUser.role === "dieu_duong") {
+      const staffId = await getStaffIdForUser(authUser);
+      if (!staffId || existing.staffId !== staffId) {
+        return res.status(403).json({ error: "Bạn chỉ có thể cập nhật ca được phân công cho mình" });
+      }
+      // Restrict fields staff can update
+      const allowedUpdate = {
+        status: req.body.status ?? existing.status,
+        paymentNote: req.body.paymentNote ?? (existing as any).paymentNote,
+      };
+      const updated = await updateVisit(req.params.id, allowedUpdate);
+      return res.json(updated);
+    }
+
+    // Admin can update anything
+    if (authUser.role === "admin") {
+      const updated = await updateVisit(req.params.id, req.body);
+      return res.json(updated);
+    }
+
+    return res.status(403).json({ error: "Không có quyền cập nhật lịch hẹn" });
   } catch (error: any) {
     res.status(400).json({ error: error.message || "Yêu cầu không hợp lệ" });
   }
 });
 
-router.delete("/:id", requireAuth, async (req, res) => {
+// DELETE visit - Admin only
+router.delete("/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const existing = await getVisitById(req.params.id);
     if (!existing) {

@@ -17,7 +17,8 @@ import {
   EyeOff,
   UserPlus,
   AlertCircle,
-  Check
+  Check,
+  Link2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,7 @@ import {
 import { API_URL, authFetch } from "@/lib/api";
 import { useLoading } from "@/lib/loading-context";
 import { cn } from "@/lib/utils";
+import { AdminRoleGuard } from "@/components/auth/admin-role-guard";
 import { Pagination } from "@/components/ui/pagination";
 
 interface AccountUser {
@@ -56,7 +58,7 @@ interface AccountUser {
   email: string;
   fullName: string;
   phone: string | null;
-  role: "admin" | "customer";
+  role: "admin" | "vltl" | "dieu_duong" | "customer" | "chuyen_gia";
   age?: number | null;
   gender?: string | null;
   createdAt: string;
@@ -65,6 +67,7 @@ interface AccountUser {
 export default function AccountsPage() {
   const { show, hide } = useLoading();
   const [users, setUsers] = React.useState<AccountUser[]>([]);
+  const [staffList, setStaffList] = React.useState<{ id: string; name: string; role: string; email: string }[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [roleFilter, setRoleFilter] = React.useState<string>("Tất cả");
@@ -73,6 +76,9 @@ export default function AccountsPage() {
   const [isOpenAdd, setIsOpenAdd] = React.useState(false);
   const [isOpenEdit, setIsOpenEdit] = React.useState(false);
   const [isOpenDelete, setIsOpenDelete] = React.useState(false);
+  const [isOpenLink, setIsOpenLink] = React.useState(false);
+  const [linkStaffId, setLinkStaffId] = React.useState("");
+  const [linkMsg, setLinkMsg] = React.useState("");
   const [selectedUser, setSelectedUser] = React.useState<AccountUser | null>(null);
 
   // Input states
@@ -81,7 +87,7 @@ export default function AccountsPage() {
   const [phone, setPhone] = React.useState("");
   const [ageStr, setAgeStr] = React.useState("");
   const [gender, setGender] = React.useState("Nam");
-  const [role, setRole] = React.useState<"admin" | "customer">("customer");
+  const [role, setRole] = React.useState<"admin" | "vltl" | "dieu_duong" | "customer" | "chuyen_gia">("customer");
   const [password, setPassword] = React.useState("");
   const [showPass, setShowPass] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState("");
@@ -126,6 +132,15 @@ export default function AccountsPage() {
 
   React.useEffect(() => {
     loadUsers();
+    // Load staff list for linking
+    fetch(`${API_URL}/staff`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setStaffList(data.map((s: any) => ({ id: s.id, name: s.name, role: s.role, email: s.email || "" })));
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleAddAccount = async (e: React.FormEvent) => {
@@ -216,6 +231,62 @@ export default function AccountsPage() {
     }
   };
 
+  const handleLinkStaff = async () => {
+    if (!selectedUser || !linkStaffId) return;
+    setLinkMsg("");
+    show("ĐANG LIÊN KẾT...");
+    try {
+      const res = await authFetch(`${API_URL}/users/${selectedUser.id}/link-staff`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staffId: linkStaffId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Liên kết thất bại");
+      setLinkMsg(data.message || "Liên kết thành công!");
+      setTimeout(() => { setIsOpenLink(false); setLinkMsg(""); setLinkStaffId(""); }, 1500);
+    } catch (err: any) {
+      setLinkMsg("❌ " + err.message);
+    } finally {
+      hide();
+    }
+  };
+
+  const openLinkDialog = (u: AccountUser) => {
+    setSelectedUser(u);
+    setLinkMsg("");
+    setIsOpenLink(true);
+
+    const checkAndAutoSelect = (list: { id: string; name: string; role: string; email: string }[]) => {
+      const uEmail = u.email?.toLowerCase().trim();
+      const uName = u.fullName?.toLowerCase().trim();
+      const matched = list.find((s) => 
+        (uEmail && s.email && s.email.toLowerCase().trim() === uEmail) || 
+        (uName && s.name && s.name.toLowerCase().trim() === uName)
+      );
+
+      if (matched) {
+        setLinkStaffId(matched.id);
+        setLinkMsg(`✅ Đã liên kết với hồ sơ: ${matched.name} (${matched.role})`);
+      } else {
+        setLinkStaffId("");
+      }
+    };
+
+    fetch(`${API_URL}/staff`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          const list = data.map((s: any) => ({ id: s.id, name: s.name, role: s.role, email: s.email || "" }));
+          setStaffList(list);
+          checkAndAutoSelect(list);
+        }
+      })
+      .catch(() => {
+        checkAndAutoSelect(staffList);
+      });
+  };
+
   const resetForm = () => {
     setEmail("");
     setFullName("");
@@ -269,7 +340,8 @@ export default function AccountsPage() {
   }, [filteredUsers, accountPage]);
 
   return (
-    <div className="p-10 max-w-7xl mx-auto w-full space-y-16 pb-32">
+    <AdminRoleGuard>
+      <div className="p-10 max-w-7xl mx-auto w-full space-y-16 pb-32">
       {/* Header */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-10">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
@@ -416,8 +488,10 @@ export default function AccountsPage() {
                         <SelectValue placeholder="Chọn vai trò" />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                        <SelectItem value="customer" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Khách hàng</SelectItem>
-                        <SelectItem value="admin" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Quản trị viên</SelectItem>
+                        <SelectItem value="customer" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">👤 Khách hàng</SelectItem>
+                        <SelectItem value="vltl" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">🦴 Vật lý trị liệu</SelectItem>
+                        <SelectItem value="dieu_duong" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">💉 Điều dưỡng</SelectItem>
+                        <SelectItem value="admin" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">🛡️ Quản trị viên</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -460,18 +534,18 @@ export default function AccountsPage() {
         </div>
         <div className="flex items-center gap-4 w-full lg:w-auto">
           <div className="flex bg-slate-100 rounded-[20px] p-1 border border-hairline/60">
-            {["Tất cả", "admin", "customer"].map((roleVal) => (
+            {["Tất cả", "admin", "vltl", "dieu_duong", "customer"].map((roleVal) => (
               <button
                 key={roleVal}
                 onClick={() => setRoleFilter(roleVal)}
                 className={cn(
-                  "px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all duration-200",
+                  "px-3.5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all duration-200",
                   roleFilter === roleVal
                     ? "bg-white text-slate-800 shadow-sm border border-slate-200/50"
                     : "text-slate-400 hover:text-slate-600"
                 )}
               >
-                {roleVal === "Tất cả" ? "Tất cả" : roleVal === "admin" ? "Admin" : "Khách hàng"}
+                {roleVal === "Tất cả" ? "Tất cả" : roleVal === "admin" ? "Admin" : roleVal === "vltl" ? "Vật lý trị liệu" : roleVal === "dieu_duong" ? "Điều dưỡng" : "Khách hàng"}
               </button>
             ))}
           </div>
@@ -482,75 +556,113 @@ export default function AccountsPage() {
       <div className="bg-white border border-hairline rounded-[48px] overflow-hidden shadow-2xl shadow-black/[0.04] relative">
         <div className="h-1.5 w-full bg-linear-to-r from-primary/10 via-primary to-primary/10 opacity-50" />
         
-        <div className="overflow-x-auto">
+        <div className="w-full">
           {loading && users.length === 0 ? (
             <div className="py-24 text-center">
               <p className="text-xs font-black uppercase tracking-widest text-slate-400">Đang đồng bộ dữ liệu hệ thống...</p>
             </div>
           ) : (
-            <Table>
+            <Table className="w-full">
               <TableHeader>
                 <TableRow className="bg-surface-secondary/40 border-b border-hairline">
-                  <TableHead className="px-8 py-8 text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.25em]">Họ và tên</TableHead>
-                  <TableHead className="px-8 py-8 text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.25em]">Thông tin liên lạc</TableHead>
-                  <TableHead className="px-8 py-8 text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.25em]">Vai trò</TableHead>
-                  <TableHead className="px-8 py-8 text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.25em]">Ngày tạo</TableHead>
-                  <TableHead className="px-8 py-8 text-[11px] font-black text-on-surface-tertiary uppercase tracking-[0.25em] text-right">Thao tác</TableHead>
+                  <TableHead className="px-5 py-5 text-[10px] font-black text-on-surface-tertiary uppercase tracking-[0.2em]">Họ và tên</TableHead>
+                  <TableHead className="px-5 py-5 text-[10px] font-black text-on-surface-tertiary uppercase tracking-[0.2em]">Thông tin liên lạc</TableHead>
+                  <TableHead className="px-5 py-5 text-[10px] font-black text-on-surface-tertiary uppercase tracking-[0.2em]">Vai trò</TableHead>
+                  <TableHead className="px-5 py-5 text-[10px] font-black text-on-surface-tertiary uppercase tracking-[0.2em]">Ngày tạo</TableHead>
+                  <TableHead className="px-5 py-5 text-[10px] font-black text-on-surface-tertiary uppercase tracking-[0.2em] text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-hairline/40">
                 {paginatedUsers.length > 0 ? (
                   paginatedUsers.map((u) => (
                     <TableRow key={u.id} className="group hover:bg-slate-50/50 transition-colors">
-                      <TableCell className="px-8 py-6 text-left">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-surface-secondary flex items-center justify-center font-bold text-primary">
+                      <TableCell className="px-5 py-4 text-left">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-surface-secondary flex items-center justify-center font-bold text-primary shrink-0 text-xs">
                             {u.fullName.split(' ').map(n => n[0]).join('')}
                           </div>
-                          <div>
-                            <p className="font-bold text-slate-950 text-sm leading-none">{u.fullName}</p>
-                            <div className="flex items-center gap-2 mt-1">
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-950 text-xs leading-none truncate">{u.fullName}</p>
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                               {(u.gender || u.age) && (
-                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60">
+                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/60">
                                   {[u.gender?.toUpperCase(), u.age ? `${u.age} TUỔI` : null].filter(Boolean).join(" • ")}
                                 </span>
                               )}
-                              <span className="text-[10px] text-slate-400 font-mono">ID: {u.id}</span>
+                              <span className="text-[9px] text-slate-400 font-mono" title={u.id}>
+                                ID: {u.id.length > 8 ? `${u.id.slice(0, 8)}...` : u.id}
+                              </span>
                             </div>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="px-8 py-6 text-left">
-                        <div className="space-y-1">
-                          <p className="text-xs text-slate-600 flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 opacity-60" /> {u.email}</p>
-                          <p className="text-xs text-slate-600 flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 opacity-60" /> {u.phone || "--"}</p>
+                      <TableCell className="px-5 py-4 text-left">
+                        <div className="space-y-0.5">
+                          <p className="text-xs text-slate-600 flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 opacity-60 shrink-0" /> <span className="truncate max-w-[200px]">{u.email}</span></p>
+                          <p className="text-xs text-slate-600 flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 opacity-60 shrink-0" /> {u.phone || "--"}</p>
                         </div>
                       </TableCell>
-                      <TableCell className="px-8 py-6 text-left">
-                        <span className={cn(
-                          "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider border",
-                          u.role === "admin"
-                            ? "bg-purple-50 text-purple-700 border-purple-100"
-                            : "bg-blue-50 text-blue-700 border-blue-100"
-                        )}>
-                          <div className={cn("w-1.5 h-1.5 rounded-full", u.role === "admin" ? "bg-purple-600" : "bg-blue-600")} />
-                          {u.role === "admin" ? "Quản trị viên" : "Khách hàng"}
-                        </span>
+                      <TableCell className="px-5 py-4 text-left">
+                        {(() => {
+                          const linked = staffList.find((s) =>
+                            (u.email && s.email && s.email.toLowerCase().trim() === u.email.toLowerCase().trim()) ||
+                            (u.fullName && s.name && s.name.toLowerCase().trim() === u.fullName.toLowerCase().trim())
+                          );
+                          return (
+                            <div className="space-y-1">
+                              <span className={cn(
+                                "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border whitespace-nowrap",
+                                u.role === "admin"
+                                  ? "bg-purple-50 text-purple-700 border-purple-100"
+                                  : u.role === "vltl"
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                    : u.role === "dieu_duong"
+                                      ? "bg-teal-50 text-teal-700 border-teal-100"
+                                      : u.role === "chuyen_gia"
+                                        ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                        : "bg-blue-50 text-blue-700 border-blue-100"
+                              )}>
+                                <div className={cn(
+                                  "w-1.5 h-1.5 rounded-full shrink-0",
+                                  u.role === "admin" ? "bg-purple-600" : u.role === "vltl" || u.role === "chuyen_gia" ? "bg-emerald-600" : u.role === "dieu_duong" ? "bg-teal-600" : "bg-blue-600"
+                                )} />
+                                {u.role === "admin" ? "Quản trị viên" : u.role === "vltl" ? "Vật lý trị liệu" : u.role === "dieu_duong" ? "Điều dưỡng" : u.role === "chuyen_gia" ? "Chuyên gia" : "Khách hàng"}
+                              </span>
+                              {linked && (u.role === "dieu_duong" || u.role === "vltl") && (
+                                <p className="text-[9px] font-bold text-emerald-600 flex items-center gap-1">
+                                  <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+                                  <span>Gán: {linked.name}</span>
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </TableCell>
-                      <TableCell className="px-8 py-6 text-left text-xs font-mono text-slate-500">
+                      <TableCell className="px-5 py-4 text-left text-xs font-mono text-slate-500 whitespace-nowrap">
                         {new Date(u.createdAt).toLocaleDateString("vi-VN", {
                           year: "numeric",
                           month: "long",
                           day: "numeric",
                         })}
                       </TableCell>
-                      <TableCell className="px-8 py-6 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="outline" size="icon" onClick={() => openEditDialog(u)} className="h-9 w-9 rounded-xl border-hairline bg-white hover:bg-blue-50 hover:text-blue-600 transition-colors">
-                            <Pencil className="w-4 h-4" />
+                      <TableCell className="px-5 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {(u.role === "dieu_duong" || u.role === "vltl") && (
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              title="Gán nhân viên y tế"
+                              onClick={() => openLinkDialog(u)}
+                              className="h-8 w-8 rounded-xl border-hairline bg-white hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
+                            >
+                              <Link2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                          <Button variant="outline" size="icon" onClick={() => openEditDialog(u)} className="h-8 w-8 rounded-xl border-hairline bg-white hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                            <Pencil className="w-3.5 h-3.5" />
                           </Button>
-                          <Button variant="outline" size="icon" onClick={() => openDeleteDialog(u)} className="h-9 w-9 rounded-xl border-hairline bg-white hover:bg-red-50 hover:text-red-500 transition-colors">
-                            <Trash2 className="w-4 h-4" />
+                          <Button variant="outline" size="icon" onClick={() => openDeleteDialog(u)} className="h-8 w-8 rounded-xl border-hairline bg-white hover:bg-red-50 hover:text-red-500 transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
                       </TableCell>
@@ -702,8 +814,10 @@ export default function AccountsPage() {
                       <SelectValue placeholder="Chọn vai trò" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-slate-200 shadow-2xl p-2 bg-white text-slate-800">
-                      <SelectItem value="customer" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Khách hàng</SelectItem>
-                      <SelectItem value="admin" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">Quản trị viên</SelectItem>
+                      <SelectItem value="customer" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">👤 Khách hàng</SelectItem>
+                      <SelectItem value="vltl" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">🦴 Vật lý trị liệu</SelectItem>
+                      <SelectItem value="dieu_duong" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">💉 Điều dưỡng</SelectItem>
+                      <SelectItem value="admin" className="rounded-lg py-2.5 font-bold text-xs focus:bg-slate-50">🛡️ Quản trị viên</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -750,6 +864,67 @@ export default function AccountsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog Gán nhân viên y tế */}
+      <Dialog open={isOpenLink} onOpenChange={(v) => { setIsOpenLink(v); if (!v) { setLinkMsg(""); setLinkStaffId(""); } }}>
+        <DialogContent className="sm:max-w-[480px] rounded-[28px] border border-slate-200 bg-white p-0 overflow-hidden text-slate-900">
+          <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500" />
+          <div className="p-7 space-y-5">
+            <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-4 border-b border-slate-100">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 text-white flex items-center justify-center shadow-lg shrink-0">
+                <Link2 className="w-5 h-5" />
+              </div>
+              <div className="text-left">
+                <DialogTitle className="text-sm font-black uppercase tracking-tight text-slate-900 leading-none">Gán hồ sơ nhân viên</DialogTitle>
+                <DialogDescription className="text-slate-400 text-[11px] font-semibold mt-1">
+                  Tài khoản: <span className="font-bold text-slate-700">{selectedUser?.fullName}</span> ({selectedUser?.email})
+                </DialogDescription>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Chọn nhân viên y tế trong hệ thống</label>
+              <div className="relative">
+                <select
+                  value={linkStaffId}
+                  onChange={(e) => setLinkStaffId(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 h-11 bg-white font-bold text-xs text-slate-800 px-3 pr-8 appearance-none outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all cursor-pointer"
+                >
+                  <option value="">-- Chọn nhân viên --</option>
+                  {staffList.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} — {s.role || "Nhân viên"}
+                    </option>
+                  ))}
+                </select>
+                <svg className="w-3.5 h-3.5 text-emerald-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+              </div>
+              <p className="text-[10px] text-slate-400 font-semibold">Sau khi gán, tài khoản này sẽ thấy đúng bệnh nhân & lịch trực của nhân viên đó.</p>
+            </div>
+
+            {linkMsg && (
+              <div className={cn(
+                "rounded-xl px-4 py-3 text-xs font-bold border",
+                linkMsg.startsWith("❌") ? "bg-red-50 text-red-700 border-red-100" : "bg-emerald-50 text-emerald-700 border-emerald-100"
+              )}>
+                {linkMsg}
+              </div>
+            )}
+
+            <DialogFooter className="flex flex-row justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => setIsOpenLink(false)} className="rounded-xl h-10 px-5 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50">Hủy</Button>
+              <Button
+                disabled={!linkStaffId}
+                onClick={handleLinkStaff}
+                className="rounded-xl h-10 px-6 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md hover:opacity-95 disabled:opacity-40"
+              >
+                <Link2 className="w-3.5 h-3.5 mr-2" /> Xác nhận gán
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+    </AdminRoleGuard>
   );
 }

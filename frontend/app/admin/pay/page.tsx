@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { API_URL, authFetch } from "@/lib/api";
 import { useLoading } from "@/lib/loading-context";
+import { AdminRoleGuard } from "@/components/auth/admin-role-guard";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
@@ -356,7 +357,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
     }
     try {
       const [resVisits, resPayments] = await Promise.all([
-        fetch(`${API_URL}/visits`),
+        authFetch(`${API_URL}/visits`),
         authFetch(`${API_URL}/payments`),
       ]);
       const visitsData = await resVisits.json();
@@ -537,7 +538,8 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
   const totalRevenue = React.useMemo(() => paidPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0), [paidPayments]);
 
   return (
-    <div className="p-8 max-w-7xl mx-auto w-full space-y-10">
+    <AdminRoleGuard>
+      <div className="p-8 max-w-7xl mx-auto w-full space-y-10">
 
       {/* Header */}
       <motion.div
@@ -1337,5 +1339,6 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
         </DialogContent>
       </Dialog>
     </div>
+    </AdminRoleGuard>
   );
 }

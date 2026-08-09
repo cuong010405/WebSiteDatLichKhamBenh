@@ -69,19 +69,21 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // Đăng ký API Routes
 app.use("/api/auth", authRouter);
 
-// Public read-only endpoints (customer page needs these)
-app.use("/api/staff", staffRouter);
-app.use("/api/visits", visitsRouter);
+// Endpoints với phân quyền chi tiết bên trong route handlers
+app.use("/api/staff", staffRouter);       // GET public, mutations admin-only (handled in route)
+app.use("/api/visits", visitsRouter);     // Auth + role check handled inside
+app.use("/api/patients", patientsRouter); // Auth + role check handled inside
+app.use("/api/care-logs", careLogsRouter); // Auth + role check handled inside
+
+// Public read-only endpoints (customer pages)
 app.use("/api/services", servicesRouter);
 app.use("/api/departments", departmentsRouter);
 app.use("/api/roles", rolesRouter);
 app.use("/api/positions", positionsRouter);
 app.use("/api/licenses", licensesRouter);
 app.use("/api/service-types", serviceTypesRouter);
-app.use("/api/care-logs", careLogsRouter);
 
 // Admin-only endpoints
-app.use("/api/patients", requireAuth, requireAdmin, patientsRouter);
 app.use("/api/logs", requireAuth, requireAdmin, logsRouter);
 app.use("/api/reports", requireAuth, requireAdmin, reportsRouter);
 app.use("/api/users", requireAuth, requireAdmin, usersRouter);

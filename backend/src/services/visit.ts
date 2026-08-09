@@ -433,10 +433,14 @@ export async function getVisitList(
   userId?: string,
   status?: string,
   paymentStatus?: string,
+  staffId?: string,
 ) {
   const where: any = {};
   if (userId) {
     where.UserId = userId;
+  }
+  if (staffId) {
+    where.StaffId = staffId;
   }
   if (status) {
     where.Status = status;
@@ -453,23 +457,32 @@ export async function getVisitList(
     }
   }
 
-  const visits = await db.visit.findMany({
+  // Fetch visits without Staff include to avoid FK errors on StaffId="PENDING"
+  const rawVisits = await db.visit.findMany({
     where,
     include: {
       Patient: {
         select: { Name: true, Age: true, Gender: true, Summary: true },
       },
-      Staff: {
-        select: { Name: true },
-      },
       User: {
         select: { FullName: true, Phone: true, Email: true, Address: true, Age: true, Gender: true, MedicalHistory: true },
       },
     },
-    orderBy: [{ AssignedAt: { sort: "desc", nulls: "last" } }, { Date: "desc" }, { Id: "desc" }],
+    orderBy: [{ Date: "desc" }, { Id: "desc" }],
   });
 
-  return visits.map(mapVisitToUI);
+  // Bulk-load staff names to avoid N+1 queries
+  const staffIds = Array.from(new Set(rawVisits.map((v) => v.StaffId).filter((id) => id && id !== "PENDING")));
+  const staffMap = new Map<string, string>();
+  if (staffIds.length > 0) {
+    const staffRecords = await db.staff.findMany({
+      where: { Id: { in: staffIds } },
+      select: { Id: true, Name: true },
+    });
+    staffRecords.forEach((s) => staffMap.set(s.Id, s.Name));
+  }
+
+  return rawVisits.map((v) => mapVisitToUI({ ...v, Staff: v.StaffId && v.StaffId !== "PENDING" ? { Name: staffMap.get(v.StaffId) ?? "" } : null }));
 }
 
 export async function getVisitById(id: string) {
@@ -479,9 +492,6 @@ export async function getVisitById(id: string) {
       Patient: {
         select: { Name: true, Age: true, Gender: true, Summary: true },
       },
-      Staff: {
-        select: { Name: true },
-      },
       User: {
         select: { FullName: true, Phone: true, Email: true, Address: true, Age: true, Gender: true, MedicalHistory: true },
       },
@@ -489,7 +499,15 @@ export async function getVisitById(id: string) {
   });
 
   if (!visit) return null;
-  return mapVisitToUI(visit);
+
+  // Load staff name separately to handle StaffId="PENDING" safely
+  let staffName: string | null = null;
+  if (visit.StaffId && visit.StaffId !== "PENDING") {
+    const staff = await db.staff.findUnique({ where: { Id: visit.StaffId }, select: { Name: true } });
+    staffName = staff?.Name ?? null;
+  }
+
+  return mapVisitToUI({ ...visit, Staff: staffName ? { Name: staffName } : null });
 }
 
 function parseMinutes(t: string): number {
@@ -843,12 +861,12 @@ export async function deleteVisit(id: string) {
 export async function getReportData() {
   const totalVisits = await db.visit.count();
   const totalPatients = await db.patient.count();
-  const totalStaff = await db.staff.count({ where: { Id: { not: "PENDING" } } });
-  const availableStaff = await db.staff.count({ where: { Id: { not: "PENDING" }, Available: true } });
+  const totalStaff = await db.staff.count({ where: { NOT: { Id: "PENDING" } } });
+  const availableStaff = await db.staff.count({ where: { NOT: { Id: "PENDING" }, Available: true } });
 
   // Get real department breakdown from SQL Server
   const allStaff = await db.staff.findMany({
-    where: { Id: { not: "PENDING" } },
+    where: { NOT: { Id: "PENDING" } },
     select: { Department: true },
   });
   const deptCounts: Record<string, number> = {};
@@ -889,15 +907,10 @@ export async function getReportData() {
 
   const paidCount = paidVisits.length;
 
-  const pendingPayments = await db.visit.count({
-    where: {
-      Status: { not: "Đã hủy" },
-      OR: [
-        { PaymentStatus: null },
-        { PaymentStatus: { not: "Đã thanh toán" } },
-      ],
-    },
+  const totalNonCancelledVisits = await db.visit.count({
+    where: { Status: { not: "Đã hủy" } },
   });
+  const pendingPayments = Math.max(0, totalNonCancelledVisits - paidCount);
 
   const completedVisits = await db.visit.count({ where: { Status: "Đã hoàn tất" } });
   const completionRate = totalVisits > 0 ? Math.round((completedVisits / totalVisits) * 100) : 100;

@@ -91,9 +91,7 @@ export function Stats() {
           ])
           setLoaded(true)
         })
-        .catch((err) => {
-          console.warn("Không kết nối được API, dùng dữ liệu mẫu:", err)
-        })
+        .catch(() => {})
     }
 
     fetchStats()

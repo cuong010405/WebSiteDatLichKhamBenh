@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { API_URL, authFetch } from "@/lib/api"
 import { useLoading } from "@/lib/loading-context"
+import { AdminRoleGuard } from "@/components/auth/admin-role-guard"
 
 interface Item {
   id: string
@@ -354,7 +355,8 @@ export default function DepartmentsPage() {
   const activeCount = items.filter((i) => i.active).length
 
   return (
-    <div className="p-10 max-w-7xl mx-auto w-full space-y-16 pb-32">
+    <AdminRoleGuard>
+      <div className="p-10 max-w-7xl mx-auto w-full space-y-16 pb-32">
       {/* Header */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-10">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
@@ -438,5 +440,6 @@ export default function DepartmentsPage() {
         </div>
       )}
     </div>
+    </AdminRoleGuard>
   )
 }

@@ -63,6 +63,7 @@ import { Patient, Staff, Visit, CareLog } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URL, authFetch } from "@/lib/api";
 import { useLoading } from "@/lib/loading-context";
+import { useAuth } from "@/lib/auth-context";
 import { Pagination } from "@/components/ui/pagination";
 
 // Simple MultiSelect component for assigned staff
@@ -1251,6 +1252,8 @@ function PatientRow({
   onDelete: (id: string) => void;
   onApprove: (id: string) => void;
 }) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [expanded, setExpanded] = React.useState(false);
   const [editOpen, setEditOpen] = React.useState(false);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
@@ -1270,7 +1273,7 @@ function PatientRow({
 
   const fetchCareLogs = React.useCallback(() => {
     setLoadingCareLogs(true);
-    fetch(`${API_URL}/care-logs/patient/${patient.id}`)
+    authFetch(`${API_URL}/care-logs/patient/${patient.id}`)
       .then((res) => res.json())
       .then((data) => setCareLogs(Array.isArray(data) ? data : []))
       .catch(() => setCareLogs([]))
@@ -1385,22 +1388,26 @@ function PatientRow({
                 <CheckCircle2 className="w-4 h-4" />
               </Button>
             )}
-            <Button
-              onClick={() => setEditOpen(true)}
-              variant="outline"
-              size="icon"
-              className="h-10 w-10 rounded-xl border-hairline bg-white hover:bg-blue-50 hover:text-blue-600 transition-all shadow-xs"
-            >
-              <Pencil className="w-4 h-4" />
-            </Button>
-            <Button
-              onClick={() => setDeleteOpen(true)}
-              variant="outline"
-              size="icon"
-              className="h-10 w-10 rounded-xl border-hairline bg-white hover:bg-red-50 hover:text-red-500 transition-all shadow-xs"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+            {isAdmin && (
+              <>
+                <Button
+                  onClick={() => setEditOpen(true)}
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 rounded-xl border-hairline bg-white hover:bg-blue-50 hover:text-blue-600 transition-all shadow-xs"
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
+                <Button
+                  onClick={() => setDeleteOpen(true)}
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 rounded-xl border-hairline bg-white hover:bg-red-50 hover:text-red-500 transition-all shadow-xs"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </>
+            )}
           </div>
         </TableCell>
       </TableRow>
@@ -1791,7 +1798,7 @@ export default function PatientsPage() {
 
     // Load lịch hẹn từ người dùng app
     setLoadingVisits(true);
-    fetch(`${API_URL}/visits`)
+    authFetch(`${API_URL}/visits`)
       .then((res) => { if (!res.ok) throw new Error(); return res.json(); })
       .then((data) => {
         const userVisits = Array.isArray(data)

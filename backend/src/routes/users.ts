@@ -2,6 +2,8 @@ import { Router, Request, Response } from "express";
 import { db } from "../db";
 import bcrypt from "bcryptjs";
 import { assertNoDuplicate } from "../services/duplicateValidation";
+import { requireAuth, requireAdmin } from "../middleware/auth";
+
 
 const router = Router();
 
@@ -75,17 +77,36 @@ router.post("/", async (req: Request, res: Response) => {
     });
 
     const hash = await bcrypt.hash(password, 10);
+    const userRole = ["admin", "vltl", "dieu_duong", "customer", "chuyen_gia"].includes(role) ? role : "customer";
     const user = await db.user.create({
       data: {
         Email: email.toLowerCase().trim(),
         PasswordHash: hash,
         FullName: fullName.trim(),
         Phone: phone?.trim() || null,
-        Role: role === "admin" ? "admin" : "customer",
+        Role: userRole,
         Age: age ? parseInt(age) : null,
         Gender: gender || null,
       },
     });
+
+    // Auto-link: nếu là nhân viên y tế, cập nhật email của Staff để khớp với tài khoản
+    if (userRole === "vltl" || userRole === "dieu_duong" || userRole === "chuyen_gia") {
+      try {
+        const staffByName = await db.staff.findFirst({
+          where: { Name: fullName.trim() },
+          select: { Id: true, Email: true },
+        });
+        if (staffByName) {
+          await db.staff.update({
+            where: { Id: staffByName.Id },
+            data: { Email: email.toLowerCase().trim() },
+          });
+        }
+      } catch (linkErr) {
+        console.warn("Auto-link Staff email error:", linkErr);
+      }
+    }
 
     return res.status(201).json({
       id: user.Id,
@@ -214,6 +235,30 @@ router.put("/:id", async (req: Request, res: Response) => {
   }
 });
 
+// PATCH /api/users/:id/link-staff — Admin links a user to a Staff record
+router.patch("/:id/link-staff", requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { staffId } = req.body as { staffId: string };
+  try {
+    const user = await db.user.findUnique({ where: { Id: id }, select: { Email: true, FullName: true } });
+    if (!user) return res.status(404).json({ error: "Không tìm thấy tài khoản" });
+
+    const staff = await db.staff.findUnique({ where: { Id: staffId } });
+    if (!staff) return res.status(404).json({ error: "Không tìm thấy nhân viên" });
+
+    // Update Staff's email to match the user email so future lookups work
+    await db.staff.update({
+      where: { Id: staffId },
+      data: { Email: user.Email },
+    });
+
+    return res.json({ success: true, message: `Đã liên kết tài khoản ${user.FullName} với nhân viên ${staff.Name}` });
+  } catch (err: any) {
+    console.error("PATCH /api/users/:id/link-staff error:", err);
+    return res.status(500).json({ error: "Lỗi liên kết tài khoản với nhân viên" });
+  }
+});
+
 // DELETE /api/users/:id - Xóa tài khoản
 router.delete("/:id", async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -231,3 +276,4 @@ router.delete("/:id", async (req: Request, res: Response) => {
 });
 
 export default router;
+

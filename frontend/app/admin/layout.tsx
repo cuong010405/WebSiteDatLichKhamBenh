@@ -16,18 +16,20 @@ export default function AdminLayout({
   const { user, loading } = useAuth();
   const router = useRouter();
 
+  const isStaffOrAdmin = user && (user.role === "admin" || user.role === "vltl" || user.role === "chuyen_gia" || user.role === "dieu_duong");
+
   React.useEffect(() => {
     if (loading) {
-      LoadingService.Show("ĐANG XÁC THỰC QUYỀN ADMIN...");
+      LoadingService.Show("ĐANG XÁC THỰC QUYỀN TRUY CẬP...");
     } else {
       LoadingService.Hide();
-      if (!user || user.role !== "admin") {
+      if (!isStaffOrAdmin) {
         router.replace("/");
       }
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, isStaffOrAdmin]);
 
-  if (loading || !user || user.role !== "admin") {
+  if (loading || !isStaffOrAdmin) {
     return <div className="min-h-screen bg-white" />;
   }
 

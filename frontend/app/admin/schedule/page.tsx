@@ -51,6 +51,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Visit, VisitStatus, Staff, Patient } from "@/lib/types";
 import { API_URL, authFetch } from "@/lib/api";
 import { useLoading } from "@/lib/loading-context";
+import { useAuth } from "@/lib/auth-context";
 import { formatVietnameseDate, parseCurrencyNumber } from "@/lib/utils/format";
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 8);
@@ -1899,6 +1900,8 @@ function SessionCard({
 
 export default function SchedulePage() {
   const { show, hide } = useLoading();
+  const { user } = useAuth();
+  const isStaff = user?.role === "vltl" || user?.role === "chuyen_gia" || user?.role === "dieu_duong";
 
   const [view, setView] = React.useState<"day" | "week" | "month">("day");
   const [allVisits, setAllVisits] = React.useState<Visit[]>([]);
@@ -1934,7 +1937,7 @@ export default function SchedulePage() {
       show("ĐANG TẢI LỊCH TRỰC HỆ THỐNG...");
     }
     Promise.all([
-      fetch(`${API_URL}/visits`, { cache: "no-store", headers: { "Cache-Control": "no-cache" } }).then(async (r) => {
+      authFetch(`${API_URL}/visits`, { cache: "no-store", headers: { "Cache-Control": "no-cache" } }).then(async (r) => {
         const text = await r.text();
         if (!r.ok) throw new Error(`Visits fetch failed ${r.status}: ${text}`);
         try { return JSON.parse(text); } catch { throw new Error(`Visits JSON parse failed: ${text}`); }
@@ -1945,9 +1948,8 @@ export default function SchedulePage() {
         try { return JSON.parse(text); } catch { throw new Error(`Staff JSON parse failed: ${text}`); }
       }),
       authFetch(`${API_URL}/patients`).then(async (r) => {
-        const text = await r.text();
-        if (!r.ok) throw new Error(`Patients fetch failed ${r.status}: ${text}`);
-        try { return JSON.parse(text); } catch { throw new Error(`Patients JSON parse failed: ${text}`); }
+        if (!r.ok) return [];
+        try { return await r.json(); } catch { return []; }
       }),
     ])
       .then(([visits, staff, patients]) => {
@@ -2259,6 +2261,24 @@ export default function SchedulePage() {
   const confirmedVisits = allVisits.filter((v) => v.status === "Đã xác nhận");
 
 
+  const activeStaffList = React.useMemo(() => {
+    if (!isStaff || !user) return staffList;
+
+    const uEmail = user.email?.toLowerCase().trim();
+    const uName = user.fullName?.toLowerCase().trim();
+
+    const matched = staffList.filter((s) => {
+      const sEmail = s.email?.toLowerCase().trim();
+      const sName = s.name?.toLowerCase().trim();
+      return (
+        (uEmail && sEmail && sEmail === uEmail) ||
+        (uName && sName && sName === uName)
+      );
+    });
+
+    return matched.length > 0 ? matched : staffList;
+  }, [staffList, isStaff, user]);
+
   // Filter logic for timeline
   const filteredVisits = allVisits.filter((v) => {
     const pName = v.patientName?.toLowerCase() || "";
@@ -2277,12 +2297,18 @@ export default function SchedulePage() {
     // Hide cancelled visits
     const isCancelled = v.status === "Đã hủy";
 
-    return matchQuery && matchStatus && matchDate && !isCancelled;
+    // Staff role filter: if staff user, only show visits assigned to activeStaffList
+    let matchStaffRole = true;
+    if (isStaff && activeStaffList.length > 0) {
+      matchStaffRole = activeStaffList.some((s) => isStaffMatch(s, v.staffId, (v as any).staffName));
+    }
+
+    return matchQuery && matchStatus && matchDate && !isCancelled && matchStaffRole;
   });
 
-  const _totalStaffPages = Math.max(1, Math.ceil(staffList.length / STAFF_PER_PAGE));
+  const _totalStaffPages = Math.max(1, Math.ceil(activeStaffList.length / STAFF_PER_PAGE));
   const _currentStaffPage = Math.min(staffPage, _totalStaffPages);
-  const paginatedStaff = staffList.slice(
+  const paginatedStaff = activeStaffList.slice(
     (_currentStaffPage - 1) * STAFF_PER_PAGE,
     _currentStaffPage * STAFF_PER_PAGE
   );
@@ -2310,7 +2336,7 @@ export default function SchedulePage() {
           </div>
           <h1 className="text-6xl font-black tight-tracking text-foreground leading-[1] uppercase">
             Lịch trực <br />
-            Chuyên gia
+            {isStaff ? "Cá nhân" : "Chuyên gia"}
           </h1>
         </motion.div>
       </div>
@@ -2355,16 +2381,18 @@ export default function SchedulePage() {
         </div>
 
         {/* Duyệt Lịch Hẹn Button */}
-        <div className="flex items-center gap-3 bg-white p-1.5 rounded-[24px] border border-hairline shadow-xl shadow-black/[0.03]">
-          <ApproveVisitsDialog
-            pendingVisits={allVisits.filter((v) => v.status === "Chờ duyệt")}
-            onApprove={handleApprove}
-            onReject={handleReject}
-            staffList={staffList}
-            allVisits={allVisits}
-            onToast={undefined}
-          />
-        </div>
+        {!isStaff && (
+          <div className="flex items-center gap-3 bg-white p-1.5 rounded-[24px] border border-hairline shadow-xl shadow-black/[0.03]">
+            <ApproveVisitsDialog
+              pendingVisits={allVisits.filter((v) => v.status === "Chờ duyệt")}
+              onApprove={handleApprove}
+              onReject={handleReject}
+              staffList={staffList}
+              allVisits={allVisits}
+              onToast={undefined}
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col lg:flex-row items-center gap-6">
@@ -2380,7 +2408,7 @@ export default function SchedulePage() {
         <div className="flex items-center gap-4 w-full lg:w-auto">
           {/* Status filter pills */}
           <div className="flex bg-slate-100 rounded-[20px] p-1 border border-hairline/60">
-            {["Tất cả", "Đang thực hiện", "Đã xác nhận", "Chờ duyệt"].map(
+            {["Tất cả", "Đang thực hiện", "Đã xác nhận", "Đã hoàn tất", "Chờ duyệt"].map(
               (status) => (
                 <button
                   key={status}

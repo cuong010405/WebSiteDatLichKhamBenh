@@ -13,6 +13,7 @@ function toAsciiSlug(str: string): string {
     .slice(0, 40) || "user"
 }
 
+import { AdminRoleGuard } from "@/components/auth/admin-role-guard"
 import {
   MapPin, Clock, UserPlus, Download, Search, Filter,
   Star, MessageSquare, Phone, LayoutGrid, List,
@@ -1404,7 +1405,8 @@ export default function StaffPage() {
   const paginatedStaff = filteredStaff.slice((currentPage - 1) * STAFF_PER_PAGE, currentPage * STAFF_PER_PAGE)
 
   return (
-    <div className="p-10 max-w-7xl mx-auto w-full space-y-16 pb-32">
+    <AdminRoleGuard>
+      <div className="p-10 max-w-7xl mx-auto w-full space-y-16 pb-32">
       {/* Header */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-10">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
@@ -1500,5 +1502,6 @@ export default function StaffPage() {
         </div>
       )}
     </div>
+    </AdminRoleGuard>
   )
 }

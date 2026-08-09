@@ -39,6 +39,7 @@ import { API_URL, authFetch } from "@/lib/api";
 import { exportToExcel, exportToWord } from "@/lib/utils/export";
 import { formatCurrencyInput, parseCurrencyNumber } from "@/lib/utils/format";
 import { Pagination } from "@/components/ui/pagination";
+import { AdminRoleGuard } from "@/components/auth/admin-role-guard";
 
 const DEPT_COLORS = ["#18BE66", "#16A34A", "#18181B", "#E4E4E7"];
 
@@ -356,7 +357,8 @@ export default function ReportsPage() {
   );
 
   return (
-    <div className="p-10 max-w-7xl mx-auto w-full space-y-12">
+    <AdminRoleGuard>
+      <div className="p-10 max-w-7xl mx-auto w-full space-y-12">
       {/* Hero Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <motion.div
@@ -963,5 +965,6 @@ export default function ReportsPage() {
         </Card>
       </div>
     </div>
+    </AdminRoleGuard>
   );
 }

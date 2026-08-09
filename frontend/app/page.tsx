@@ -1080,7 +1080,7 @@ export default function BookingPage() {
     }
 
     const queryParam = `?userId=${encodeURIComponent(user.id)}`;
-    fetch(`${API_URL}/visits${queryParam}`)
+    authFetch(`${API_URL}/visits${queryParam}`)
       .then(async (res) => {
         if (!res.ok) {
           const text = await res.text();
@@ -1280,7 +1280,8 @@ export default function BookingPage() {
       setTimeout(() => {
         hide();
         addToast(`Đăng nhập thành công! Chào mừng ${u.fullName}.`, "success");
-        if (u.role === "admin") {
+        const isStaffOrAdmin = u.role === "admin" || u.role === "vltl" || u.role === "chuyen_gia" || u.role === "dieu_duong";
+        if (isStaffOrAdmin) {
           router.push("/admin");
         } else {
           router.push("/dat-lich");

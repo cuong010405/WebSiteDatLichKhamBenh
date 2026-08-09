@@ -13,27 +13,6 @@ const iconMap: Record<string, any> = {
   review: { icon: Star, color: "text-orange-500", bgColor: "bg-orange-50" },
 }
 
-const fallbackLogs = [
-  { 
-    status: "completed", 
-    title: "Ca trực hoàn tất", 
-    desc: "Sandra B. đã hoàn tất thăm khám tại Quận Queens", 
-    time: "14:22 PM", 
-  },
-  { 
-    status: "assigned", 
-    title: "Đã phân công tự động", 
-    desc: "Hệ thống đã điều phối Marcus T. cho ca phục hồi tại gia tiếp theo", 
-    time: "13:50 PM", 
-  },
-  { 
-    status: "review", 
-    title: "Đánh giá 5 sao mới", 
-    desc: "Bệnh nhân Oscar W. rất hài lòng với dịch vụ chăm sóc vết thương", 
-    time: "12:05 PM", 
-  },
-]
-
 export function ActivityLog() {
   const [logs, setLogs] = React.useState<any[]>([])
   const [loading, setLoading] = React.useState(true)
@@ -45,12 +24,11 @@ export function ActivityLog() {
         return res.json()
       })
       .then((data) => {
-        setLogs(data.slice(0, 5))
+        setLogs(Array.isArray(data) ? data.slice(0, 5) : [])
         setLoading(false)
       })
-      .catch((err) => {
-        console.warn("Không kết nối được API, dùng dữ liệu mẫu:", err)
-        setLogs(fallbackLogs)
+      .catch(() => {
+        setLogs([])
         setLoading(false)
       })
   }, [])
@@ -69,17 +47,22 @@ export function ActivityLog() {
         </div>
 
         <div className="space-y-10 flex-1 relative before:absolute before:left-[19.5px] before:top-4 before:bottom-4 before:w-px before:bg-linear-to-b before:from-primary/30 before:via-hairline before:to-transparent">
-          {loading
-            ? Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex gap-6 animate-pulse">
-                  <div className="w-10 h-10 rounded-[14px] bg-surface-secondary shrink-0" />
-                  <div className="flex-1 space-y-2 pt-0.5">
-                    <div className="h-4 bg-surface-secondary rounded-full w-3/4" />
-                    <div className="h-3 bg-surface-secondary rounded-full w-full" />
-                  </div>
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex gap-6 animate-pulse">
+                <div className="w-10 h-10 rounded-[14px] bg-surface-secondary shrink-0" />
+                <div className="flex-1 space-y-2 pt-0.5">
+                  <div className="h-4 bg-surface-secondary rounded-full w-3/4" />
+                  <div className="h-3 bg-surface-secondary rounded-full w-full" />
                 </div>
-              ))
-            : logs.map((log, i) => {
+              </div>
+            ))
+          ) : logs.length === 0 ? (
+            <div className="py-8 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+              Chưa có nhật ký hoạt động mới
+            </div>
+          ) : (
+            logs.map((log, i) => {
                 const meta = iconMap[log.status] || iconMap.completed
                 const Icon = meta.icon
                 return (
@@ -107,7 +90,7 @@ export function ActivityLog() {
                   </motion.div>
                 )
               })
-          }
+          )}
         </div>
 
         <div className="mt-10 pt-8 border-t border-hairline border-dashed">

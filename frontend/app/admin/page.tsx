@@ -47,6 +47,9 @@ export default function Home() {
     };
   }, []);
 
+  const isStaff = user?.role === "vltl" || user?.role === "chuyen_gia" || user?.role === "dieu_duong";
+  const roleTitle = user?.role === "vltl" ? "Vật lý trị liệu" : user?.role === "dieu_duong" ? "Điều dưỡng" : user?.role === "chuyen_gia" ? "Chuyên gia" : "Quản trị viên";
+
   return (
     <div className="relative isolate min-h-screen overflow-x-hidden">
       {/* Dynamic Background Elements */}
@@ -81,7 +84,9 @@ export default function Home() {
               <div className="flex items-center gap-3 mb-6">
                 <div className="flex items-center gap-2 bg-surface-tinted px-3 py-1 rounded-full border border-primary/10 shadow-sm">
                    <Sparkles className="w-3.5 h-3.5 text-primary-strong animate-pulse" />
-                   <span className="eyebrow text-[10px]">Trung tâm điều phối thông minh</span>
+                   <span className="eyebrow text-[10px]">
+                     {isStaff ? `Kênh làm việc ${roleTitle}` : "Trung tâm điều phối thông minh"}
+                   </span>
                 </div>
                 <div className="w-px h-4 bg-hairline" />
                 <div className="flex items-center gap-2">
@@ -94,7 +99,10 @@ export default function Home() {
                 <span className="text-primary-strong bg-linear-to-r from-primary-strong to-primary bg-clip-text text-transparent">{displayName}.</span>
               </h1>
               <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl font-medium">
-                Nền tảng quản lý lưu động tích hợp AI. Theo dõi hoạt động của {totalStaff} nhân viên và {totalVisits} ca trực đang diễn ra trong mạng lưới.
+                {isStaff
+                  ? `Bảng điều khiển dành cho ${roleTitle}. Quản lý danh sách ca trực được giao và chăm sóc bệnh nhân phụ trách.`
+                  : `Nền tảng quản lý lưu động tích hợp AI. Theo dõi hoạt động của ${totalStaff} nhân viên và ${totalVisits} ca trực đang diễn ra trong mạng lưới.`
+                }
               </p>
             </motion.div>
             
@@ -104,16 +112,12 @@ export default function Home() {
               transition={{ delay: 0.3, duration: 0.6 }}
               className="flex items-center gap-4 shrink-0"
             >
-              <Button variant="outline" className="rounded-full px-8 h-14 font-bold text-sm bg-white/70 backdrop-blur-md border-hairline hover:bg-white transition-all shadow-sm flex items-center gap-3 group">
-                <Play className="w-4 h-4 fill-foreground group-hover:fill-primary transition-colors" />
-                Xem Demo
-              </Button>
               <Button 
                 onClick={() => window.location.href = "/admin/schedule"}
                 className="bg-action text-white rounded-full px-10 h-14 font-bold text-sm flex items-center gap-3 hover:opacity-90 transition-all shadow-2xl shadow-action/20 group border-b-4 border-white/10 active:border-b-0 active:translate-y-1 cursor-pointer"
               >
                 <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-                Phân công ca trực
+                {isStaff ? "Xem lịch được phân công" : "Phân công ca trực"}
               </Button>
             </motion.div>
           </div>

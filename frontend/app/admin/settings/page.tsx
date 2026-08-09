@@ -245,9 +245,19 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-on-surface-tertiary">Vai trò</Label>
                 <Input
-                  defaultValue={user?.role === "admin" ? "Quản trị viên" : "Khách hàng"}
+                  value={
+                    user?.role === "admin"
+                      ? "Quản trị viên"
+                      : user?.role === "dieu_duong"
+                        ? "Điều dưỡng"
+                        : user?.role === "vltl"
+                          ? "Vật lý trị liệu"
+                          : user?.role === "chuyen_gia"
+                            ? "Chuyên gia y tế"
+                            : "Khách hàng"
+                  }
                   disabled
-                  className="rounded-xl border-hairline h-11 bg-surface-secondary/50 shadow-none font-medium"
+                  className="rounded-xl border-hairline h-11 bg-surface-secondary/50 shadow-none font-medium text-slate-800"
                 />
               </div>
               <div className="md:col-span-2 pt-4">

@@ -99,7 +99,8 @@ export function Header() {
   const notifRef = React.useRef<HTMLDivElement>(null);
 
   const fetchNotifications = React.useCallback(() => {
-    if (user?.role === "admin") {
+    const isStaffOrAdmin = user?.role === "admin" || user?.role === "vltl" || user?.role === "chuyen_gia" || user?.role === "dieu_duong";
+    if (isStaffOrAdmin) {
       authFetch(`${API_URL}/notifications`)
         .then((res) => (res.ok ? res.json() : []))
         .then((data) => {
@@ -152,8 +153,9 @@ export function Header() {
     try {
       const u = await login(email, password);
       setIsOpen(false);
-      if (u?.role === "admin") {
-        router.push("/admin/schedule");
+      const isStaffOrAdmin = u?.role === "admin" || u?.role === "vltl" || u?.role === "chuyen_gia" || u?.role === "dieu_duong";
+      if (isStaffOrAdmin) {
+        router.push("/admin");
       } else {
         router.push("/lich-hen");
       }

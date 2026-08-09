@@ -19,20 +19,26 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const navItems = [
-  { label: "Tổng quan", href: "/admin", icon: LayoutGrid },
-  { label: "Chuyên gia", href: "/admin/staff", icon: Users },
-  { label: "Dịch vụ", href: "/admin/services", icon: Stethoscope },
-  { label: "Phòng ban", href: "/admin/departments", icon: Building2 },
-  { label: "Lịch trực", href: "/admin/schedule", icon: Calendar },
-  { label: "Bệnh nhân", href: "/admin/patients", icon: Activity },
-  { label: "Thanh toán", href: "/admin/pay", icon: CalendarCheck },
-  { label: "Báo cáo", href: "/admin/reports", icon: FileText },
-  { label: "Tài khoản", href: "/admin/accounts", icon: ShieldCheck },
+import { useAuth } from "@/lib/auth-context";
+
+const allNavItems = [
+  { label: "Tổng quan", href: "/admin", icon: LayoutGrid, roles: ["admin", "vltl", "chuyen_gia", "dieu_duong"] },
+  { label: "Chuyên gia", href: "/admin/staff", icon: Users, roles: ["admin"] },
+  { label: "Dịch vụ", href: "/admin/services", icon: Stethoscope, roles: ["admin"] },
+  { label: "Phòng ban", href: "/admin/departments", icon: Building2, roles: ["admin"] },
+  { label: "Lịch trực", href: "/admin/schedule", icon: Calendar, roles: ["admin", "vltl", "chuyen_gia", "dieu_duong"], labelStaff: "Lịch phân công" },
+  { label: "Bệnh nhân", href: "/admin/patients", icon: Activity, roles: ["admin", "vltl", "chuyen_gia", "dieu_duong"], labelStaff: "Bệnh nhân phụ trách" },
+  { label: "Thanh toán", href: "/admin/pay", icon: CalendarCheck, roles: ["admin"] },
+  { label: "Báo cáo", href: "/admin/reports", icon: FileText, roles: ["admin"] },
+  { label: "Tài khoản", href: "/admin/accounts", icon: ShieldCheck, roles: ["admin"] },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user } = useAuth();
+
+  const userRole = user?.role || "admin";
+  const navItems = allNavItems.filter((item) => item.roles.includes(userRole));
 
   return (
     <aside className="w-64 border-r border-hairline fixed h-full bg-white flex flex-col z-50 shadow-xs">
@@ -58,7 +64,7 @@ export function Sidebar() {
             <div className="flex items-center gap-1 mt-0.5">
               <div className="w-1 h-1 rounded-full bg-primary animate-pulse" />
               <p className="text-[9px] font-black text-primary uppercase tracking-widest">
-                v2.4.0
+                {userRole === "admin" ? "v2.4.0 • Admin" : userRole === "vltl" ? "Vật lý trị liệu" : userRole === "dieu_duong" ? "Điều dưỡng" : userRole === "chuyen_gia" ? "Chuyên gia" : "v2.4.0"}
               </p>
             </div>
           </div>
@@ -68,6 +74,7 @@ export function Sidebar() {
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
+            const displayLabel = (userRole === "vltl" || userRole === "chuyen_gia" || userRole === "dieu_duong") && item.labelStaff ? item.labelStaff : item.label;
             return (
               <Link
                 key={item.href}
@@ -92,7 +99,7 @@ export function Sidebar() {
                     isActive && "translate-x-0.5 transition-transform",
                   )}
                 >
-                  {item.label}
+                  {displayLabel}
                 </span>
               </Link>
             );
