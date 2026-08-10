@@ -839,7 +839,12 @@ export async function updateVisit(
     },
   });
   
-  await ensurePatientForVisit(updated.Id);
+  // Non-fatal: sync patient record. Errors here should not fail the visit update.
+  try {
+    await ensurePatientForVisit(updated.Id);
+  } catch (syncErr) {
+    console.warn("[updateVisit] ensurePatientForVisit failed (non-fatal):", syncErr);
+  }
 
   const refreshed = await db.visit.findUnique({
     where: { Id: updated.Id },
