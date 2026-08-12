@@ -161,34 +161,25 @@ router.put("/profile", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/auth/reset-password — Đặt lại mật khẩu theo email hoặc số điện thoại (không cần đăng nhập)
+// POST /api/auth/reset-password — Đặt lại mật khẩu theo Email (không cần đăng nhập)
 router.post("/reset-password", async (req: Request, res: Response) => {
-  const { email, phone, contact, newPassword } = req.body;
-  const inputContact = (contact || email || phone || "").toString().trim();
+  const { email, contact, newPassword } = req.body;
+  const targetEmail = (email || contact || "").toString().toLowerCase().trim();
 
-  if (!inputContact || !newPassword) {
-    return res.status(400).json({ error: "Vui lòng cung cấp Email / Số điện thoại và mật khẩu mới" });
+  if (!targetEmail || !newPassword) {
+    return res.status(400).json({ error: "Vui lòng cung cấp Email và mật khẩu mới" });
   }
   if (typeof newPassword !== "string" || newPassword.length < 8) {
     return res.status(400).json({ error: "Mật khẩu mới phải có ít nhất 8 ký tự" });
   }
 
   try {
-    const contactNorm = inputContact.toLowerCase();
-    const cleanedPhone = inputContact.replace(/\D/g, "");
-
-    const user = await db.user.findFirst({
-      where: {
-        OR: [
-          { Email: contactNorm },
-          { Phone: inputContact },
-          ...(cleanedPhone ? [{ Phone: cleanedPhone }] : []),
-        ],
-      },
+    const user = await db.user.findUnique({
+      where: { Email: targetEmail },
     });
 
     if (!user) {
-      return res.status(404).json({ error: "Không tìm thấy tài khoản tương ứng với Email / Số điện thoại này" });
+      return res.status(404).json({ error: "Không tìm thấy tài khoản với Email này" });
     }
 
     const hash = await bcrypt.hash(newPassword, 10);

@@ -190,12 +190,7 @@ export function useForgotPassword(
       const res = await fetch(`${API_URL}/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contact: contactValue,
-          email: method === "email" ? contactValue : undefined,
-          phone: method === "phone" ? contactValue : undefined,
-          newPassword,
-        }),
+        body: JSON.stringify({ email: contactValue, newPassword }),
       });
       const data = await res.json();
       if (!res.ok) {

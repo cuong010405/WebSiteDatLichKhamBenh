@@ -1,7 +1,39 @@
 import { PrismaClient } from "@prisma/client";
 import process from "process";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
+
+const userData = [
+  {
+    id: "user-admin-01",
+    email: "admin@gmail.com",
+    fullName: "Quản Trị Viên",
+    phone: "0901234567",
+    role: "admin",
+  },
+  {
+    id: "user-customer-01",
+    email: "khachhang@gmail.com",
+    fullName: "Trần Văn Khách",
+    phone: "0912345678",
+    role: "customer",
+  },
+  {
+    id: "user-nurse-01",
+    email: "dieuduong@gmail.com",
+    fullName: "Lê Thị Mai (Điều dưỡng)",
+    phone: "0901234567",
+    role: "dieu_duong",
+  },
+  {
+    id: "user-vltl-01",
+    email: "vltl@gmail.com",
+    fullName: "Trần Văn An (VLTL)",
+    phone: "0902345678",
+    role: "vltl",
+  },
+];
 
 const staffData = [
   {
@@ -189,11 +221,31 @@ async function main() {
   console.log("Bắt đầu dọn dẹp cơ sở dữ liệu cũ...");
   await prisma.staffLicense.deleteMany();
   await prisma.activityLog.deleteMany();
+  await prisma.payment.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.careLog.deleteMany();
   await prisma.visit.deleteMany();
   await prisma.patientStaff.deleteMany();
   await prisma.patient.deleteMany();
   await prisma.staff.deleteMany();
   await prisma.serviceType.deleteMany();
+  await prisma.user.deleteMany();
+
+  console.log("Đang import dữ liệu tài khoản người dùng...");
+  const defaultHash = await bcrypt.hash("Khach@1234", 10);
+
+  for (const u of userData) {
+    await prisma.user.create({
+      data: {
+        Id: u.id,
+        Email: u.email,
+        PasswordHash: defaultHash,
+        FullName: u.fullName,
+        Phone: u.phone,
+        Role: u.role,
+      },
+    });
+  }
 
   console.log("Đang import dữ liệu nhân viên y tế...");
   for (const s of staffData) {
