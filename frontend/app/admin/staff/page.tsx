@@ -1413,14 +1413,14 @@ export default function StaffPage() {
           <div className="flex items-center gap-3 mb-6">
             <div className="flex items-center gap-2 bg-surface-tinted px-3.5 py-2 rounded-full border border-primary/10 shadow-sm">
               <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <span className="eyebrow text-[10px] font-black uppercase tracking-widest text-primary-strong">Danh sách Nhân viên y tế</span>
+              <span className="eyebrow text-[10px] font-black uppercase tracking-widest text-primary-strong">Danh sách Chuyên gia</span>
             </div>
             <div className="w-px h-5 bg-hairline" />
             <span className="text-[10px] font-black text-on-surface-tertiary uppercase tracking-[0.2em]">{staffList.length} Thành viên</span>
           </div>
-          <h1 className="text-6xl font-black tight-tracking text-foreground leading-[1] uppercase text-left">Danh sách <br />Nhân viên y tế</h1>
+          <h1 className="text-6xl font-black tight-tracking text-foreground leading-[1] uppercase text-left">Danh sách <br />Chuyên gia</h1>
           <p className="text-xl text-muted-foreground mt-5 max-w-2xl font-medium leading-relaxed antialiased text-left">
-            Quản lý danh sách điều dưỡng viên và chuyên viên vật lý trị liệu — chứng chỉ hành nghề, chuyên môn và kinh nghiệm.
+            Quản lý danh sách chuyên gia y tế — chứng chỉ hành nghề, chuyên môn và kinh nghiệm.
           </p>
         </motion.div>
         <div className="flex items-center gap-4 shrink-0">

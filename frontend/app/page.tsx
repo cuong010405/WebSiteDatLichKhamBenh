@@ -2120,7 +2120,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
       {/* Authentication Modal - Sliding Login & Register */}
       <AnimatePresence>
         {isAuthModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div data-auth-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}

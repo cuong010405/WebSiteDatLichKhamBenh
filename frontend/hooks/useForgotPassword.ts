@@ -174,7 +174,7 @@ export function useForgotPassword(
     setStep("reset_password");
   }, [otp, countdown, isTimerActive, generatedOtp, addToast]);
 
-  // Submit New Password — gọi API thật để lưu vào SQL
+  // Submit New Password — hỗ trợ đổi qua cả Email và Số điện thoại
   const handleResetPasswordSubmit = useCallback(async () => {
     if (newPassword !== confirmPassword) {
       addToast("Hai mật khẩu chưa khớp.", "error");
@@ -184,18 +184,18 @@ export function useForgotPassword(
       addToast("Mật khẩu chưa đáp ứng yêu cầu bảo mật.", "error");
       return;
     }
-    // Chỉ hỗ trợ reset qua email (phone không có tài khoản trong DB)
-    if (method !== "email") {
-      addToast("Chỉ hỗ trợ đổi mật khẩu qua email.", "error");
-      return;
-    }
 
     setIsSubmittingReset(true);
     try {
       const res = await fetch(`${API_URL}/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: contactValue, newPassword }),
+        body: JSON.stringify({
+          contact: contactValue,
+          email: method === "email" ? contactValue : undefined,
+          phone: method === "phone" ? contactValue : undefined,
+          newPassword,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {

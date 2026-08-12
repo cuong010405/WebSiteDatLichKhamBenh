@@ -61,6 +61,8 @@ export function ChatbotWidget() {
   const [input, setInput] = React.useState("");
   const [isTyping, setIsTyping] = React.useState(false);
   const [unreadCount, setUnreadCount] = React.useState(1);
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+
   const messagesContainerRef = React.useRef<HTMLDivElement>(null);
   const widgetRef = React.useRef<HTMLDivElement>(null);
 
@@ -76,23 +78,44 @@ export function ChatbotWidget() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
-  // Do not render chatbot on admin routes
-  if (pathname?.startsWith("/admin")) {
-    return null;
-  }
+  React.useEffect(() => {
+    const checkModal = () => {
+      const hasAuthModal = !!document.querySelector(
+        '[data-auth-modal="true"], [role="dialog"], [data-state="open"]'
+      );
+      const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+      const hasAuthParam = urlParams?.get("action") === "login" || urlParams?.get("action") === "register";
 
-  const scrollToBottom = () => {
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-    }
-  };
+      setIsModalOpen(hasAuthModal || hasAuthParam);
+    };
+
+    checkModal();
+
+    const observer = new MutationObserver(() => {
+      checkModal();
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "style", "data-state", "data-auth-modal"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   React.useEffect(() => {
-    if (isOpen) {
-      scrollToBottom();
+    if (isOpen && messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
       setUnreadCount(0);
     }
   }, [isOpen, messages, isTyping]);
+
+  // Do not render chatbot on admin routes or when authentication modal is open
+  if (pathname?.startsWith("/admin") || isModalOpen) {
+    return null;
+  }
 
   const generateBotReply = (userQuery: string): { text: string; actions?: any[] } => {
     const q = userQuery.toLowerCase().trim();
