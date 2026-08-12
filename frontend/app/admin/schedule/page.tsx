@@ -621,12 +621,8 @@ function checkStaffConflict(
   targetVisit: Visit,
   allVisits: Visit[]
 ): boolean {
-  // Ẩn nhân sự đang bận (theo status hoặc available từ DB)
-  if ((staff as any).available === false) return true;
-  const statusStr = ((staff as any).status || "").toLowerCase();
-  if (statusStr === "đang bận" || statusStr === "bận") return true;
-
   if (!staff || !targetVisit || !targetVisit.date) return false;
+
   const staffVisits = allVisits.filter(
     (v) =>
       v.id !== targetVisit.id &&
