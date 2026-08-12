@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/lib/auth-context";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -594,31 +596,22 @@ Trạng thái: ${booking.status}
             </div>
           </div>
 
-          <nav className="hidden md:flex items-center gap-8 text-slate-500">
-            <button
-              onClick={() => router.push("/")}
-              className="text-xs font-black uppercase tracking-wider hover:text-blue-600 transition-colors cursor-pointer"
-            >
+          <nav className="hidden md:flex items-center gap-8 text-xs font-black uppercase tracking-wider text-slate-500">
+            <Link href="/" className="hover:text-blue-600 transition-colors">
               Trang chủ
-            </button>
-            <button
-              onClick={() => router.push("/#specialists-section")}
-              className="text-xs font-black uppercase tracking-wider hover:text-blue-600 transition-colors cursor-pointer"
-            >
+            </Link>
+            <Link href="/doi-ngu" className="hover:text-blue-600 transition-colors">
               Đội ngũ chuyên gia
-            </button>
-            <button
-              onClick={() => router.push("/dat-lich")}
-              className="text-xs font-black uppercase tracking-wider hover:text-blue-600 transition-colors cursor-pointer"
-            >
+            </Link>
+            <Link href="/dich-vu" className="hover:text-blue-600 transition-colors">
+              Dịch vụ
+            </Link>
+            <Link href="/dat-lich" className="hover:text-blue-600 transition-colors">
               Đặt lịch khám
-            </button>
-            <button
-              onClick={() => router.push("/#contact-section")}
-              className="text-xs font-black uppercase tracking-wider hover:text-blue-600 transition-colors cursor-pointer"
-            >
+            </Link>
+            <Link href="/#contact-section" className="hover:text-blue-600 transition-colors">
               Liên hệ
-            </button>
+            </Link>
           </nav>
 
           {/* User menu pill */}
@@ -854,6 +847,9 @@ Trạng thái: ${booking.status}
           )}
         </motion.div>
       </main>
+
+      {/* ── Footer ── */}
+      <Footer />
 
       {/* Cancel Modal — compact, floats above Visit Detail */}
       <AnimatePresence>

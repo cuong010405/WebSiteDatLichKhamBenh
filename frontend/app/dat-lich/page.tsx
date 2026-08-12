@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/lib/auth-context";
 import { useLoading } from "@/lib/loading-context";
 import { motion, AnimatePresence } from "framer-motion";
@@ -317,11 +319,11 @@ export default function DatLichPage() {
 
   const [toasts, setToasts] = React.useState<{ id: number; msg: string; type: "success" | "error" | "info" }[]>([]);
 
-  const addToast = (msg: string, type: "success" | "error" | "info" = "success") => {
+  const addToast = React.useCallback((msg: string, type: "success" | "error" | "info" = "success") => {
     const id = Date.now();
-    setToasts((prev) => [...prev, { id, msg, type }]);
+    setToasts([{ id, msg, type }]);
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
-  };
+  }, []);
 
   // Cancel Booking Modal state & handler
   const [isCancelModalOpen, setIsCancelModalOpen] = React.useState(false);
@@ -560,24 +562,77 @@ export default function DatLichPage() {
   };
 
   React.useEffect(() => {
+    const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
+    const qServiceId = params.get("serviceId");
+    const qServiceName = params.get("serviceName");
+    const qStaffId = params.get("staffId");
+    const qStaffName = params.get("staffName");
+
     fetch(`${API_URL}/services/active`)
       .then((r) => r.json())
       .then((servicesData) => {
-        const list = Array.isArray(servicesData) && servicesData.length > 0 ? servicesData : DEFAULT_SERVICES;
+        const list = Array.isArray(servicesData) && servicesData.length > 0 ? [...servicesData] : [...DEFAULT_SERVICES];
+        let targetId = "";
+        if (qServiceId) {
+          const match = list.find((s) => String(s.id || s.serviceId) === String(qServiceId));
+          if (match) targetId = String(match.id || match.serviceId);
+        }
+        if (!targetId && qServiceName) {
+          const match = list.find((s) => (s.name || s.serviceName || "").toLowerCase() === qServiceName.toLowerCase());
+          if (match) {
+            targetId = String(match.id || match.serviceId);
+          } else {
+            const customSvc = { id: qServiceId || `SV-Q-${Date.now()}`, name: qServiceName, price: 300000, duration: "1h" };
+            list.unshift(customSvc);
+            targetId = customSvc.id;
+          }
+        }
         setServices(list);
-        setBookingServiceId((prev) => prev || (list[0].id || list[0].serviceId || "SV-01"));
+        setBookingServiceId(targetId || (list[0].id || list[0].serviceId || "SV-01"));
       })
       .catch(() => {
-        setServices(DEFAULT_SERVICES);
-        setBookingServiceId((prev) => prev || "SV-01");
+        const list = [...DEFAULT_SERVICES];
+        let targetId = "";
+        if (qServiceId) {
+          const match = list.find((s) => String(s.id || s.serviceId) === String(qServiceId));
+          if (match) targetId = String(match.id || match.serviceId);
+        }
+        if (!targetId && qServiceName) {
+          const match = list.find((s) => (s.name || s.serviceName || "").toLowerCase() === qServiceName.toLowerCase());
+          if (match) {
+            targetId = String(match.id || match.serviceId);
+          } else {
+            const customSvc = { id: qServiceId || "SV-01", name: qServiceName, price: 300000, duration: "1h" };
+            list.unshift(customSvc);
+            targetId = customSvc.id;
+          }
+        }
+        setServices(list);
+        setBookingServiceId(targetId || "SV-01");
       });
 
     fetch(`${API_URL}/staff`)
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) setStaff(data);
+        const staffList = Array.isArray(data) && data.length > 0 ? data : mockStaff;
+        setStaff(staffList);
+        if (qStaffId) {
+          const match = staffList.find((st: any) => String(st.id) === String(qStaffId));
+          if (match) setBookingStaffId(String(match.id));
+        } else if (qStaffName) {
+          const match = staffList.find((st: any) => st.name?.toLowerCase() === qStaffName.toLowerCase());
+          if (match) setBookingStaffId(String(match.id));
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (qStaffId) {
+          const match = mockStaff.find((st: any) => String(st.id) === String(qStaffId));
+          if (match) setBookingStaffId(String(match.id));
+        } else if (qStaffName) {
+          const match = mockStaff.find((st: any) => st.name?.toLowerCase() === qStaffName.toLowerCase());
+          if (match) setBookingStaffId(String(match.id));
+        }
+      });
   }, []);
 
   const fetchMyVisits = React.useCallback(async () => {
@@ -843,51 +898,39 @@ Trạng thái: ${booking.status}
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-blue-50/60 via-white to-slate-50 text-slate-900 font-sans">
-      {/* Toast - Error: Top Floating Modern Pill Notification */}
-      <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[300] flex flex-col items-center gap-2 pointer-events-none w-auto max-w-md px-4">
-        <AnimatePresence>
-          {toasts.filter(t => t.type === "error").map((t) => (
+      {/* Toast Notifications Container - Góc phải trên cùng (Nhỏ gọn, tinh tế) */}
+      <div className="fixed top-24 right-6 z-[500] flex flex-col gap-2 max-w-xs pointer-events-none">
+        <AnimatePresence mode="wait">
+          {toasts.slice(-1).map((t) => (
             <motion.div
               key={t.id}
-              initial={{ opacity: 0, y: -24, scale: 0.92 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -16, scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 450, damping: 26 }}
-              className="bg-white/95 backdrop-blur-2xl border border-rose-100/80 px-5 py-3.5 rounded-full shadow-[0_16px_36px_-10px_rgba(244,63,94,0.18)] flex items-center gap-3.5 pointer-events-auto border-l-4 border-l-rose-500"
-            >
-              <div className="w-8 h-8 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
-                <AlertCircle className="w-4 h-4 text-rose-500" />
-              </div>
-              <span className="text-xs font-black text-slate-800 tracking-tight pr-2">
-                {t.msg}
-              </span>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-
-      {/* Toast - Success & Info: góc phải dưới */}
-      <div className="fixed bottom-6 right-6 z-[150] flex flex-col gap-3 max-w-sm pointer-events-none">
-        <AnimatePresence>
-          {toasts.filter(t => t.type !== "error").map((t) => (
-            <motion.div
-              key={t.id}
-              initial={{ opacity: 0, y: 30, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.9 }}
+              initial={{ opacity: 0, x: 30, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 30, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 450, damping: 28 }}
               className={cn(
-                "p-4 rounded-2xl shadow-2xl border flex items-center gap-3 backdrop-blur-md pointer-events-auto",
-                t.type === "success"
-                  ? "bg-white border-blue-200 text-blue-900"
-                  : "bg-white border-blue-100 text-slate-800",
+                "px-3.5 py-2 rounded-xl shadow-lg border flex items-center gap-2.5 backdrop-blur-xl pointer-events-auto border-l-3",
+                t.type === "error"
+                  ? "bg-white/95 border-rose-100 border-l-rose-500 text-slate-800 shadow-rose-500/10"
+                  : t.type === "success"
+                  ? "bg-white/95 border-blue-200 border-l-blue-600 text-blue-950 shadow-blue-500/10"
+                  : "bg-white/95 border-slate-200 border-l-sky-500 text-slate-800 shadow-slate-500/10"
               )}
             >
-              {t.type === "success" ? (
-                <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0" />
+              {t.type === "error" ? (
+                <div className="w-6 h-6 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
+                  <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
+                </div>
+              ) : t.type === "success" ? (
+                <div className="w-6 h-6 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                </div>
               ) : (
-                <Sparkles className="w-5 h-5 text-blue-500 shrink-0 animate-pulse" />
+                <div className="w-6 h-6 rounded-lg bg-sky-50 border border-sky-100 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-3.5 h-3.5 text-sky-500 animate-pulse" />
+                </div>
               )}
-              <span className="text-xs font-black tracking-tight">{t.msg}</span>
+              <span className="text-[11px] font-bold text-slate-800 tracking-tight leading-snug">{t.msg}</span>
             </motion.div>
           ))}
         </AnimatePresence>
@@ -915,28 +958,22 @@ Trạng thái: ${booking.status}
             </div>
           </div>
 
-          <nav className="hidden md:flex items-center gap-8 text-slate-500">
-            <button
-              onClick={() => router.push("/")}
-              className="text-xs font-black uppercase tracking-wider hover:text-blue-600 transition-colors cursor-pointer"
-            >
+          <nav className="hidden md:flex items-center gap-8 text-xs font-black uppercase tracking-wider text-slate-500">
+            <Link href="/" className="hover:text-blue-600 transition-colors">
               Trang chủ
-            </button>
-            <button
-              onClick={() => router.push("/#specialists-section")}
-              className="text-xs font-black uppercase tracking-wider hover:text-blue-600 transition-colors cursor-pointer"
-            >
+            </Link>
+            <Link href="/doi-ngu" className="hover:text-blue-600 transition-colors">
               Đội ngũ chuyên gia
-            </button>
-            <span className="text-xs font-black uppercase tracking-wider text-blue-600">
+            </Link>
+            <Link href="/dich-vu" className="hover:text-blue-600 transition-colors">
+              Dịch vụ
+            </Link>
+            <span className="text-blue-600">
               Đặt lịch khám
             </span>
-            <button
-              onClick={() => router.push("/#contact-section")}
-              className="text-xs font-black uppercase tracking-wider hover:text-blue-600 transition-colors cursor-pointer"
-            >
+            <Link href="/#contact-section" className="hover:text-blue-600 transition-colors">
               Liên hệ
-            </button>
+            </Link>
           </nav>
 
           {/* User pill + dropdown — same as homepage */}
@@ -1545,6 +1582,9 @@ Trạng thái: ${booking.status}
         </div>
 
       </main>
+
+      {/* ── Footer ── */}
+      <Footer />
 
       {/* Consolidated Settings Modal */}
       <AnimatePresence>

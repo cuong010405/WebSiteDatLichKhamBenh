@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { LoadingProvider } from "@/lib/loading-context";
 import { GlobalLoading } from "@/components/global-loading";
+import { ChatbotWidget } from "@/components/chat/ChatbotWidget";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -34,6 +35,7 @@ export default function RootLayout({
         <LoadingProvider>
           <AuthProvider>
             {children}
+            <ChatbotWidget />
           </AuthProvider>
           <GlobalLoading />
         </LoadingProvider>

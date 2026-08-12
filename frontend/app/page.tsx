@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { Footer } from "@/components/layout/Footer";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useLoading } from "@/lib/loading-context";
@@ -1576,28 +1578,33 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
 
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-clip bg-slate-50 text-slate-900 font-sans selection:bg-blue-600 selection:text-white relative">
-      {/* Toast Container - góc phải dưới (chỉ success & info, không có error) */}
-      <div className="fixed bottom-6 right-6 z-[150] flex flex-col gap-3 max-w-sm pointer-events-none">
-        <AnimatePresence>
-          {toasts.filter(t => t.type !== "error").map((toast) => (
+      {/* Toast Container - Góc phải trên cùng (Nhỏ gọn, tinh tế) */}
+      <div className="fixed top-24 right-6 z-[500] flex flex-col gap-2 max-w-xs pointer-events-none">
+        <AnimatePresence mode="wait">
+          {toasts.filter(t => t.type !== "error").slice(-1).map((toast) => (
             <motion.div
               key={toast.id}
-              initial={{ opacity: 0, y: 30, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.9 }}
+              initial={{ opacity: 0, x: 30, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 30, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 450, damping: 28 }}
               className={cn(
-                "p-4 rounded-2xl shadow-2xl border flex items-center gap-3 backdrop-blur-md pointer-events-auto",
+                "px-3.5 py-2 rounded-xl shadow-lg border flex items-center gap-2.5 backdrop-blur-xl pointer-events-auto border-l-3",
                 toast.type === "success"
-                  ? "bg-white border-blue-200 text-blue-900"
-                  : "bg-white border-blue-100 text-slate-800",
+                  ? "bg-white/95 border-blue-200 border-l-blue-600 text-blue-950 shadow-blue-500/10"
+                  : "bg-white/95 border-slate-200 border-l-sky-500 text-slate-800 shadow-slate-500/10",
               )}
             >
               {toast.type === "success" ? (
-                <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0" />
+                <div className="w-6 h-6 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                </div>
               ) : (
-                <Sparkles className="w-5 h-5 text-blue-500 shrink-0 animate-pulse" />
+                <div className="w-6 h-6 rounded-lg bg-sky-50 border border-sky-100 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-3.5 h-3.5 text-sky-500 animate-pulse" />
+                </div>
               )}
-              <span className="text-xs font-black tracking-tight">{toast.message}</span>
+              <span className="text-[11px] font-bold text-slate-800 tracking-tight leading-snug">{toast.message}</span>
             </motion.div>
           ))}
         </AnimatePresence>
@@ -1637,34 +1644,21 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
           </div>
 
           <nav className="hidden md:flex items-center gap-8 text-xs font-black uppercase tracking-wider text-slate-500">
-            <a
-              href="#booking-navbar"
-              className="text-blue-600 hover:text-blue-700 transition-colors"
-            >
-              Trang chủ
-            </a>
-            <a
-              href="#specialists-section"
-              className="hover:text-blue-600 transition-colors"
-            >
+            <span className="text-blue-600">Trang chủ</span>
+            <Link href="/doi-ngu" className="hover:text-blue-600 transition-colors">
               Đội ngũ chuyên gia
-            </a>
+            </Link>
+            <Link href="/dich-vu" className="hover:text-blue-600 transition-colors">
+              Dịch vụ
+            </Link>
             {isLoggedIn && (
-              <>
-                <a
-                  href="/dat-lich"
-                  className="hover:text-blue-600 transition-colors"
-                >
-                  Đặt lịch khám
-                </a>
-              </>
+              <Link href="/dat-lich" className="hover:text-blue-600 transition-colors">
+                Đặt lịch khám
+              </Link>
             )}
-            <a
-              href="#contact-section"
-              className="hover:text-blue-600 transition-colors"
-            >
+            <Link href="/#contact-section" className="hover:text-blue-600 transition-colors">
               Liên hệ
-            </a>
+            </Link>
           </nav>
 
           <div className="flex items-center gap-4">
@@ -1949,7 +1943,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: false, amount: 0.2 }}
             transition={{ duration: 0.8 }}
             className="text-center max-w-4xl mx-auto mb-16 space-y-4"
           >
@@ -1983,7 +1977,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
                 key={i}
                 initial={{ opacity: 0, y: 40 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
+                viewport={{ once: false, amount: 0.2 }}
                 transition={{ duration: 0.8, delay: i * 0.15 }}
                 className="bg-blue-50/40 border border-blue-100 rounded-[32px] p-8 hover:bg-white hover:shadow-xl hover:border-blue-200 transition-all text-center space-y-6"
               >
@@ -2010,7 +2004,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: false, amount: 0.2 }}
             transition={{ duration: 0.8 }}
             className="lg:col-span-5 space-y-8"
           >
@@ -2060,7 +2054,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
             onSubmit={handleSendSupport}
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: false, amount: 0.2 }}
             transition={{ duration: 0.8, delay: 0.2 }}
             className="lg:col-span-7 bg-white border border-blue-100 rounded-[36px] p-10 shadow-xs space-y-6"
           >
@@ -2118,46 +2112,8 @@ Cảm ơn quý khách đã tin dùng dịch vụ y tế của MintCare!
 
 
 
-      {/* --- Footer (Blue & White) --- */}
-      <footer className="bg-white border-t border-blue-100 py-16">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-8">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shadow-md">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="w-5 h-5"
-              >
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-              </svg>
-            </div>
-            <div>
-              <span className="text-base font-black tracking-tight text-blue-950 uppercase">
-                MintCare Portal
-              </span>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                Hệ thống cốt lõi &copy; 2026
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-8 text-xs font-bold text-slate-500">
-            <a href="#" className="hover:text-blue-600 transition-colors">
-              Điều khoản dịch vụ
-            </a>
-            <a href="#" className="hover:text-blue-600 transition-colors">
-              Chính sách bảo mật
-            </a>
-            <a href="#" className="hover:text-blue-600 transition-colors">
-              Hỗ trợ kỹ thuật
-            </a>
-          </div>
-        </div>
-      </footer>
+      {/* --- Rich Healthcare Footer --- */}
+      <Footer />
 
       {/* Top Floating Notification Removed */}
 
