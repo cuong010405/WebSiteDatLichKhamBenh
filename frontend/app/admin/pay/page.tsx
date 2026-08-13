@@ -907,16 +907,10 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
         paymentsList.filter((p: any) => p.status !== "Đã hủy").map((p: any) => p.visitId)
       );
 
-      // Hiển thị các ca chưa bị hủy và chưa lập hóa đơn thanh toán.
-      // Riêng ca "Chờ duyệt": Ẩn khỏi form thanh toán trừ khi người dùng chọn Chuyển khoản hoặc Đã thanh toán trước.
+      // Hiển thị các ca chưa bị hủy và chưa lập hóa đơn (chưa có trong bảng payments).
       const pendingList = visitsList.filter((v: any) => {
-        if (v.status === "Đã hủy" || v.paymentStatus === "Đã hủy" || v.paymentStatus === "Đã thanh toán" || invoicedVisitIds.has(v.id)) {
+        if (v.status === "Đã hủy" || v.paymentStatus === "Đã hủy" || invoicedVisitIds.has(v.id)) {
           return false;
-        }
-        if (v.status === "Chờ duyệt") {
-          const isTransfer = v.paymentMethod === "Chuyển khoản" || v.paymentMethod?.toLowerCase().includes("chuyển khoản");
-          const isPaid = v.paymentStatus === "Đã thanh toán";
-          return isTransfer || isPaid;
         }
         return true;
       });
@@ -1050,25 +1044,12 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
         throw new Error(err?.error || "Lỗi lưu hóa đơn");
       }
 
-      // Lấy payment vừa tạo để mở dialog in hóa đơn ngay lập tức
-      const newPayment: PaymentRecord = await res.json();
-
       setPaymentAmount("");
       setPaymentNote("");
       setSelectedVisitId("");
 
-      // Refresh danh sách (silent để không loader)
+      // Refresh danh sách ca chờ và lịch sử hóa đơn
       await Promise.all([fetchPendingVisits(true), fetchPayments(true)]);
-
-      // Tự động mở dialog xem/in hóa đơn sau khi tạo thành công
-      if (newPayment?.id) {
-        // Lấy payment đầy đủ từ danh sách mới nhất (có thể có thêm field join)
-        const allRes = await authFetch(`${API_URL}/payments`);
-        const allData = await allRes.json();
-        const allList: PaymentRecord[] = Array.isArray(allData) ? allData : [];
-        const full = allList.find((p) => p.id === newPayment.id) || newPayment;
-        setActivePrintPayment(full);
-      }
     } catch (e: any) {
 
     } finally {
@@ -1407,16 +1388,28 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                           >
                             <div className="flex items-start justify-between gap-2">
                               <p className="text-xs font-black text-slate-900 truncate flex-1">{v.type}</p>
-                              <span className={cn(
-                                "text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0",
-                                v.status === "Đã hủy"
-                                  ? "bg-red-100 text-red-600"
-                                  : v.status === "Đang thực hiện"
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : "bg-blue-100 text-blue-700"
-                              )}>
-                                {v.status || "Chưa TT"}
-                              </span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {v.paymentMethod && (
+                                  <span className={cn(
+                                    "text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border",
+                                    v.paymentMethod === "Chuyển khoản"
+                                      ? "bg-purple-50 text-purple-700 border-purple-200"
+                                      : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  )}>
+                                    💳 {v.paymentMethod}
+                                  </span>
+                                )}
+                                <span className={cn(
+                                  "text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full",
+                                  v.status === "Đã hủy"
+                                    ? "bg-red-100 text-red-600"
+                                    : v.status === "Đang thực hiện"
+                                    ? "bg-emerald-100 text-emerald-700"
+                                    : "bg-blue-100 text-blue-700"
+                                )}>
+                                  {v.status || "Chưa TT"}
+                                </span>
+                              </div>
                             </div>
 
                             <div className="mt-1 space-y-0.5">

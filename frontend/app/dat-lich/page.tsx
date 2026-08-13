@@ -792,7 +792,7 @@ export default function DatLichPage() {
     }
 
     if (bookingPayment === "Chuyển khoản" && qrConfirmed) {
-      newVisitObj.paymentStatus = "Đã thanh toán";
+      newVisitObj.paymentStatus = "Chưa thanh toán";
       newVisitObj.paymentAmount = String(selectedService.price);
     }
 

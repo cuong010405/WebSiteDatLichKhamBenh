@@ -200,6 +200,19 @@ export interface PaymentVisit {
   paymentStatus?: string;
 }
 
+const formatReportTimestamp = (raw: any) => {
+  if (!raw) return null;
+  try {
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return null;
+    const time = d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+    const date = d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return `${time} - ${date}`;
+  } catch {
+    return null;
+  }
+};
+
 export default function ReportsPage() {
   const [stats, setStats] = React.useState<ReportStats | null>(null);
   const [staffList, setStaffList] = React.useState<StaffEntry[]>([]);
@@ -255,10 +268,24 @@ export default function ReportsPage() {
       fetchJson(`${API_URL}/reports`),
       fetchJson(`${API_URL}/staff`),
       fetchJson(`${API_URL}/visits`),
+      fetchJson(`${API_URL}/payments`),
     ])
-      .then(([reportData, staff, allVs]) => {
+      .then(([reportData, staff, allVs, paymentsData]) => {
         const normalizedAll = Array.isArray(allVs) ? allVs : [];
-        const computedPending = normalizedAll.filter(
+        const paymentsList = Array.isArray(paymentsData) ? paymentsData : [];
+        const paymentMap = new Map<string, string>();
+        paymentsList.forEach((p: any) => {
+          if (p.visitId && p.createdAt) {
+            paymentMap.set(p.visitId, p.createdAt);
+          }
+        });
+
+        const enrichedAll = normalizedAll.map((v: any) => ({
+          ...v,
+          paymentCreatedAt: paymentMap.get(v.id) || (v.paymentStatus === "Đã thanh toán" ? (v.updatedAt || v.createdAt) : null),
+        }));
+
+        const computedPending = enrichedAll.filter(
           (v: any) => v.status !== "Đã hủy" && v.paymentStatus !== "Đã thanh toán"
         );
         setStats({
@@ -267,7 +294,7 @@ export default function ReportsPage() {
         });
         setStaffList(Array.isArray(staff) ? staff : []);
         setPendingVisits(computedPending);
-        setAllVisits(normalizedAll);
+        setAllVisits(enrichedAll);
         if (
           !selectedPaymentVisitId &&
           computedPending.length > 0
@@ -899,6 +926,19 @@ export default function ReportsPage() {
                                     📍 {address}
                                   </p>
                                 )}
+
+                                <div className="flex items-center gap-2 flex-wrap pt-1">
+                                  {formatReportTimestamp((visit as any).bookedAt || (visit as any).assignedAt || (visit as any).createdAt) && (
+                                    <span className="text-[9.5px] font-black text-blue-700 bg-blue-50/90 px-2 py-0.5 rounded-md border border-blue-100/80">
+                                      🕐 Đặt lúc: {formatReportTimestamp((visit as any).bookedAt || (visit as any).assignedAt || (visit as any).createdAt)}
+                                    </span>
+                                  )}
+                                  {isPaid && formatReportTimestamp((visit as any).paymentCreatedAt || (visit as any).updatedAt) && (
+                                    <span className="text-[9.5px] font-black text-emerald-700 bg-emerald-50/90 px-2 py-0.5 rounded-md border border-emerald-100/80">
+                                      💳 Thanh toán lúc: {formatReportTimestamp((visit as any).paymentCreatedAt || (visit as any).updatedAt)}
+                                    </span>
+                                  )}
+                                </div>
 
                                 {isCancelled && note && (
                                   <p className="text-[10px] font-semibold text-red-500 italic mt-0.5">
