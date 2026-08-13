@@ -103,6 +103,10 @@ function stringHash(str: string): number {
 }
 
 const EXACT_PRESET_GEOCODING: Record<string, { lat: number; lng: number }> = {
+  "783 phạm hữu lầu, cao lãnh": { lat: 10.43852, lng: 105.64248 },
+  "phạm hữu lầu, cao lãnh": { lat: 10.43852, lng: 105.64248 },
+  "phạm hữu lầu": { lat: 10.43852, lng: 105.64248 },
+  "nguyễn huệ, cao lãnh": { lat: 10.45420, lng: 105.63610 },
   "47 lý thường kiệt, tân hồng, đồng tháp": { lat: 10.92385, lng: 105.42991 },
   "40 nguyễn trãi, tân hồng, đồng tháp": { lat: 10.92488, lng: 105.43120 },
   "319 nguyễn huệ, tân hồng, đồng tháp": { lat: 10.92420, lng: 105.43080 },
@@ -112,8 +116,11 @@ const EXACT_PRESET_GEOCODING: Record<string, { lat: number; lng: number }> = {
   "tân hồng, đồng tháp": { lat: 10.92340, lng: 105.42980 },
   "tân hồng": { lat: 10.92340, lng: 105.42980 },
   "hồng ngự, đồng tháp": { lat: 10.82560, lng: 105.28910 },
+  "hồng ngự": { lat: 10.82560, lng: 105.28910 },
   "cao lãnh, đồng tháp": { lat: 10.45730, lng: 105.63380 },
+  "cao lãnh": { lat: 10.45730, lng: 105.63380 },
   "sa đéc, đồng tháp": { lat: 10.29740, lng: 105.75730 },
+  "sa đéc": { lat: 10.29740, lng: 105.75730 },
   "đồng tháp": { lat: 10.45730, lng: 105.63380 },
   "hà nội": { lat: 21.02850, lng: 105.85420 },
   "huế": { lat: 16.46370, lng: 107.59090 },
@@ -140,6 +147,19 @@ function saveGeoCache(key: string, coords: { lat: number; lng: number }) {
       localStorage.setItem("mintcare_geo_cache", JSON.stringify(geoCache));
     } catch {}
   }
+}
+
+function fetchHeaderNominatimGeocode(queryStr: string): Promise<{ lat: number; lng: number } | null> {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryStr)}&limit=1`;
+  return fetch(url, { headers: { "Accept-Language": "vi,en" } })
+    .then(res => res.json())
+    .then(data => {
+      if (Array.isArray(data) && data.length > 0 && data[0].lat && data[0].lon) {
+        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      }
+      return null;
+    })
+    .catch(() => null);
 }
 
 function getHeaderCoords(addr?: string, idx: number = 0, onExactResolved?: (coords: { lat: number; lng: number }) => void) {
@@ -175,19 +195,52 @@ function getHeaderCoords(addr?: string, idx: number = 0, onExactResolved?: (coor
   };
 
   if (typeof window !== "undefined" && a.length > 3) {
-    const query = a.includes("việt nam") ? a : a + ", Việt Nam";
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`, {
-      headers: { "Accept-Language": "vi" }
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0 && data[0].lat && data[0].lon) {
-          const exact = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-          saveGeoCache(cacheKey, exact);
-          if (onExactResolved) onExactResolved(exact);
+    const fullQuery = a.includes("việt nam") ? a : a + ", Việt Nam";
+    
+    // Tầng 1: Tìm toàn bộ địa chỉ
+    fetchHeaderNominatimGeocode(fullQuery).then((res1) => {
+      if (res1) {
+        saveGeoCache(cacheKey, res1);
+        if (onExactResolved) onExactResolved(res1);
+        return;
+      }
+
+      // Tầng 2: Tách số nhà (Ví dụ: "783 Phạm Hữu Lầu..." -> "Phạm Hữu Lầu...")
+      const withoutHouseNo = a.replace(/^\d+[\/\d]*\s*/, "").trim();
+      if (withoutHouseNo && withoutHouseNo !== a) {
+        const query2 = withoutHouseNo.includes("việt nam") ? withoutHouseNo : withoutHouseNo + ", Việt Nam";
+        fetchHeaderNominatimGeocode(query2).then((res2) => {
+          if (res2) {
+            saveGeoCache(cacheKey, res2);
+            if (onExactResolved) onExactResolved(res2);
+            return;
+          }
+          // Tầng 3: Tìm theo Quận/Thành phố
+          const parts = a.split(",");
+          if (parts.length > 1) {
+            const cityQuery = parts.slice(1).join(",").trim() + ", Việt Nam";
+            fetchHeaderNominatimGeocode(cityQuery).then((res3) => {
+              if (res3) {
+                saveGeoCache(cacheKey, res3);
+                if (onExactResolved) onExactResolved(res3);
+              }
+            });
+          }
+        });
+      } else {
+        // Tầng 3: Tìm theo Quận/Thành phố
+        const parts = a.split(",");
+        if (parts.length > 1) {
+          const cityQuery = parts.slice(1).join(",").trim() + ", Việt Nam";
+          fetchHeaderNominatimGeocode(cityQuery).then((res3) => {
+            if (res3) {
+              saveGeoCache(cacheKey, res3);
+              if (onExactResolved) onExactResolved(res3);
+            }
+          });
         }
-      })
-      .catch(() => {});
+      }
+    });
   }
 
   return fallbackResult;
@@ -441,7 +494,7 @@ export function Header() {
       if (s.includes("hủy") || s.includes("hoàn tất") || s.includes("cancel") || s.includes("complete")) {
         return false;
       }
-      return isTodayVisit(v.date);
+      return s.includes("chờ duyệt") || isTodayVisit(v.date);
     });
 
     mapStaffList.forEach((st, idx) => {
@@ -518,7 +571,7 @@ export function Header() {
     if (s.includes("hủy") || s.includes("hoàn tất") || s.includes("cancel") || s.includes("complete")) {
       return false;
     }
-    return isTodayVisit(v.date);
+    return s.includes("chờ duyệt") || isTodayVisit(v.date);
   });
 
   const filteredMapStaff = mapStaffList.filter(s => !mapSearchQuery || s.name?.toLowerCase().includes(mapSearchQuery.toLowerCase()) || s.location?.toLowerCase().includes(mapSearchQuery.toLowerCase()));

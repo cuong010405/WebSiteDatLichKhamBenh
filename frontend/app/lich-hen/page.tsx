@@ -98,7 +98,8 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string; border: string; 
 function formatPrice(val: any): string {
   if (val === undefined || val === null || val === "") return "0 VNĐ";
   const str = String(val);
-  const num = parseFloat(str.replace(/[^0-9.]/g, ""));
+  const digitsOnly = str.replace(/[^0-9]/g, "");
+  const num = parseInt(digitsOnly, 10);
   if (isNaN(num)) return "0 VNĐ";
   return num.toLocaleString("vi-VN") + " VNĐ";
 }
@@ -498,6 +499,17 @@ export default function LichHenPage() {
     setPage(1);
   }, [searchQuery, statusFilter]);
 
+  const totalSpent = React.useMemo(() => {
+    return bookings.reduce((sum, b) => {
+      // Chỉ tính các ca Đã thanh toán hoặc Đã hoàn tất
+      const isPaid = b.paymentStatus === "Đã thanh toán" || b.status === "Đã hoàn tất";
+      if (!isPaid) return sum;
+      const digitsOnly = String(b.price || "").replace(/[^0-9]/g, "");
+      const num = parseInt(digitsOnly, 10) || 0;
+      return sum + num;
+    }, 0);
+  }, [bookings]);
+
   const filteredBookings = React.useMemo(() => {
     const indexed = bookings.map((b, idx) => ({ ...b, _origIdx: idx }));
 
@@ -626,30 +638,63 @@ Trạng thái: ${booking.status}
       </div>
 
       <main className="relative max-w-7xl mx-auto px-6 py-12 space-y-10">
-        {/* Page Header — 100% identical styling to /dat-lich */}
+        {/* Page Header — Thống kê Tổng tiền đã sử dụng & Tổng ca khám */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="space-y-5"
+          className="flex flex-col md:flex-row md:items-center justify-between gap-6"
         >
-          {/* Eyebrow badge */}
-          <div className="inline-flex items-center gap-2 bg-blue-600/10 px-4 py-2 rounded-full border border-blue-200">
-            <Calendar className="w-4 h-4 text-blue-600 animate-pulse" />
-            <span className="text-[10px] font-black text-blue-800 uppercase tracking-widest">
-              Quản lý lịch hẹn trực tuyến
-            </span>
+          <div className="space-y-4 max-w-xl">
+            {/* Eyebrow badge */}
+            <div className="inline-flex items-center gap-2 bg-blue-600/10 px-4 py-2 rounded-full border border-blue-200">
+              <Calendar className="w-4 h-4 text-blue-600 animate-pulse" />
+              <span className="text-[10px] font-black text-blue-800 uppercase tracking-widest">
+                Quản lý lịch hẹn trực tuyến
+              </span>
+            </div>
+
+            <h1 className="text-4xl md:text-5xl font-black text-blue-950 leading-[1.05] tracking-tight">
+              Danh sách <br />
+              <span className="bg-gradient-to-r from-blue-600 to-sky-500 bg-clip-text text-transparent">
+                Lịch hẹn của bạn.
+              </span>
+            </h1>
+            <p className="text-sm md:text-base text-slate-500 font-medium leading-relaxed">
+              Theo dõi chi tiết trạng thái, phiếu khám và thông tin các ca hẹn đã đặt.
+            </p>
           </div>
 
-          <h1 className="text-5xl md:text-6xl font-black text-blue-950 leading-[1.05] tracking-tight">
-            Danh sách <br />
-            <span className="bg-gradient-to-r from-blue-600 to-sky-500 bg-clip-text text-transparent">
-              Lịch hẹn của bạn.
-            </span>
-          </h1>
-          <p className="text-base text-slate-500 max-w-xl font-medium leading-relaxed">
-            Theo dõi chi tiết trạng thái, phiếu khám và thông tin các ca hẹn đã đặt.
-          </p>
+          {/* Thẻ Thống kê Tổng Tiền Đã Sử Dụng */}
+          <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap">
+            <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700 text-white p-5 rounded-[28px] shadow-xl shadow-blue-500/20 border border-blue-400/30 flex items-center gap-4 min-w-[230px]">
+              <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center border border-white/20 shrink-0">
+                <CreditCard className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-blue-100/90 block">
+                  Tổng tiền đã sử dụng
+                </span>
+                <p className="text-xl font-black tracking-tight text-white mt-0.5">
+                  {totalSpent.toLocaleString("vi-VN")} VNĐ
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-[28px] border border-blue-100 shadow-lg shadow-blue-900/5 flex items-center gap-4 min-w-[150px]">
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center border border-blue-100 shrink-0">
+                <Activity className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                  Tổng ca khám
+                </span>
+                <p className="text-xl font-black tracking-tight text-slate-900 mt-0.5">
+                  {bookings.filter(b => b.status !== "Đã hủy").length} ca
+                </p>
+              </div>
+            </div>
+          </div>
         </motion.div>
 
         {/* Search + Filter */}

@@ -206,6 +206,29 @@ export default function ReportsPage() {
   const [pendingVisits, setPendingVisits] = React.useState<PaymentVisit[]>([]);
   const [allVisits, setAllVisits] = React.useState<PaymentVisit[]>([]);
   const [paymentTab, setPaymentTab] = React.useState<"pending" | "all">("pending");
+  const [reportsDateMode, setReportsDateMode] = React.useState<"all" | "today" | "month" | "year" | "custom">("all");
+  const [reportsCustomDate, setReportsCustomDate] = React.useState<string>("");
+
+  const matchesDate = React.useCallback(
+    (dateStr?: string, mode: string = "all", customDate: string = "") => {
+      if (mode === "all") return true;
+      if (!dateStr) return true;
+
+      const now = new Date();
+      const todayStr = now.toISOString().split("T")[0];
+      const thisMonthStr = todayStr.slice(0, 7);
+      const thisYearStr = todayStr.slice(0, 4);
+
+      const cleanDate = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr.trim();
+
+      if (mode === "today") return cleanDate.startsWith(todayStr);
+      if (mode === "month") return cleanDate.startsWith(thisMonthStr);
+      if (mode === "year") return cleanDate.startsWith(thisYearStr);
+      if (mode === "custom" && customDate) return cleanDate.startsWith(customDate);
+      return true;
+    },
+    []
+  );
   const [currentPage, setCurrentPage] = React.useState(1);
   const VISITS_PER_PAGE = 4;
   const [selectedPaymentVisitId, setSelectedPaymentVisitId] =
@@ -677,46 +700,132 @@ export default function ReportsPage() {
           </div>
 
           <div className="mt-8">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-              <div className="text-xs uppercase tracking-[0.2em] font-black text-slate-400">
-                {paymentTab === "pending"
-                  ? "Danh sách ca chờ thanh toán"
-                  : "Danh sách tất cả các ca"}
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-4">
+              <div>
+                <div className="text-xs uppercase tracking-[0.2em] font-black text-slate-400">
+                  {paymentTab === "pending"
+                    ? "Danh sách ca chờ thanh toán"
+                    : "Danh sách tất cả các ca"}
+                </div>
+                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                  Lọc thời gian: {reportsDateMode === "today" ? "Hôm nay" : reportsDateMode === "month" ? "Tháng này" : reportsDateMode === "year" ? "Năm nay" : reportsDateMode === "custom" && reportsCustomDate ? `Ngày ${reportsCustomDate}` : "Tất cả"}
+                </p>
               </div>
-              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl w-fit">
-                <button
-                  onClick={() => {
-                    setPaymentTab("pending");
+
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Date Filter Pills */}
+                <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200/60 shadow-inner">
+                  <button
+                    onClick={() => {
+                      setReportsDateMode("all");
+                      setReportsCustomDate("");
+                      setCurrentPage(1);
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                      reportsDateMode === "all"
+                        ? "bg-white text-slate-900 shadow-xs"
+                        : "text-slate-500 hover:text-slate-900"
+                    )}
+                  >
+                    Tất cả
+                  </button>
+                  <button
+                    onClick={() => {
+                      setReportsDateMode("today");
+                      setReportsCustomDate("");
+                      setCurrentPage(1);
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                      reportsDateMode === "today"
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "text-slate-500 hover:text-slate-900"
+                    )}
+                  >
+                    Hôm nay
+                  </button>
+                  <button
+                    onClick={() => {
+                      setReportsDateMode("month");
+                      setReportsCustomDate("");
+                      setCurrentPage(1);
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                      reportsDateMode === "month"
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "text-slate-500 hover:text-slate-900"
+                    )}
+                  >
+                    Tháng này
+                  </button>
+                  <button
+                    onClick={() => {
+                      setReportsDateMode("year");
+                      setReportsCustomDate("");
+                      setCurrentPage(1);
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                      reportsDateMode === "year"
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "text-slate-500 hover:text-slate-900"
+                    )}
+                  >
+                    Năm nay
+                  </button>
+                </div>
+
+                {/* Custom Date Input */}
+                <input
+                  type="date"
+                  value={reportsCustomDate}
+                  onChange={(e) => {
+                    setReportsCustomDate(e.target.value);
+                    setReportsDateMode(e.target.value ? "custom" : "all");
                     setCurrentPage(1);
                   }}
-                  className={cn(
-                    "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
-                    paymentTab === "pending"
-                      ? "bg-white text-slate-900 shadow-xs"
-                      : "text-slate-500 hover:text-slate-900"
-                  )}
-                >
-                  Ca chờ thanh toán ({pendingVisits.length})
-                </button>
-                <button
-                  onClick={() => {
-                    setPaymentTab("all");
-                    setCurrentPage(1);
-                  }}
-                  className={cn(
-                    "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
-                    paymentTab === "all"
-                      ? "bg-white text-slate-900 shadow-xs"
-                      : "text-slate-500 hover:text-slate-900"
-                  )}
-                >
-                  Xem tất cả ({allVisits.length})
-                </button>
+                  className="h-9 text-xs font-semibold px-3 rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer shadow-xs"
+                  title="Chọn ngày cụ thể"
+                />
+
+                <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl">
+                  <button
+                    onClick={() => {
+                      setPaymentTab("pending");
+                      setCurrentPage(1);
+                    }}
+                    className={cn(
+                      "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                      paymentTab === "pending"
+                        ? "bg-white text-slate-900 shadow-xs"
+                        : "text-slate-500 hover:text-slate-900"
+                    )}
+                  >
+                    Ca chờ thanh toán ({pendingVisits.filter(v => matchesDate(v.date || (v as any).createdAt, reportsDateMode, reportsCustomDate)).length})
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPaymentTab("all");
+                      setCurrentPage(1);
+                    }}
+                    className={cn(
+                      "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                      paymentTab === "all"
+                        ? "bg-white text-slate-900 shadow-xs"
+                        : "text-slate-500 hover:text-slate-900"
+                    )}
+                  >
+                    Xem tất cả ({allVisits.filter(v => matchesDate(v.date || (v as any).createdAt, reportsDateMode, reportsCustomDate)).length})
+                  </button>
+                </div>
               </div>
             </div>
 
             {(() => {
-              const activeList = paymentTab === "pending" ? pendingVisits : allVisits;
+              const rawList = paymentTab === "pending" ? pendingVisits : allVisits;
+              const activeList = rawList.filter(v => matchesDate(v.date || (v as any).createdAt, reportsDateMode, reportsCustomDate));
               const totalPages = Math.ceil(activeList.length / VISITS_PER_PAGE) || 1;
               const paginatedVisits = activeList.slice(
                 (currentPage - 1) * VISITS_PER_PAGE,
@@ -735,36 +844,79 @@ export default function ReportsPage() {
                       ))
                     ) : paginatedVisits.length > 0 ? (
                       paginatedVisits.map((visit) => {
-                        const isPaid = visit.paymentStatus === "Đã thanh toán";
+                        const isPaid = visit.paymentStatus === "Đã thanh toán" || visit.status === "Đã hoàn tất";
+                        const isCancelled = visit.status === "Đã hủy";
+                        const phone = (visit as any).userPhone || (visit as any).phone;
+                        const address = (visit as any).address || (visit as any).customerArea;
+                        const note = (visit as any).cancelReason || (visit as any).notes || (visit as any).paymentNote;
+
                         return (
                           <div
                             key={visit.id}
-                            className="rounded-[28px] border border-slate-200 p-4 bg-slate-50 hover:bg-white hover:shadow-sm transition-all"
+                            className={cn(
+                              "rounded-[24px] border p-4 transition-all",
+                              isCancelled
+                                ? "border-red-200 bg-red-50/30 hover:bg-red-50/50"
+                                : "border-slate-200 bg-slate-50/70 hover:bg-white hover:shadow-sm"
+                            )}
                           >
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <p className="text-sm font-bold text-foreground">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                              <div className="space-y-1 min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-sm font-black text-slate-900">
                                     {visit.patientName || "Chưa có tên BN"}
                                   </p>
                                   <span className="font-mono text-[9px] font-bold text-slate-400 bg-slate-200/60 px-2 py-0.5 rounded-md">
-                                    #{visit.id?.slice(-6)}
+                                    #{visit.id?.slice(-8).toUpperCase()}
                                   </span>
+                                  {phone && (
+                                    <span className="text-[10px] font-bold text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-md">
+                                      📞 {phone}
+                                    </span>
+                                  )}
                                 </div>
-                                <p className="text-[11px] text-muted-foreground mt-0.5">
-                                  {visit.staffName} • {visit.time} {visit.type ? `• ${visit.type}` : ""}
+
+                                <p className="text-[11px] font-semibold text-slate-600 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                  <span className="text-emerald-700 font-bold">👨‍⚕️ {visit.staffName || "Chưa phân công"}</span>
+                                  <span>•</span>
+                                  {visit.date && (
+                                    <>
+                                      <span className="text-blue-700 font-bold">📅 {visit.date}</span>
+                                      <span>•</span>
+                                    </>
+                                  )}
+                                  <span className="font-mono">⏰ {visit.time}</span>
+                                  {visit.type && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="text-slate-800 font-bold">🩺 {visit.type}</span>
+                                    </>
+                                  )}
                                 </p>
+
+                                {address && (
+                                  <p className="text-[10px] font-medium text-slate-500 truncate">
+                                    📍 {address}
+                                  </p>
+                                )}
+
+                                {isCancelled && note && (
+                                  <p className="text-[10px] font-semibold text-red-500 italic mt-0.5">
+                                    "Lý do hủy: {note}"
+                                  </p>
+                                )}
                               </div>
-                              <div className="flex items-center sm:items-end justify-between sm:justify-center flex-row sm:flex-col gap-2">
-                                <div className="flex items-center gap-2">
+
+                              <div className="flex items-end sm:items-end justify-between sm:justify-center flex-row sm:flex-col gap-2 shrink-0">
+                                <div className="flex items-center gap-1.5">
                                   <span
                                     className={cn(
                                       "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider",
-                                      visit.status === "Đã hủy"
-                                        ? "bg-red-100 text-red-700"
+                                      isCancelled
+                                        ? "bg-red-100 text-red-700 border border-red-200"
                                         : visit.status === "Chờ duyệt"
-                                          ? "bg-amber-100 text-amber-800"
-                                          : "bg-emerald-100 text-emerald-800"
+                                          ? "bg-amber-100 text-amber-800 border border-amber-200"
+                                          : "bg-emerald-100 text-emerald-800 border border-emerald-200"
                                     )}
                                   >
                                     {visit.status}
@@ -773,15 +925,18 @@ export default function ReportsPage() {
                                     className={cn(
                                       "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider",
                                       isPaid
-                                        ? "bg-blue-100 text-blue-800"
+                                        ? "bg-blue-100 text-blue-800 border border-blue-200"
                                         : "bg-slate-200 text-slate-600"
                                     )}
                                   >
-                                    {visit.paymentStatus || "Chưa TT"}
+                                    {isPaid ? "Đã thanh toán" : "Chưa thanh toán"}
                                   </span>
                                 </div>
                                 {visit.paymentAmount && (
-                                  <p className="text-xs font-black text-slate-800 font-mono">
+                                  <p className={cn(
+                                    "text-sm font-black font-mono",
+                                    isCancelled ? "text-red-500 line-through" : "text-emerald-600"
+                                  )}>
                                     {parseCurrencyNumber(visit.paymentAmount).toLocaleString("vi-VN")}đ
                                   </p>
                                 )}

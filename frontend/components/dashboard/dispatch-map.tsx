@@ -53,6 +53,10 @@ function stringHash(str: string): number {
 }
 
 const EXACT_PRESET_GEOCODING: Record<string, { lat: number; lng: number }> = {
+  "783 phạm hữu lầu, cao lãnh": { lat: 10.43852, lng: 105.64248 },
+  "phạm hữu lầu, cao lãnh": { lat: 10.43852, lng: 105.64248 },
+  "phạm hữu lầu": { lat: 10.43852, lng: 105.64248 },
+  "nguyễn huệ, cao lãnh": { lat: 10.45420, lng: 105.63610 },
   "47 lý thường kiệt, tân hồng, đồng tháp": { lat: 10.92385, lng: 105.42991 },
   "40 nguyễn trãi, tân hồng, đồng tháp": { lat: 10.92488, lng: 105.43120 },
   "319 nguyễn huệ, tân hồng, đồng tháp": { lat: 10.92420, lng: 105.43080 },
@@ -62,8 +66,11 @@ const EXACT_PRESET_GEOCODING: Record<string, { lat: number; lng: number }> = {
   "tân hồng, đồng tháp": { lat: 10.92340, lng: 105.42980 },
   "tân hồng": { lat: 10.92340, lng: 105.42980 },
   "hồng ngự, đồng tháp": { lat: 10.82560, lng: 105.28910 },
+  "hồng ngự": { lat: 10.82560, lng: 105.28910 },
   "cao lãnh, đồng tháp": { lat: 10.45730, lng: 105.63380 },
+  "cao lãnh": { lat: 10.45730, lng: 105.63380 },
   "sa đéc, đồng tháp": { lat: 10.29740, lng: 105.75730 },
+  "sa đéc": { lat: 10.29740, lng: 105.75730 },
   "đồng tháp": { lat: 10.45730, lng: 105.63380 },
   "hà nội": { lat: 21.02850, lng: 105.85420 },
   "huế": { lat: 16.46370, lng: 107.59090 },
@@ -92,7 +99,24 @@ function saveGeoCache(key: string, coords: { lat: number; lng: number }) {
   }
 }
 
-function getExactLocationCoords(addr?: string, idx: number = 0) {
+function fetchNominatimGeocode(queryStr: string): Promise<{ lat: number; lng: number } | null> {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryStr)}&limit=1`;
+  return fetch(url, { headers: { "Accept-Language": "vi,en" } })
+    .then(res => res.json())
+    .then(data => {
+      if (Array.isArray(data) && data.length > 0 && data[0].lat && data[0].lon) {
+        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      }
+      return null;
+    })
+    .catch(() => null);
+}
+
+function getExactLocationCoords(
+  addr?: string,
+  idx: number = 0,
+  onExactResolved?: (coords: { lat: number; lng: number }) => void
+) {
   if (!addr) return { lat: 10.4573 + (idx % 5) * 0.003, lng: 105.6338 + Math.floor(idx / 5) * 0.003 };
   const a = addr.toLowerCase().trim();
   const cacheKey = a;
@@ -119,27 +143,61 @@ function getExactLocationCoords(addr?: string, idx: number = 0) {
   const latOffset = (((hashVal % 100) - 50) / 100) * 0.006;
   const lngOffset = ((((Math.floor(hashVal / 100)) % 100) - 50) / 100) * 0.006;
 
-  const result = {
+  const fallbackResult = {
     lat: Number((baseCoords.lat + latOffset).toFixed(6)),
     lng: Number((baseCoords.lng + lngOffset).toFixed(6)),
   };
 
-  // Tự động truy vấn tọa độ thực tế từ OpenStreetMap Nominatim
   if (typeof window !== "undefined" && a.length > 3) {
-    const query = a.includes("việt nam") ? a : a + ", Việt Nam";
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`, {
-      headers: { "Accept-Language": "vi" }
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0 && data[0].lat && data[0].lon) {
-          saveGeoCache(cacheKey, { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
+    const fullQuery = a.includes("việt nam") ? a : a + ", Việt Nam";
+    
+    // Tầng 1: Tìm kiếm toàn bộ địa chỉ
+    fetchNominatimGeocode(fullQuery).then((res1) => {
+      if (res1) {
+        saveGeoCache(cacheKey, res1);
+        if (onExactResolved) onExactResolved(res1);
+        return;
+      }
+
+      // Tầng 2: Tách bỏ số nhà đầu tiên (Ví dụ: "783 Phạm Hữu Lầu..." -> "Phạm Hữu Lầu...")
+      const withoutHouseNo = a.replace(/^\d+[\/\d]*\s*/, "").trim();
+      if (withoutHouseNo && withoutHouseNo !== a) {
+        const query2 = withoutHouseNo.includes("việt nam") ? withoutHouseNo : withoutHouseNo + ", Việt Nam";
+        fetchNominatimGeocode(query2).then((res2) => {
+          if (res2) {
+            saveGeoCache(cacheKey, res2);
+            if (onExactResolved) onExactResolved(res2);
+            return;
+          }
+          // Tầng 3: Tìm kiếm theo Quận/Huyện/Thành Phố
+          const parts = a.split(",");
+          if (parts.length > 1) {
+            const cityQuery = parts.slice(1).join(",").trim() + ", Việt Nam";
+            fetchNominatimGeocode(cityQuery).then((res3) => {
+              if (res3) {
+                saveGeoCache(cacheKey, res3);
+                if (onExactResolved) onExactResolved(res3);
+              }
+            });
+          }
+        });
+      } else {
+        // Tầng 3: Tìm kiếm theo Quận/Huyện/Thành Phố
+        const parts = a.split(",");
+        if (parts.length > 1) {
+          const cityQuery = parts.slice(1).join(",").trim() + ", Việt Nam";
+          fetchNominatimGeocode(cityQuery).then((res3) => {
+            if (res3) {
+              saveGeoCache(cacheKey, res3);
+              if (onExactResolved) onExactResolved(res3);
+            }
+          });
         }
-      })
-      .catch(() => {});
+      }
+    });
   }
 
-  return result;
+  return fallbackResult;
 }
 
 function isTodayVisit(dateStr?: any): boolean {
@@ -267,7 +325,10 @@ export function DispatchMap() {
     // 1. Ghim vị trí Nhân viên y tế
     staffList.forEach((st, idx) => {
       const isAvailable = st.available !== false && !st.status?.toLowerCase().includes("bận") && !st.status?.toLowerCase().includes("khóa");
-      const coords = getExactLocationCoords(st.location || st.serviceArea, idx);
+      const coords = getExactLocationCoords(st.location || st.serviceArea, idx, (exact) => {
+        marker.setLatLng([exact.lat, exact.lng]);
+        markersRef.current[`staff-${st.id}`] = { marker, coords: exact };
+      });
       bounds.push([coords.lat, coords.lng]);
 
       const badgeColor = isAvailable ? "#16A34A" : "#D97706";
@@ -296,7 +357,7 @@ export function DispatchMap() {
 
       const popupContent = `
         <div style="font-family: system-ui, -apple-system, sans-serif; padding: 6px; min-width: 230px;">
-          <div style="display: flex; items-center; gap: 10px; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
             <img src="${avatarUrl}" style="width: 44px; height: 44px; border-radius: 12px; object-fit: cover; border: 2px solid ${badgeColor}; shadow: 0 4px 10px rgba(0,0,0,0.1);" />
             <div>
               <h4 style="margin: 0; font-size: 14px; font-weight: 800; color: #0F172A; line-height: 1.2;">${st.name}</h4>
@@ -320,23 +381,24 @@ export function DispatchMap() {
         .addTo(map)
         .bindPopup(popupContent, { className: "custom-leaflet-popup-card", maxWidth: 280 });
 
-      if (isFull) {
-        markersRef.current[`staff-${st.id}`] = { marker, coords };
-      }
+      markersRef.current[`staff-${st.id}`] = { marker, coords };
     });
 
-    // 2. Ghim Lịch hẹn bệnh nhân (Chỉ lấy HÔM NAY & đang khám / chờ duyệt / đã xác nhận)
+    // 2. Ghim Lịch hẹn bệnh nhân (Tất cả lịch chờ duyệt & lịch active hôm nay)
     const activeVisits = pendingVisits.filter((v: any) => {
       const s = (v.status || "").toLowerCase().trim();
       if (s.includes("hủy") || s.includes("hoàn tất") || s.includes("cancel") || s.includes("complete")) {
         return false;
       }
-      return isTodayVisit(v.date);
+      return s.includes("chờ duyệt") || isTodayVisit(v.date);
     });
 
     activeVisits.forEach((v, idx) => {
       const addressStr = v.address || v.customerArea || "Đồng Tháp";
-      const coords = getExactLocationCoords(addressStr, idx + 10);
+      const coords = getExactLocationCoords(addressStr, idx + 10, (exact) => {
+        marker.setLatLng([exact.lat, exact.lng]);
+        markersRef.current[`visit-${v.id}`] = { marker, coords: exact };
+      });
       bounds.push([coords.lat, coords.lng]);
 
       const patientIconHtml = `
@@ -363,7 +425,7 @@ export function DispatchMap() {
 
       const popupContent = `
         <div style="font-family: system-ui, -apple-system, sans-serif; padding: 6px; min-width: 220px;">
-          <div style="display: flex; items-center; justify-content: space-between; margin-bottom: 4px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
             <span style="background: #DBEAFE; color: #1E40AF; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 6px;">LỊCH HẸN KHÁM #${v.id}</span>
             <span style="color: ${statusColor}; font-size: 10px; font-weight: 800;">${statusText}</span>
           </div>
@@ -382,9 +444,7 @@ export function DispatchMap() {
         .addTo(map)
         .bindPopup(popupContent, { maxWidth: 260 });
 
-      if (isFull) {
-        markersRef.current[`visit-${v.id}`] = { marker, coords };
-      }
+      markersRef.current[`visit-${v.id}`] = { marker, coords };
     });
 
     if (bounds.length > 0) {
@@ -470,7 +530,7 @@ export function DispatchMap() {
     if (s.includes("hủy") || s.includes("hoàn tất") || s.includes("cancel") || s.includes("complete")) {
       return false;
     }
-    return isTodayVisit(v.date);
+    return s.includes("chờ duyệt") || isTodayVisit(v.date);
   });
 
   const filteredStaff = staffList.filter(s => !searchQuery || s.name?.toLowerCase().includes(searchQuery.toLowerCase()) || s.location?.toLowerCase().includes(searchQuery.toLowerCase()));

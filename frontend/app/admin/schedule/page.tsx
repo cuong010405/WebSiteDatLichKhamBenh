@@ -19,6 +19,7 @@ import {
   Trash2,
   X,
   AlertTriangle,
+  AlertCircle,
   MapPin,
   FileText,
   Phone,
@@ -712,6 +713,7 @@ function ApproveVisitsDialog({
   onReject,
   staffList,
   allVisits = [],
+  onAlert,
   onToast,
 }: {
   pendingVisits: Visit[];
@@ -719,6 +721,7 @@ function ApproveVisitsDialog({
   onReject: (id: string, reason?: string) => void;
   staffList: Staff[];
   allVisits?: Visit[];
+  onAlert?: (msg: string, type?: "warn" | "err") => void;
   onToast?: (msg: string, type: "ok" | "err") => void; // deprecated, kept for compat
 }) {
   const [selectedStaffMap, setSelectedStaffMap] = React.useState<Record<string, string>>({});
@@ -1115,7 +1118,7 @@ function ApproveVisitsDialog({
                               });
 
                               if (availableCandidates.length === 0) {
-                                alert("Không tìm thấy chuyên gia sẵn sàng (không trùng lịch) phù hợp!");
+                                onAlert?.("Không tìm thấy chuyên gia sẵn sàng (không trùng lịch) phù hợp!", "warn");
                                 return;
                               }
 
@@ -1140,13 +1143,11 @@ function ApproveVisitsDialog({
 
                                 // Khớp địa bàn / vị trí (Ví dụ: Đồng Tháp)
                                 if (customerAddress) {
-                                  const parts = customerAddress.split(/[,.-]/).map((p) => p.trim()).filter(Boolean);
-                                  for (const p of parts) {
-                                    if (p && (locLower.includes(p) || areaLower.includes(p))) {
-                                      score += 40;
-                                      break;
-                                    }
-                                  }
+                                  const matchesArea = (token: string) => {
+                                    const t = token.trim().toLowerCase();
+                                    return t.length > 3 && (locLower.includes(t) || areaLower.includes(t));
+                                  };
+                                  if (customerAddress.split(/[,.-]/).some(matchesArea)) score += 40;
                                 }
 
                                 return { staff: st, score };
@@ -1173,7 +1174,7 @@ function ApproveVisitsDialog({
                         onClick={() => {
                           const chosenStaffId = selectedStaffMap[visit.id] || (visit.staffId !== "PENDING" ? visit.staffId : "");
                           if (!chosenStaffId) {
-                            alert("Vui lòng chọn Chuyên gia / Điều dưỡng cho ca trực trước khi phê duyệt!");
+                            onAlert?.("Vui lòng chọn Chuyên gia / Điều dưỡng trước khi phê duyệt!", "warn");
                             return;
                           }
                           onApprove(visit.id, chosenStaffId);
@@ -1973,6 +1974,14 @@ export default function SchedulePage() {
   const [staffPage, setStaffPage] = React.useState(1);
   const STAFF_PER_PAGE = 5;
 
+  // ── Toast notification system ─────────────────────────────────────────
+  const [toasts, setToasts] = React.useState<{ id: number; msg: string; type: "warn" | "err" }[]>([]);
+  const showToast = React.useCallback((msg: string, type: "warn" | "err" = "warn") => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, msg, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+  }, []);
+
   const loadData = React.useCallback((isSilent = false) => {
     if (!isSilent) {
       setLoading(true);
@@ -2357,6 +2366,45 @@ export default function SchedulePage() {
 
   return (
     <div className="p-10 max-w-7xl mx-auto w-full space-y-5 pb-32">
+      {/* ── Toast Container: góc phải trên cùng ── */}
+      <div className="fixed top-6 right-6 z-[9999] flex flex-col gap-2 max-w-sm pointer-events-none">
+        <AnimatePresence mode="popLayout">
+          {toasts.map((t) => (
+            <motion.div
+              key={t.id}
+              initial={{ opacity: 0, x: 40, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 40, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 450, damping: 30 }}
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border backdrop-blur-xl pointer-events-auto",
+                t.type === "err"
+                  ? "bg-white/95 border-l-4 border-l-rose-500 border-rose-100 shadow-rose-500/10"
+                  : "bg-white/95 border-l-4 border-l-amber-500 border-amber-100 shadow-amber-500/10"
+              )}
+            >
+              <div className={cn(
+                "w-7 h-7 rounded-xl flex items-center justify-center shrink-0",
+                t.type === "err" ? "bg-rose-50 border border-rose-100" : "bg-amber-50 border border-amber-100"
+              )}>
+                {t.type === "err"
+                  ? <AlertCircle className="w-4 h-4 text-rose-500" />
+                  : <AlertTriangle className="w-4 h-4 text-amber-500" />
+                }
+              </div>
+              <span className="text-[12px] font-bold text-slate-800 tracking-tight leading-snug flex-1">
+                {t.msg}
+              </span>
+              <button
+                onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
+                className="w-5 h-5 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors shrink-0"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -2431,6 +2479,7 @@ export default function SchedulePage() {
               onReject={handleReject}
               staffList={staffList}
               allVisits={allVisits}
+              onAlert={showToast}
               onToast={undefined}
             />
           </div>

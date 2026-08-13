@@ -190,19 +190,47 @@ export default function AdminPayPage() {
     return pendingVisits.find((v) => v.id === selectedVisitId);
   }, [pendingVisits, selectedVisitId]);
 
+  const [dateFilterMode, setDateFilterMode] = React.useState<"all" | "today" | "month" | "year" | "custom">("all");
+  const [customDateFilter, setCustomDateFilter] = React.useState<string>("");
+
+  const matchesDate = React.useCallback(
+    (dateStr?: string, createdAtStr?: string, mode: string = "all", customDate: string = "") => {
+      if (mode === "all") return true;
+      const targetDate = dateStr || (createdAtStr ? createdAtStr.split("T")[0] : "");
+      if (!targetDate) return true;
+
+      const now = new Date();
+      const todayStr = now.toISOString().split("T")[0];
+      const thisMonthStr = todayStr.slice(0, 7);
+      const thisYearStr = todayStr.slice(0, 4);
+
+      const cleanDate = targetDate.includes("T") ? targetDate.split("T")[0] : targetDate.trim();
+
+      if (mode === "today") return cleanDate.startsWith(todayStr);
+      if (mode === "month") return cleanDate.startsWith(thisMonthStr);
+      if (mode === "year") return cleanDate.startsWith(thisYearStr);
+      if (mode === "custom" && customDate) return cleanDate.startsWith(customDate);
+      return true;
+    },
+    []
+  );
+
   const filteredPendingVisits = React.useMemo(() => {
+    let list = pendingVisits.filter((v) =>
+      matchesDate(v.date, (v as any).createdAt, dateFilterMode, customDateFilter)
+    );
     if (careFilter === "hourly") {
-      return pendingVisits.filter(
+      return list.filter(
         (v) => v.careMode === "hourly" || (!v.careMode && !v.packagePlan)
       );
     }
     if (careFilter === "package") {
-      return pendingVisits.filter(
+      return list.filter(
         (v) => v.careMode === "package" || !!v.packagePlan
       );
     }
-    return pendingVisits;
-  }, [pendingVisits, careFilter]);
+    return list;
+  }, [pendingVisits, careFilter, dateFilterMode, customDateFilter, matchesDate]);
 
   React.useEffect(() => {
     if (selectedVisit) {
@@ -219,14 +247,51 @@ export default function AdminPayPage() {
   }, [selectedVisit]);
   const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null);
   const [activePrintPayment, setActivePrintPayment] = React.useState<PaymentRecord | null>(null);
+  const [printedPaymentIds, setPrintedPaymentIds] = React.useState<Set<string>>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("mintcare_printed_payments");
+        return saved ? new Set(JSON.parse(saved)) : new Set();
+      } catch {
+        return new Set();
+      }
+    }
+    return new Set();
+  });
+
+  const markInvoiceAsPrinted = (id: string) => {
+    if (!id) return;
+    setPrintedPaymentIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("mintcare_printed_payments", JSON.stringify(Array.from(next)));
+        } catch {}
+      }
+      return next;
+    });
+  };
+
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = React.useState<"all" | "paid" | "cancelled">("all");
   const [paymentPage, setPaymentPage] = React.useState(1);
   const PAYMENTS_PER_PAGE = 4;
 
   const filteredPayments = React.useMemo(() => {
+    // Ẩn các hóa đơn đã in khỏi trang Thanh toán (vẫn lưu đầy đủ ở trang Báo cáo)
+    let result = payments.filter(
+      (p) => !printedPaymentIds.has(p.id) && matchesDate(p.visitDate, p.createdAt, dateFilterMode, customDateFilter)
+    );
+    if (invoiceStatusFilter === "paid") {
+      result = result.filter((p) => p.status !== "Đã hủy");
+    } else if (invoiceStatusFilter === "cancelled") {
+      result = result.filter((p) => p.status === "Đã hủy");
+    }
+
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return payments;
-    return payments.filter((p) => {
+    if (!query) return result;
+    return result.filter((p) => {
       const patient = (p.patientName || p.userName || "").toLowerCase();
       const service = (p.visitType || "").toLowerCase();
       const staff = (p.staffName || "").toLowerCase();
@@ -244,11 +309,11 @@ export default function AdminPayPage() {
         id.includes(query)
       );
     });
-  }, [payments, searchQuery]);
+  }, [payments, searchQuery, invoiceStatusFilter, dateFilterMode, customDateFilter, matchesDate]);
 
   React.useEffect(() => {
     setPaymentPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, invoiceStatusFilter, dateFilterMode, customDateFilter]);
 
   const totalPaymentPages = Math.max(1, Math.ceil(filteredPayments.length / PAYMENTS_PER_PAGE));
   const paginatedPayments = React.useMemo(() => {
@@ -262,53 +327,521 @@ export default function AdminPayPage() {
 
   const triggerBrowserPrint = () => {
     if (!activePrintPayment) return;
-    const printContent = document.getElementById("printable-invoice-area")?.innerHTML;
-    
+    markInvoiceAsPrinted(activePrintPayment.id);
+    const pkg = getPackageDetails(activePrintPayment);
+    const rawAmount = (activePrintPayment.amount || "0").toString().replace(/[^0-9]/g, "");
+    const amountNum = parseInt(rawAmount, 10) || 0;
+    const isCancelled = activePrintPayment.status === "Đã hủy";
+    const createdDate = activePrintPayment.createdAt
+      ? new Date(activePrintPayment.createdAt).toLocaleDateString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : new Date().toLocaleDateString("vi-VN");
+
     const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(`
-        <html>
+        <!DOCTYPE html>
+        <html lang="vi">
           <head>
-            <title>In hóa đơn #${activePrintPayment.id}</title>
+            <meta charset="UTF-8" />
+            <title>Hóa đơn #${activePrintPayment.id}</title>
             <style>
-              body { font-family: sans-serif; padding: 40px; color: #333; }
-              .header { text-align: center; margin-bottom: 30px; }
-              .logo { font-size: 24px; font-weight: 900; color: #2563EB; }
-              .title { font-size: 18px; font-weight: bold; margin-top: 10px; text-transform: uppercase; }
-              .details { margin-bottom: 30px; border-bottom: 1px dashed #ccc; padding-bottom: 20px; }
-              .details p { margin: 8px 0; font-size: 14px; }
-              .details span { font-weight: bold; }
-              .footer { text-align: center; margin-top: 50px; font-size: 12px; color: #777; }
+              @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+              @page {
+                size: A4 portrait;
+                margin: 12mm 15mm;
+              }
+
+              * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+              }
+
+              body {
+                font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                color: #1e293b;
+                background-color: #ffffff;
+                font-size: 13px;
+                line-height: 1.5;
+                padding: 24px;
+              }
+
+              /* Brand Header */
+              .invoice-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                padding-bottom: 20px;
+                border-bottom: 2px solid #059669;
+                margin-bottom: 24px;
+              }
+
+              .brand-logo {
+                font-size: 26px;
+                font-weight: 900;
+                letter-spacing: -0.5px;
+                color: #059669;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+              }
+
+              .brand-logo span {
+                color: #0284c7;
+              }
+
+              .brand-sub {
+                font-size: 11px;
+                font-weight: 600;
+                color: #64748b;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-top: 2px;
+              }
+
+              .company-info {
+                text-align: right;
+                font-size: 11px;
+                color: #475569;
+                line-height: 1.6;
+              }
+
+              /* Document Title & Status */
+              .doc-title-bar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 24px;
+                background: #f8fafc;
+                padding: 16px 20px;
+                border-radius: 12px;
+                border: 1px solid #e2e8f0;
+              }
+
+              .doc-title-left h1 {
+                font-size: 18px;
+                font-weight: 800;
+                color: #0f172a;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+              }
+
+              .doc-title-left p {
+                font-size: 11px;
+                color: #64748b;
+                font-weight: 600;
+                margin-top: 2px;
+              }
+
+              .status-badge {
+                font-size: 12px;
+                font-weight: 800;
+                padding: 6px 16px;
+                border-radius: 9999px;
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                display: inline-block;
+              }
+
+              .status-paid {
+                background-color: #d1fae5;
+                color: #047857;
+                border: 1px solid #6ee7b7;
+              }
+
+              .status-cancelled {
+                background-color: #ffe4e6;
+                color: #be123c;
+                border: 1px solid #fda4af;
+              }
+
+              /* 2 Columns Cards */
+              .info-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                margin-bottom: 24px;
+              }
+
+              .info-card {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 12px;
+                padding: 16px;
+              }
+
+              .info-card-title {
+                font-size: 10px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                color: #059669;
+                margin-bottom: 10px;
+                padding-bottom: 6px;
+                border-bottom: 1px dashed #cbd5e1;
+              }
+
+              .info-row {
+                display: flex;
+                margin-bottom: 6px;
+                font-size: 12px;
+              }
+
+              .info-row:last-child {
+                margin-bottom: 0;
+              }
+
+              .info-label {
+                width: 110px;
+                color: #64748b;
+                font-weight: 600;
+                flex-shrink: 0;
+              }
+
+              .info-value {
+                color: #0f172a;
+                font-weight: 700;
+                flex-grow: 1;
+              }
+
+              /* Itemized Table */
+              .table-container {
+                margin-bottom: 24px;
+                border-radius: 12px;
+                overflow: hidden;
+                border: 1px solid #e2e8f0;
+              }
+
+              .invoice-table {
+                width: 100%;
+                border-collapse: collapse;
+                text-align: left;
+                font-size: 12px;
+              }
+
+              .invoice-table th {
+                background: #f1f5f9;
+                color: #334155;
+                font-weight: 800;
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                padding: 12px 14px;
+                border-bottom: 2px solid #cbd5e1;
+              }
+
+              .invoice-table td {
+                padding: 12px 14px;
+                border-bottom: 1px solid #f1f5f9;
+                color: #1e293b;
+              }
+
+              .invoice-table tr:nth-child(even) {
+                background-color: #fafafa;
+              }
+
+              .text-center { text-align: center; }
+              .text-right { text-align: right; }
+
+              /* Financial Summary */
+              .summary-section {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 32px;
+                gap: 20px;
+              }
+
+              .notes-box {
+                flex: 1;
+                background: #f8fafc;
+                border: 1px border-dashed #cbd5e1;
+                border-radius: 12px;
+                padding: 14px;
+                font-size: 11px;
+                color: #475569;
+              }
+
+              .notes-box strong {
+                color: #0f172a;
+                display: block;
+                margin-bottom: 4px;
+              }
+
+              .total-box {
+                width: 280px;
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 12px;
+                padding: 16px;
+              }
+
+              .total-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 8px;
+                font-size: 12px;
+                color: #475569;
+              }
+
+              .total-row.discount {
+                color: #059669;
+                font-weight: 600;
+              }
+
+              .total-grand {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding-top: 10px;
+                border-top: 2px solid #059669;
+                margin-top: 8px;
+              }
+
+              .total-grand-label {
+                font-size: 12px;
+                font-weight: 800;
+                color: #0f172a;
+                text-transform: uppercase;
+              }
+
+              .total-grand-amount {
+                font-size: 18px;
+                font-weight: 900;
+                color: ${isCancelled ? "#be123c" : "#059669"};
+                ${isCancelled ? "text-decoration: line-through;" : ""}
+              }
+
+              /* Signatures */
+              .signatures-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 40px;
+                text-align: center;
+                margin-top: 40px;
+                padding-top: 20px;
+              }
+
+              .sig-title {
+                font-size: 12px;
+                font-weight: 800;
+                color: #0f172a;
+                text-transform: uppercase;
+              }
+
+              .sig-subtitle {
+                font-size: 10px;
+                color: #64748b;
+                margin-top: 2px;
+              }
+
+              .sig-space {
+                height: 70px;
+              }
+
+              .sig-name {
+                font-size: 13px;
+                font-weight: 800;
+                color: #0f172a;
+              }
+
+              /* Footer */
+              .invoice-footer {
+                margin-top: 40px;
+                text-align: center;
+                border-top: 1px solid #e2e8f0;
+                padding-top: 16px;
+                font-size: 11px;
+                color: #64748b;
+              }
+
               @media print {
-                body { padding: 0; }
+                body {
+                  padding: 0;
+                }
+                .no-print {
+                  display: none;
+                }
               }
             </style>
           </head>
           <body>
-            <div class="header">
-              <div class="logo">MINTCARE</div>
-              <div class="title">HÓA ĐƠN THANH TOÁN (TẠM TÍNH)</div>
-              <p>Mã hóa đơn: HD-${activePrintPayment.id}</p>
+            <!-- Brand Header -->
+            <div class="invoice-header">
+              <div>
+                <div class="brand-logo">💚 MINT<span>CARE</span></div>
+                <div class="brand-sub">Hệ thống Y tế & Chăm sóc Sức khỏe Tại gia</div>
+              </div>
+              <div class="company-info">
+                <p><strong>Hotline 24/7:</strong> 1900 6868</p>
+                <p><strong>Website:</strong> www.mintcare.vn</p>
+                <p><strong>Email:</strong> support@mintcare.vn</p>
+              </div>
             </div>
-            <div class="details">
-              <p>Khách hàng: <span>${activePrintPayment.patientName || activePrintPayment.userName || "—"}</span></p>
-              <p>Dịch vụ: <span>${activePrintPayment.visitType}</span></p>
-              <p>Chuyên gia: <span>${activePrintPayment.staffName}</span></p>
-              <p>Thời gian khám: <span>${activePrintPayment.visitDate ? `${activePrintPayment.visitDate} ` : ""}${activePrintPayment.visitTime}</span></p>
-              <p>Phương thức thanh toán: <span>${activePrintPayment.method}</span></p>
-              ${activePrintPayment.note ? `<p>Ghi chú: <span>${activePrintPayment.note}</span></p>` : ""}
+
+            <!-- Document Title & Status Bar -->
+            <div class="doc-title-bar">
+              <div class="doc-title-left">
+                <h1>Hóa Đơn Thanh Toán Dịch Vụ</h1>
+                <p>Mã hóa đơn: <strong>HD-${activePrintPayment.id.slice(0, 10).toUpperCase()}</strong> • Ngày lập: ${createdDate}</p>
+              </div>
+              <div>
+                <span class="status-badge ${isCancelled ? "status-cancelled" : "status-paid"}">
+                  ${isCancelled ? "✕ Đã hủy" : "✓ Đã thanh toán"}
+                </span>
+              </div>
             </div>
-            <div style="text-align: right; font-size: 18px; font-weight: bold; margin-top: 20px;">
-              Tổng thanh toán: ${parseFloat(activePrintPayment.amount).toLocaleString("vi-VN")}đ
+
+            <!-- 2-Column Details -->
+            <div class="info-grid">
+              <!-- Customer Box -->
+              <div class="info-card">
+                <div class="info-card-title">👤 Thông tin khách hàng</div>
+                <div class="info-row">
+                  <div class="info-label">Khách hàng:</div>
+                  <div class="info-value">${activePrintPayment.patientName || activePrintPayment.userName || "—"}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Điện thoại:</div>
+                  <div class="info-value">${activePrintPayment.userPhone || "—"}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Email:</div>
+                  <div class="info-value">${activePrintPayment.userEmail || "—"}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Địa chỉ khám:</div>
+                  <div class="info-value">${activePrintPayment.address || "Tận nhà khách hàng"}</div>
+                </div>
+              </div>
+
+              <!-- Specialist Box -->
+              <div class="info-card">
+                <div class="info-card-title">🩺 Đơn vị thực hiện</div>
+                <div class="info-row">
+                  <div class="info-label">Chuyên gia:</div>
+                  <div class="info-value">${activePrintPayment.staffName || "Chuyên gia Y tế"}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Chuyên môn:</div>
+                  <div class="info-value">${activePrintPayment.staffSpecialty || "Điều dưỡng / VLTL"}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Thời gian khám:</div>
+                  <div class="info-value">${activePrintPayment.visitDate || ""} ${activePrintPayment.visitTime || ""}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Phương thức:</div>
+                  <div class="info-value">${activePrintPayment.method || "Tiền mặt"}</div>
+                </div>
+              </div>
             </div>
-            <div class="footer">
-              <p>Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!</p>
-              <p>Hệ thống hỗ trợ chăm sóc sức khỏe tại nhà thông minh</p>
+
+            <!-- Itemized Invoice Table -->
+            <div class="table-container">
+              <table class="invoice-table">
+                <thead>
+                  <tr>
+                    <th class="text-center" style="width: 40px;">STT</th>
+                    <th>Tên dịch vụ / Gói chăm sóc</th>
+                    <th>Hình thức & Ca trực</th>
+                    <th>Thời gian thực hiện</th>
+                    <th class="text-right">Thành tiền</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="text-center font-bold">1</td>
+                    <td>
+                      <strong>${activePrintPayment.visitType || "Dịch vụ y tế tại nhà"}</strong>
+                    </td>
+                    <td>
+                      ${
+                        pkg.isPackage
+                          ? `Gói ${pkg.days} ngày (Ca ${pkg.shift})`
+                          : activePrintPayment.careMode === "hourly"
+                          ? "Chăm sóc theo giờ"
+                          : "Ca trực lẻ"
+                      }
+                    </td>
+                    <td>${activePrintPayment.visitDate || ""} ${activePrintPayment.visitTime || ""}</td>
+                    <td class="text-right font-bold">
+                      ${
+                        pkg.isPackage && pkg.discountPercent > 0
+                          ? pkg.originalTotal.toLocaleString("vi-VN") + "đ"
+                          : amountNum.toLocaleString("vi-VN") + "đ"
+                      }
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
+
+            <!-- Summary Section -->
+            <div class="summary-section">
+              <div class="notes-box">
+                <strong>📝 Ghi chú thanh toán:</strong>
+                <p>${activePrintPayment.note || "Không có ghi chú thêm."}</p>
+              </div>
+
+              <div class="total-box">
+                ${
+                  pkg.isPackage && pkg.discountPercent > 0
+                    ? `
+                  <div class="total-row">
+                    <span>Tổng tiền gốc:</span>
+                    <span>${pkg.originalTotal.toLocaleString("vi-VN")}đ</span>
+                  </div>
+                  <div class="total-row discount">
+                    <span>Ưu đãi gói (${pkg.discountPercent}%):</span>
+                    <span>-${pkg.savings.toLocaleString("vi-VN")}đ</span>
+                  </div>
+                `
+                    : ""
+                }
+                <div class="total-row">
+                  <span>Hình thức trả:</span>
+                  <span><strong>${activePrintPayment.method || "Tiền mặt"}</strong></span>
+                </div>
+                <div class="total-grand">
+                  <span class="total-grand-label">Tổng thực thu</span>
+                  <span class="total-grand-amount">${amountNum.toLocaleString("vi-VN")}đ</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Signatures -->
+            <div class="signatures-grid">
+              <div>
+                <div class="sig-title">Khách hàng / Bệnh nhân</div>
+                <div class="sig-subtitle">(Ký và ghi rõ họ tên)</div>
+                <div class="sig-space"></div>
+                <div class="sig-name">${activePrintPayment.patientName || activePrintPayment.userName || "—"}</div>
+              </div>
+              <div>
+                <div class="sig-title">Chuyên gia / Người lập phiếu</div>
+                <div class="sig-subtitle">(Ký và ghi rõ họ tên)</div>
+                <div class="sig-space"></div>
+                <div class="sig-name">${activePrintPayment.staffName || "Bác sĩ / Điều dưỡng"}</div>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="invoice-footer">
+              <p>💚 Cảm ơn Quý khách đã tin tưởng và đồng hành cùng dịch vụ y tế MintCare!</p>
+            </div>
+
             <script>
               window.onload = function() {
                 window.print();
-                setTimeout(function() { window.close(); }, 500);
+                setTimeout(function() { window.close(); }, 800);
               };
             </script>
           </body>
@@ -316,9 +849,11 @@ export default function AdminPayPage() {
       `);
       printWindow.document.close();
     }
+    setActivePrintPayment(null);
   };
 
   const handleDownloadTxtInvoice = (p: PaymentRecord) => {
+    markInvoiceAsPrinted(p.id);
     const content = `
 =============================================
          HÓA ĐƠN THANH TOÁN DỊCH VỤ
@@ -347,6 +882,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
     a.download = `hoa-don-${p.id}.txt`;
     a.click();
     URL.revokeObjectURL(url);
+    setActivePrintPayment(null);
   };
 
   // Load visits chờ thanh toán (hiển thị tất cả ca chưa có hóa đơn, hỗ trợ thanh toán sớm & bình thường)
@@ -374,7 +910,7 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
       // Hiển thị các ca chưa bị hủy và chưa lập hóa đơn thanh toán.
       // Riêng ca "Chờ duyệt": Ẩn khỏi form thanh toán trừ khi người dùng chọn Chuyển khoản hoặc Đã thanh toán trước.
       const pendingList = visitsList.filter((v: any) => {
-        if (v.status === "Đã hủy" || invoicedVisitIds.has(v.id)) {
+        if (v.status === "Đã hủy" || v.paymentStatus === "Đã hủy" || v.paymentStatus === "Đã thanh toán" || invoicedVisitIds.has(v.id)) {
           return false;
         }
         if (v.status === "Chờ duyệt") {
@@ -514,10 +1050,25 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
         throw new Error(err?.error || "Lỗi lưu hóa đơn");
       }
 
+      // Lấy payment vừa tạo để mở dialog in hóa đơn ngay lập tức
+      const newPayment: PaymentRecord = await res.json();
+
       setPaymentAmount("");
       setPaymentNote("");
       setSelectedVisitId("");
-      await Promise.all([fetchPendingVisits(), fetchPayments()]);
+
+      // Refresh danh sách (silent để không loader)
+      await Promise.all([fetchPendingVisits(true), fetchPayments(true)]);
+
+      // Tự động mở dialog xem/in hóa đơn sau khi tạo thành công
+      if (newPayment?.id) {
+        // Lấy payment đầy đủ từ danh sách mới nhất (có thể có thêm field join)
+        const allRes = await authFetch(`${API_URL}/payments`);
+        const allData = await allRes.json();
+        const allList: PaymentRecord[] = Array.isArray(allData) ? allData : [];
+        const full = allList.find((p) => p.id === newPayment.id) || newPayment;
+        setActivePrintPayment(full);
+      }
     } catch (e: any) {
 
     } finally {
@@ -756,14 +1307,14 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
           {/* Pending visits list */}
           <div className="bg-white border border-hairline rounded-[32px] p-6 shadow-xs h-full flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between mb-5">
-                <div>
-                  <h2 className="text-base font-black text-foreground">Ca chờ thanh toán</h2>
-                  <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
-                    {careFilter === "all" ? "Tất cả ca chưa lập hóa đơn" : careFilter === "hourly" ? "Lọc ca theo giờ / theo ngày" : "Lọc ca gói theo tháng"}
-                  </p>
+              <div className="flex flex-col gap-3 mb-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-black text-foreground">Ca chờ thanh toán</h2>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2.5">
+
+                <div className="flex items-center justify-between border-t border-slate-100 pt-3">
                   <div className="inline-flex items-center p-1 rounded-full bg-slate-100/90 border border-slate-200/60 shadow-inner">
                     <button
                       type="button"
@@ -848,26 +1399,59 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                             suppressHydrationWarning
                             onClick={() => setSelectedVisitId(v.id)}
                             className={cn(
-                              "w-full text-left rounded-2xl border p-3.5 transition-all cursor-pointer",
+                              "w-full text-left rounded-2xl border p-3.5 transition-all cursor-pointer relative",
                               v.id === selectedVisitId
                                 ? "border-emerald-500 bg-emerald-50/50 shadow-xs shadow-emerald-500/10 ring-1 ring-emerald-400"
                                 : "border-slate-100 bg-slate-50/70 hover:border-slate-200 hover:bg-slate-50"
                             )}
                           >
-                            <p className="text-xs font-black text-slate-800 truncate">{v.type}</p>
-                            <p className="text-[10px] text-slate-500 font-semibold mt-0.5 flex items-center gap-1">
-                              <User className="w-3 h-3 text-slate-400" />
-                              {v.patientName || v.userName || "—"}
-                            </p>
-                            <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1 mt-0.5">
-                              <Clock className="w-3 h-3 text-slate-400" />
-                              {v.date && `${v.date} · `}{v.time}
-                            </p>
-                            {formatBookingTime((v as any).bookedAt || (v as any).assignedAt) && (
-                              <p className="text-[9.5px] font-black text-blue-600 flex items-center gap-1 mt-0.5">
-                                🕐 Đặt lúc: {formatBookingTime((v as any).bookedAt || (v as any).assignedAt)}
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-xs font-black text-slate-900 truncate flex-1">{v.type}</p>
+                              <span className={cn(
+                                "text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0",
+                                v.status === "Đã hủy"
+                                  ? "bg-red-100 text-red-600"
+                                  : v.status === "Đang thực hiện"
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-blue-100 text-blue-700"
+                              )}>
+                                {v.status || "Chưa TT"}
+                              </span>
+                            </div>
+
+                            <div className="mt-1 space-y-0.5">
+                              <p className="text-[10px] text-slate-700 font-bold flex items-center gap-1.5">
+                                <User className="w-3 h-3 text-emerald-600 shrink-0" />
+                                <span>{v.patientName || v.userName || "—"}</span>
+                                {((v as any).userPhone || (v as any).phone) && (
+                                  <span className="text-[9px] text-slate-400 font-semibold ml-1">
+                                    • SĐT: {(v as any).userPhone || (v as any).phone}
+                                  </span>
+                                )}
                               </p>
-                            )}
+
+                              <p className="text-[10px] text-indigo-700 font-bold flex items-center gap-1.5">
+                                <span>👨‍⚕️ CG:</span>
+                                <span>{(v as any).staffName || "Chưa phân công"}</span>
+                              </p>
+
+                              <p className="text-[10px] text-slate-500 font-semibold flex items-center gap-1.5">
+                                <Clock className="w-3 h-3 text-blue-500 shrink-0" />
+                                <span>{v.date && `📅 ${v.date} · `}{v.time}</span>
+                              </p>
+
+                              {((v as any).address || (v as any).customerArea) && (
+                                <p className="text-[9.5px] text-slate-400 font-medium truncate">
+                                  📍 {(v as any).address || (v as any).customerArea}
+                                </p>
+                              )}
+
+                              {formatBookingTime((v as any).bookedAt || (v as any).assignedAt) && (
+                                <p className="text-[9.5px] font-black text-blue-600 flex items-center gap-1 pt-0.5">
+                                  🕐 Đặt lúc: {formatBookingTime((v as any).bookedAt || (v as any).assignedAt)}
+                                </p>
+                              )}
+                            </div>
                           </button>
                         ))
                       )}
@@ -915,11 +1499,12 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
               <div>
                 <h2 className="text-base font-black text-foreground">Lịch sử hóa đơn</h2>
                 <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
-                  {searchQuery ? `${filteredPayments.length}/${payments.length} hóa đơn` : `${payments.length} hóa đơn đã lưu`}
+                  {searchQuery || invoiceStatusFilter !== "all" ? `${filteredPayments.length}/${payments.length} hóa đơn` : `${payments.length} hóa đơn đã lưu`}
                 </p>
               </div>
-              <div className="flex items-center gap-3 flex-1 max-w-sm ml-auto">
-                <div className="relative flex-1">
+              <div className="flex flex-wrap items-center gap-3 flex-1 max-w-2xl ml-auto justify-end">
+                {/* Search Input */}
+                <div className="relative flex-1 min-w-[330px]">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <Input
                     value={searchQuery}
@@ -936,6 +1521,46 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                     </button>
                   )}
                 </div>
+
+                {/* Filter Status Pills */}
+                <div className="flex bg-slate-100 p-1 rounded-full border border-slate-200/60 shrink-0">
+                  <button
+                    onClick={() => setInvoiceStatusFilter("all")}
+                    className={cn(
+                      "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer",
+                      invoiceStatusFilter === "all"
+                        ? "bg-white text-slate-800 shadow-xs border border-slate-200/50"
+                        : "text-slate-500 hover:text-slate-800"
+                    )}
+                  >
+                    Tất cả
+                  </button>
+                  <button
+                    onClick={() => setInvoiceStatusFilter("paid")}
+                    className={cn(
+                      "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer",
+                      invoiceStatusFilter === "paid"
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "text-emerald-700 hover:text-emerald-900"
+                    )}
+                  >
+                    <span className={cn("w-1.5 h-1.5 rounded-full", invoiceStatusFilter === "paid" ? "bg-white" : "bg-emerald-500")} />
+                    Đã thanh toán
+                  </button>
+                  <button
+                    onClick={() => setInvoiceStatusFilter("cancelled")}
+                    className={cn(
+                      "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer",
+                      invoiceStatusFilter === "cancelled"
+                        ? "bg-rose-600 text-white shadow-xs"
+                        : "text-rose-600 hover:text-rose-800"
+                    )}
+                  >
+                    <span className={cn("w-1.5 h-1.5 rounded-full", invoiceStatusFilter === "cancelled" ? "bg-white" : "bg-rose-500")} />
+                    Đã hủy
+                  </button>
+                </div>
+
                 <button
                   onClick={handleExportReport}
                   className="w-8 h-8 rounded-full border border-emerald-200 bg-emerald-50 flex items-center justify-center hover:bg-emerald-100 transition-colors shrink-0"
