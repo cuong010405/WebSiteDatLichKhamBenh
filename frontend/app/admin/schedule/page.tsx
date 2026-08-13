@@ -1105,17 +1105,63 @@ function ApproveVisitsDialog({
                             type="button"
                             onClick={() => {
                               const reqSpecialty = (visit as any).requiredSpecialty || "";
-                              const candidateStaff = filterStaffForRequirement(staffList, reqSpecialty);
-                              const bestStaff = candidateStaff.find((st) => !checkStaffConflict(st, visit, allVisits));
+                              const customerAddress = ((visit as any).address || (visit as any).customerArea || "").toLowerCase();
+
+                              // 1. Lọc nhân viên sẵn sàng & không bận
+                              const availableCandidates = staffList.filter((st) => {
+                                const stStatus = (st.status || "").toLowerCase();
+                                const isLockedOrBusy = st.available === false || stStatus.includes("khóa") || stStatus.includes("bận");
+                                return !isLockedOrBusy && !checkStaffConflict(st, visit, allVisits);
+                              });
+
+                              if (availableCandidates.length === 0) {
+                                alert("Không tìm thấy chuyên gia sẵn sàng (không trùng lịch) phù hợp!");
+                                return;
+                              }
+
+                              // 2. Chấm điểm chuyên môn + địa bàn
+                              const scored = availableCandidates.map((st) => {
+                                let score = 0;
+                                const roleLower = (st.role || "").toLowerCase();
+                                const specLower = (st.specialty || "").toLowerCase();
+                                const deptLower = (st.department || "").toLowerCase();
+                                const locLower = (st.location || "").toLowerCase();
+                                const areaLower = ((st as any).serviceArea || "").toLowerCase();
+                                const reqLower = reqSpecialty.toLowerCase();
+
+                                // Khớp chuyên môn
+                                if (reqLower) {
+                                  if (specLower.includes(reqLower) || roleLower.includes(reqLower) || deptLower.includes(reqLower)) {
+                                    score += 50;
+                                  } else if (reqLower.includes("điều dưỡng") && !roleLower.includes("vltl") && !specLower.includes("vật lý")) {
+                                    score += 30;
+                                  }
+                                }
+
+                                // Khớp địa bàn / vị trí (Ví dụ: Đồng Tháp)
+                                if (customerAddress) {
+                                  const parts = customerAddress.split(/[,.-]/).map((p) => p.trim()).filter(Boolean);
+                                  for (const p of parts) {
+                                    if (p && (locLower.includes(p) || areaLower.includes(p))) {
+                                      score += 40;
+                                      break;
+                                    }
+                                  }
+                                }
+
+                                return { staff: st, score };
+                              });
+
+                              // Sắp xếp điểm giảm dần
+                              scored.sort((a, b) => b.score - a.score);
+                              const bestStaff = scored[0]?.staff;
+
                               if (bestStaff?.id) {
                                 setSelectedStaffMap((prev) => ({ ...prev, [visit.id]: bestStaff.id! }));
-                                // gợi ý thành công
-                              } else {
-                                // không có chuyên gia phù hợp
                               }
                             }}
                             className="px-3 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[9px] font-black uppercase tracking-wider rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all shrink-0 shadow-xs cursor-pointer"
-                            title="Gợi ý chọn chuyên gia phù hợp nhất không trùng lịch"
+                            title="Gợi ý chọn chuyên gia phù hợp nhất (khớp địa bàn & không bận)"
                           >
                             ⚡ AI Gợi ý
                           </button>

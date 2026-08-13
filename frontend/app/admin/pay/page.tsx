@@ -371,10 +371,19 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
         paymentsList.filter((p: any) => p.status !== "Đã hủy").map((p: any) => p.visitId)
       );
 
-      // Hiển thị tất cả các ca chưa bị hủy và chưa lập hóa đơn thanh toán
-      const pendingList = visitsList.filter(
-        (v: any) => v.status !== "Đã hủy" && !invoicedVisitIds.has(v.id)
-      );
+      // Hiển thị các ca chưa bị hủy và chưa lập hóa đơn thanh toán.
+      // Riêng ca "Chờ duyệt": Ẩn khỏi form thanh toán trừ khi người dùng chọn Chuyển khoản hoặc Đã thanh toán trước.
+      const pendingList = visitsList.filter((v: any) => {
+        if (v.status === "Đã hủy" || invoicedVisitIds.has(v.id)) {
+          return false;
+        }
+        if (v.status === "Chờ duyệt") {
+          const isTransfer = v.paymentMethod === "Chuyển khoản" || v.paymentMethod?.toLowerCase().includes("chuyển khoản");
+          const isPaid = v.paymentStatus === "Đã thanh toán";
+          return isTransfer || isPaid;
+        }
+        return true;
+      });
 
       setPendingVisits(pendingList);
       setSelectedVisitId((prev) =>

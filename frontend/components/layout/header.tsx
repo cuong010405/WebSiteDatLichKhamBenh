@@ -19,7 +19,16 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
+  Map,
+  ZoomIn,
+  ZoomOut,
+  Users,
+  MapPin,
+  RefreshCw,
+  Sparkles,
+  Calendar,
 } from "lucide-react";
+
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -54,6 +63,173 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { API_URL, authFetch } from "@/lib/api";
+
+// Từ điển tọa độ cho các Tỉnh / Thành phố / Quận Huyện chuẩn tại Việt Nam
+const BASE_REGIONS: Record<string, { lat: number; lng: number }> = {
+  "tân hồng": { lat: 10.9234, lng: 105.4298 },
+  "hồng ngự": { lat: 10.8256, lng: 105.2891 },
+  "cao lãnh": { lat: 10.4573, lng: 105.6338 },
+  "sa đéc": { lat: 10.2974, lng: 105.7573 },
+  "tam nông": { lat: 10.6698, lng: 105.5187 },
+  "thanh bình": { lat: 10.5512, lng: 105.4831 },
+  "lấp vò": { lat: 10.3341, lng: 105.5398 },
+  "lai vung": { lat: 10.2312, lng: 105.6421 },
+  "châu thành": { lat: 10.2689, lng: 105.8112 },
+  "đồng tháp": { lat: 10.4573, lng: 105.6338 },
+  
+  "hà nội": { lat: 21.0285, lng: 105.8542 },
+  "huế": { lat: 16.4637, lng: 107.5909 },
+  "đà nẵng": { lat: 16.0544, lng: 108.2022 },
+  "hồ chí minh": { lat: 10.7769, lng: 106.7009 },
+  "sài gòn": { lat: 10.7769, lng: 106.7009 },
+  "quận 1": { lat: 10.7756, lng: 106.7004 },
+  "quận 3": { lat: 10.7801, lng: 106.6853 },
+  "quận 7": { lat: 10.7325, lng: 106.7176 },
+  "cần thơ": { lat: 10.0452, lng: 105.7469 },
+  "an giang": { lat: 10.5216, lng: 105.1259 },
+  "bình dương": { lat: 11.0505, lng: 106.6710 },
+  "tiền giang": { lat: 10.4285, lng: 106.3532 },
+  "vĩnh long": { lat: 10.2537, lng: 105.9722 },
+  "bến tre": { lat: 10.2431, lng: 106.3756 },
+};
+
+function stringHash(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+const EXACT_PRESET_GEOCODING: Record<string, { lat: number; lng: number }> = {
+  "47 lý thường kiệt, tân hồng, đồng tháp": { lat: 10.92385, lng: 105.42991 },
+  "40 nguyễn trãi, tân hồng, đồng tháp": { lat: 10.92488, lng: 105.43120 },
+  "319 nguyễn huệ, tân hồng, đồng tháp": { lat: 10.92420, lng: 105.43080 },
+  "hẻm 42 cống quỳnh, quận 1, hà nội": { lat: 21.02780, lng: 105.85390 },
+  "hẻm 42 cống quỳnh, quận 1": { lat: 10.76840, lng: 106.69480 },
+  "hẻm 42 cống quỳnh": { lat: 10.76840, lng: 106.69480 },
+  "tân hồng, đồng tháp": { lat: 10.92340, lng: 105.42980 },
+  "tân hồng": { lat: 10.92340, lng: 105.42980 },
+  "hồng ngự, đồng tháp": { lat: 10.82560, lng: 105.28910 },
+  "cao lãnh, đồng tháp": { lat: 10.45730, lng: 105.63380 },
+  "sa đéc, đồng tháp": { lat: 10.29740, lng: 105.75730 },
+  "đồng tháp": { lat: 10.45730, lng: 105.63380 },
+  "hà nội": { lat: 21.02850, lng: 105.85420 },
+  "huế": { lat: 16.46370, lng: 107.59090 },
+  "đà nẵng": { lat: 16.05440, lng: 108.20220 },
+  "hồ chí minh": { lat: 10.77690, lng: 106.70090 },
+  "sài gòn": { lat: 10.77690, lng: 106.70090 },
+  "cần thơ": { lat: 10.04520, lng: 105.74690 },
+  "an giang": { lat: 10.52160, lng: 105.12590 },
+};
+
+const geoCache: Record<string, { lat: number; lng: number }> = {};
+
+if (typeof window !== "undefined") {
+  try {
+    const saved = localStorage.getItem("mintcare_geo_cache");
+    if (saved) Object.assign(geoCache, JSON.parse(saved));
+  } catch {}
+}
+
+function saveGeoCache(key: string, coords: { lat: number; lng: number }) {
+  geoCache[key] = coords;
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem("mintcare_geo_cache", JSON.stringify(geoCache));
+    } catch {}
+  }
+}
+
+function getHeaderCoords(addr?: string, idx: number = 0, onExactResolved?: (coords: { lat: number; lng: number }) => void) {
+  if (!addr) return { lat: 10.4573 + (idx % 5) * 0.003, lng: 105.6338 + Math.floor(idx / 5) * 0.003 };
+  const a = addr.toLowerCase().trim();
+  const cacheKey = a;
+
+  for (const [key, coords] of Object.entries(EXACT_PRESET_GEOCODING)) {
+    if (a.includes(key)) return coords;
+  }
+
+  if (geoCache[cacheKey]) return geoCache[cacheKey];
+
+  let baseCoords = { lat: 10.4573, lng: 105.6338 };
+
+  const priorityKeys = ["hà nội", "huế", "đà nẵng", "tân hồng", "hồng ngự", "cao lãnh", "sa đéc", "hồ chí minh", "sài gòn", "cần thơ", "an giang"];
+  let matchedKey = priorityKeys.find(k => a.includes(k));
+  if (!matchedKey) {
+    matchedKey = Object.keys(BASE_REGIONS).find(k => a.includes(k));
+  }
+
+  if (matchedKey && BASE_REGIONS[matchedKey]) {
+    baseCoords = BASE_REGIONS[matchedKey];
+  }
+
+  const hashVal = stringHash(a + "-" + idx);
+  const latOffset = (((hashVal % 100) - 50) / 100) * 0.006;
+  const lngOffset = ((((Math.floor(hashVal / 100)) % 100) - 50) / 100) * 0.006;
+
+  const fallbackResult = {
+    lat: Number((baseCoords.lat + latOffset).toFixed(6)),
+    lng: Number((baseCoords.lng + lngOffset).toFixed(6)),
+  };
+
+  if (typeof window !== "undefined" && a.length > 3) {
+    const query = a.includes("việt nam") ? a : a + ", Việt Nam";
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`, {
+      headers: { "Accept-Language": "vi" }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0 && data[0].lat && data[0].lon) {
+          const exact = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+          saveGeoCache(cacheKey, exact);
+          if (onExactResolved) onExactResolved(exact);
+        }
+      })
+      .catch(() => {});
+  }
+
+  return fallbackResult;
+}
+
+function isTodayVisit(dateStr?: any): boolean {
+  if (!dateStr) return true;
+  const d = String(dateStr).trim();
+  if (!d || d === "null" || d === "undefined") return true;
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const monthNum = now.getMonth() + 1;
+  const dayNum = now.getDate();
+  const month = String(monthNum).padStart(2, "0");
+  const day = String(dayNum).padStart(2, "0");
+
+  const todayIso = `${year}-${month}-${day}`;
+  const todayVn = `${day}/${month}/${year}`;
+  const todayShortVn = `${dayNum}/${monthNum}/${year}`;
+
+  if (d.includes(todayIso) || d.includes(todayVn) || d.includes(todayShortVn)) return true;
+
+  try {
+    const parsed = new Date(d);
+    if (!isNaN(parsed.getTime())) {
+      const matchLocal = parsed.getFullYear() === year && parsed.getMonth() + 1 === monthNum && parsed.getDate() === dayNum;
+      const matchUtc = parsed.getUTCFullYear() === year && parsed.getUTCMonth() + 1 === monthNum && parsed.getUTCDate() === dayNum;
+      return matchLocal || matchUtc;
+    }
+  } catch {}
+
+  return true;
+}
+
+function BodyPortal({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+  if (!mounted) return null;
+  const { createPortal } = require("react-dom");
+  return createPortal(children, document.body);
+}
 
 interface NotificationLog {
   id: string;
@@ -181,6 +357,173 @@ export function Header() {
     }
   };
 
+  // GPS Map fullscreen state
+  const [isMapOpen, setIsMapOpen] = React.useState(false);
+  const [mapStyle, setMapStyle] = React.useState<"voyager" | "dark">("voyager");
+  const [mapSearchQuery, setMapSearchQuery] = React.useState("");
+  const [mapActiveTab, setMapActiveTab] = React.useState<"staff" | "visits">("staff");
+  const [mapStaffList, setMapStaffList] = React.useState<any[]>([]);
+  const [mapVisits, setMapVisits] = React.useState<any[]>([]);
+  const [isMapLoaded, setIsMapLoaded] = React.useState(false);
+  const markersRef = React.useRef<Record<string, any>>({});
+  const mapContainerRef = React.useRef<HTMLDivElement>(null);
+  const mapInstanceRef = React.useRef<any>(null);
+  const isInitialFitRef = React.useRef(true);
+
+  // Reset initial fit flag khi đóng/mở lại map
+  React.useEffect(() => {
+    if (isMapOpen) {
+      isInitialFitRef.current = true;
+    }
+  }, [isMapOpen]);
+
+  // Load Leaflet & Map Data khi map mở
+  React.useEffect(() => {
+    if (!isMapOpen) return;
+    const fetchMapData = () => {
+      fetch(`${API_URL}/staff`).then(r => r.json()).then(d => { if (Array.isArray(d)) setMapStaffList(d.filter((s: any) => s.id !== "PENDING")); }).catch(() => {});
+      authFetch(`${API_URL}/visits?dispatch=true`).then(r => r.json()).then(d => { if (Array.isArray(d)) setMapVisits(d); }).catch(() => {});
+    };
+    fetchMapData();
+    const interval = setInterval(fetchMapData, 5000);
+
+    if ((window as any).L) { setIsMapLoaded(true); }
+    else {
+      if (!document.getElementById("leaflet-css")) {
+        const l = document.createElement("link"); l.id = "leaflet-css"; l.rel = "stylesheet";
+        l.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"; document.head.appendChild(l);
+      }
+      if (!document.getElementById("leaflet-js")) {
+        const s = document.createElement("script"); s.id = "leaflet-js";
+        s.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"; s.onload = () => setIsMapLoaded(true);
+        document.body.appendChild(s);
+      }
+    }
+
+    return () => clearInterval(interval);
+  }, [isMapOpen]);
+
+  // Khởi tạo & Cập nhật Leaflet map khi fullscreen mở
+  React.useEffect(() => {
+    if (!isMapOpen || !isMapLoaded || !mapContainerRef.current) return;
+    const container = mapContainerRef.current;
+    const L = (window as any).L;
+    if (!L) return;
+
+    let map = mapInstanceRef.current;
+
+    if (!map) {
+      map = L.map(container, { center: [10.4573, 105.6338], zoom: 10, zoomControl: false, attributionControl: false });
+      const tileUrl = mapStyle === "dark" ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+      L.tileLayer(tileUrl, { maxZoom: 19, subdomains: "abcd" }).addTo(map);
+      mapInstanceRef.current = map;
+      (map as any)._tileLayerUrl = tileUrl;
+    } else {
+      const tileUrl = mapStyle === "dark" ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+      if ((map as any)._tileLayerUrl !== tileUrl) {
+        map.eachLayer((layer: any) => {
+          if (layer._url) map.removeLayer(layer);
+        });
+        L.tileLayer(tileUrl, { maxZoom: 19, subdomains: "abcd" }).addTo(map);
+        (map as any)._tileLayerUrl = tileUrl;
+      }
+    }
+
+    // Xóa bớt ghim cũ để cập nhật ghim mới mà không ảnh hưởng góc nhìn của người dùng
+    Object.values(markersRef.current).forEach((item: any) => {
+      if (item?.marker) map.removeLayer(item.marker);
+    });
+    markersRef.current = {};
+
+    const bounds: [number, number][] = [];
+    const activeVisits = mapVisits.filter((v: any) => {
+      const s = (v.status || "").toLowerCase().trim();
+      if (s.includes("hủy") || s.includes("hoàn tất") || s.includes("cancel") || s.includes("complete")) {
+        return false;
+      }
+      return isTodayVisit(v.date);
+    });
+
+    mapStaffList.forEach((st, idx) => {
+      const isAvail = st.available !== false && !st.status?.toLowerCase().includes("bận");
+      const c = getHeaderCoords(st.location || st.serviceArea, idx, (exactCoords) => {
+        if (markersRef.current[`staff-${st.id}`]?.marker) {
+          markersRef.current[`staff-${st.id}`].marker.setLatLng([exactCoords.lat, exactCoords.lng]);
+          markersRef.current[`staff-${st.id}`].coords = exactCoords;
+        }
+      });
+      bounds.push([c.lat, c.lng]);
+      const badgeColor = isAvail ? "#16A34A" : "#D97706";
+      const avatarUrl = st.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(st.name)}&background=10b981&color=fff`;
+      const icon = L.divIcon({
+        html: `<div style="position:relative;width:40px;height:48px"><div style="position:absolute;top:0;left:0;right:0;background:white;border-radius:9999px;width:40px;height:40px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.3);border:2.5px solid ${badgeColor};display:flex;align-items:center;justify-content:center"><img src="${avatarUrl}" style="width:32px;height:32px;border-radius:9999px;object-fit:cover"/><div style="position:absolute;bottom:-2px;right:-2px;width:12px;height:12px;background:${badgeColor};border:2px solid white;border-radius:9999px"></div></div><div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid ${badgeColor}"></div></div>`,
+        className: "", iconSize: [40, 48], iconAnchor: [20, 48],
+      });
+      const staffAddress = (st.location || st.serviceArea || "Đồng Tháp, Việt Nam") + ", Việt Nam";
+      const gmapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(staffAddress)}`;
+      const marker = L.marker([c.lat, c.lng], { icon }).addTo(map)
+        .bindPopup(`<div style="font-family:system-ui;padding:8px;min-width:220px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><img src="${avatarUrl}" style="width:40px;height:40px;border-radius:10px;object-fit:cover;border:2px solid ${badgeColor}"/><div><b style="font-size:13px;display:block">${st.name}</b><span style="font-size:10px;color:#059669;font-weight:700">${st.role || 'Chuyên gia'}</span></div></div><div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:7px;font-size:11px;margin-bottom:8px;line-height:1.5"><div>📍 <strong>Địa chỉ:</strong> ${staffAddress}</div><div>📌 <strong>Trạng thái:</strong> <span style="color:${badgeColor};font-weight:800">${isAvail ? 'Sẵn sàng nhận lịch' : 'Đang bận'}</span></div></div><a href="${gmapsUrl}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:6px;background:#0F172A;color:white;padding:8px;border-radius:8px;font-size:10px;font-weight:800;text-decoration:none;letter-spacing:0.05em">🧭 Chỉ đường Google Maps</a></div>`, { maxWidth: 280 });
+      markersRef.current[`staff-${st.id}`] = { marker, coords: c };
+    });
+
+    activeVisits.forEach((v, idx) => {
+      const addr = v.address || v.customerArea || "Đồng Tháp";
+      const c = getHeaderCoords(addr, idx + 10, (exactCoords) => {
+        if (markersRef.current[`visit-${v.id}`]?.marker) {
+          markersRef.current[`visit-${v.id}`].marker.setLatLng([exactCoords.lat, exactCoords.lng]);
+          markersRef.current[`visit-${v.id}`].coords = exactCoords;
+        }
+      });
+      bounds.push([c.lat, c.lng]);
+      const icon = L.divIcon({
+        html: `<div style="position:relative;width:34px;height:40px"><div style="position:absolute;top:0;left:0;background:#2563EB;color:white;border-radius:9999px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(37,99,235,0.4);border:2.5px solid white;font-size:14px">🏥</div><div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid #2563EB"></div></div>`,
+        className: "", iconSize: [34, 40], iconAnchor: [17, 40],
+      });
+      const statusText = v.status || 'Chờ duyệt';
+      const isPending = statusText === 'Chờ duyệt';
+      const isConfirmed = statusText === 'Đã xác nhận';
+      const isCompleted = statusText === 'Đã hoàn tất';
+      const statusColor = isPending ? '#d97706' : isConfirmed ? '#2563eb' : isCompleted ? '#059669' : '#dc2626';
+      const statusBg = isPending ? '#fef3c7' : isConfirmed ? '#dbeafe' : isCompleted ? '#d1fae5' : '#fee2e2';
+      const visitAddress = addr + (addr.toLowerCase().includes("việt nam") ? "" : ", Việt Nam");
+      const visitMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(visitAddress)}`;
+
+      const marker = L.marker([c.lat, c.lng], { icon }).addTo(map)
+        .bindPopup(`<div style="font-family:system-ui;padding:8px;min-width:220px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><span style="background:#dbeafe;color:#1e40af;font-size:9px;font-weight:800;padding:2px 6px;border-radius:6px">LỊCH HẸN KHÁM</span><span style="color:${statusColor};background:${statusBg};font-size:9px;font-weight:800;padding:2px 6px;border-radius:6px">${statusText}</span></div><b style="font-size:13px">${v.patientName || v.userName || 'Bệnh nhân'}</b><div style="background:#eff6ff;border:1px solid #bfdbfe;padding:6px 8px;border-radius:8px;font-size:11px;margin:6px 0;line-height:1.5">📍 <strong>Địa chỉ:</strong> ${visitAddress}<br/>🩺 <strong>Yêu cầu:</strong> ${v.type || v.serviceName || 'Chăm sóc sức khỏe'}</div><a href="${visitMapsUrl}" target="_blank" style="display:block;text-align:center;background:#2563EB;color:white;padding:8px;border-radius:8px;font-size:10px;font-weight:800;text-decoration:none">🗺️ Mở Google Maps Chỉ đường</a></div>`, { maxWidth: 280 });
+      markersRef.current[`visit-${v.id}`] = { marker, coords: c };
+    });
+
+    // CHỈ fitBounds duy nhất 1 lần khi người dùng mới mở bản đồ
+    if (isInitialFitRef.current && bounds.length > 0) {
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+      isInitialFitRef.current = false;
+    }
+    setTimeout(() => map.invalidateSize(), 150);
+  }, [isMapOpen, isMapLoaded, mapStaffList, mapVisits, mapStyle]);
+
+  // Cleanup khi component unmount
+  React.useEffect(() => {
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+      markersRef.current = {};
+    };
+  }, []);
+
+  // Lọc chỉ hiển thị lịch hẹn HÔM NAY active (Đang thực hiện, Chờ duyệt, Đã xác nhận)
+  const activeMapVisits = mapVisits.filter((v: any) => {
+    const s = (v.status || "").toLowerCase().trim();
+    if (s.includes("hủy") || s.includes("hoàn tất") || s.includes("cancel") || s.includes("complete")) {
+      return false;
+    }
+    return isTodayVisit(v.date);
+  });
+
+  const filteredMapStaff = mapStaffList.filter(s => !mapSearchQuery || s.name?.toLowerCase().includes(mapSearchQuery.toLowerCase()) || s.location?.toLowerCase().includes(mapSearchQuery.toLowerCase()));
+  const filteredMapVisits = activeMapVisits.filter(v => !mapSearchQuery || v.patientName?.toLowerCase().includes(mapSearchQuery.toLowerCase()) || v.address?.toLowerCase().includes(mapSearchQuery.toLowerCase()));
+
   return (
     <>
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-hairline px-8 py-4 flex items-center justify-between">
@@ -212,6 +555,16 @@ export function Header() {
             Hệ thống ổn định
           </span>
         </motion.div>
+
+        {/* Nút Bản đồ GPS Toàn Màn hình - truy cập nhanh từ Header */}
+        <button
+          onClick={() => setIsMapOpen(true)}
+          className="hidden md:flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-2xl text-[11px] font-extrabold uppercase tracking-wide transition-all shadow-md hover:shadow-lg border border-slate-700 cursor-pointer shrink-0"
+          title="Mở Bản đồ GPS Điều phối Toàn màn hình"
+        >
+          <Map className="w-4 h-4 text-emerald-400" />
+          <span>Bản đồ GPS</span>
+        </button>
 
         <div className="flex items-center gap-2">
           {/* Notifications Bell Dropdown */}
@@ -725,6 +1078,128 @@ export function Header() {
         )}
       </DialogContent>
     </Dialog>
+
+    {/* FULLSCREEN GPS MAP OVERLAY - Portal vào body, phủ 100% màn hình */}
+    <BodyPortal>
+      {isMapOpen && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 99999, backgroundColor: "rgba(2,6,23,0.97)", display: "flex", flexDirection: "column", padding: "20px", gap: "16px", overflow: "hidden" }}>
+          
+          {/* Header GPS Map */}
+          <div className="flex items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-3xl shadow-2xl shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg">
+                <Sparkles className="w-5 h-5 text-white animate-pulse" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 block">Trung tâm điều phối quốc gia</span>
+                <h2 className="text-xl font-black text-white tracking-tight">BẢN ĐỒ GPS ĐIỀU PHỐI • MINTCARE COMMAND CENTER</h2>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="bg-slate-800 p-1 rounded-2xl flex items-center gap-1 border border-slate-700 text-xs font-bold text-slate-300">
+                <button onClick={() => setMapStyle("voyager")} className={`px-3 py-1.5 rounded-xl cursor-pointer transition-all ${mapStyle === "voyager" ? "bg-emerald-600 text-white font-black" : "hover:text-white"}`}>Vệ tinh / Phố</button>
+                <button onClick={() => setMapStyle("dark")} className={`px-3 py-1.5 rounded-xl cursor-pointer transition-all ${mapStyle === "dark" ? "bg-slate-950 text-white font-black border border-slate-700" : "hover:text-white"}`}>Chế độ Tối</button>
+              </div>
+              <button onClick={() => { if (mapInstanceRef.current) { mapInstanceRef.current.setView([10.4573, 105.6338], 10); setTimeout(() => mapInstanceRef.current?.invalidateSize(), 100); } }} className="px-4 py-2 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 rounded-2xl text-xs font-extrabold flex items-center gap-2 cursor-pointer shadow-md" title="Đặt lại bản đồ theo lịch hôm nay">
+                <Calendar className="w-4 h-4 text-emerald-400" />
+                <span>Lịch Hôm Nay ({new Date().toLocaleDateString("vi-VN")})</span>
+              </button>
+              <button onClick={() => { if (mapInstanceRef.current) { mapInstanceRef.current.setView([10.4573, 105.6338], 10); setTimeout(() => mapInstanceRef.current?.invalidateSize(), 100); } }} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-2xl text-xs font-extrabold flex items-center gap-2 cursor-pointer">
+                <RefreshCw className="w-4 h-4 text-emerald-400" />Đồng Tháp
+              </button>
+              <button onClick={() => { setIsMapOpen(false); if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null; } }} className="w-11 h-11 bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white border border-rose-500/30 rounded-2xl flex items-center justify-center cursor-pointer" title="Đóng (Esc)">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+
+          {/* Body: Sidebar + Map */}
+          <div className="flex-1 flex gap-4 min-h-0">
+            {/* Sidebar trái */}
+            <div className="w-80 md:w-96 bg-slate-900/90 border border-slate-800 rounded-3xl p-4 flex flex-col shadow-2xl shrink-0">
+              <div className="relative mb-4">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input type="text" value={mapSearchQuery} onChange={e => setMapSearchQuery(e.target.value)} placeholder="Tìm nhân viên, bệnh nhân, địa điểm..." className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-400 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-bold focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-2 bg-slate-800/80 p-1 rounded-2xl border border-slate-700 mb-4 text-xs font-extrabold">
+                <button onClick={() => setMapActiveTab("staff")} className={`py-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer ${mapActiveTab === "staff" ? "bg-emerald-600 text-white" : "text-slate-400 hover:text-slate-200"}`}>
+                  <Users className="w-3.5 h-3.5" /><span>Nhân viên ({filteredMapStaff.length})</span>
+                </button>
+                <button onClick={() => setMapActiveTab("visits")} className={`py-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer ${mapActiveTab === "visits" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-slate-200"}`}>
+                  <MapPin className="w-3.5 h-3.5" /><span>Lịch hẹn ({filteredMapVisits.length})</span>
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                {mapActiveTab === "staff" ? filteredMapStaff.map((st, idx) => {
+                  const isAvail = st.available !== false && !st.status?.toLowerCase().includes("bận");
+                  return (
+                    <div key={st.id || idx} onClick={() => {
+                      const c = getHeaderCoords(st.location || st.serviceArea, idx);
+                      mapInstanceRef.current?.flyTo([c.lat, c.lng], 16, { duration: 1.2 });
+                      setTimeout(() => markersRef.current[`staff-${st.id}`]?.marker?.openPopup(), 1300);
+                    }} className="p-3 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/80 hover:border-emerald-500/50 rounded-2xl cursor-pointer flex items-center justify-between group">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="relative shrink-0">
+                          <img src={st.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(st.name)}&background=10b981&color=fff`} className="w-10 h-10 rounded-xl object-cover border border-slate-600" />
+                          <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-slate-900 ${isAvail ? "bg-emerald-500" : "bg-amber-500"}`} />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-bold text-white group-hover:text-emerald-400 truncate">{st.name}</h4>
+                          <p className="text-[10px] text-slate-400 truncate">{st.role || "Chuyên gia"}</p>
+                          <p className="text-[9px] text-emerald-400/90 truncate mt-0.5">📍 {st.location || "Đồng Tháp"}</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black text-slate-400 group-hover:text-white bg-slate-700/60 px-2 py-1 rounded-lg shrink-0">Định vị ➔</span>
+                    </div>
+                  );
+                }) : filteredMapVisits.map((v, idx) => {
+                  const statusText = v.status || "Chờ duyệt";
+                  const badgeStyle = statusText === "Chờ duyệt" ? "text-amber-400 bg-amber-950/60 border-amber-700" :
+                                     statusText === "Đã xác nhận" ? "text-blue-400 bg-blue-950/60 border-blue-700" :
+                                     statusText === "Đã hoàn tất" ? "text-emerald-400 bg-emerald-950/60 border-emerald-700" :
+                                     "text-rose-400 bg-rose-950/60 border-rose-700";
+                  return (
+                    <div key={v.id || idx} onClick={() => {
+                      const c = getHeaderCoords(v.address || v.customerArea, idx + 10);
+                      mapInstanceRef.current?.flyTo([c.lat, c.lng], 16, { duration: 1.2 });
+                      setTimeout(() => markersRef.current[`visit-${v.id}`]?.marker?.openPopup(), 1300);
+                    }} className="p-3 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/80 hover:border-blue-500/50 rounded-2xl cursor-pointer flex items-center justify-between group">
+                      <div className="min-w-0 pr-2">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-[9px] font-mono text-blue-300 bg-blue-900/60 px-1.5 py-0.5 rounded border border-blue-700">#{v.id}</span>
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${badgeStyle}`}>{statusText}</span>
+                        </div>
+                        <h4 className="text-xs font-bold text-white group-hover:text-blue-400 truncate">{v.patientName || v.userName || "Bệnh nhân"}</h4>
+                        <p className="text-[10px] text-slate-300 truncate mt-0.5">📍 {v.address || "Đồng Tháp"}</p>
+                      </div>
+                      <span className="text-[10px] font-black text-slate-400 group-hover:text-white bg-slate-700/60 px-2 py-1 rounded-lg shrink-0">Định vị ➔</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="pt-3 border-t border-slate-800 mt-2 flex items-center justify-between text-[10px] text-slate-400 font-bold">
+                <span>Mạng lưới MintCare GPS</span>
+                <span className="text-emerald-400">● Hoạt động 100%</span>
+              </div>
+            </div>
+
+            {/* Bản đồ Leaflet */}
+            <div className="flex-1 bg-slate-900 rounded-3xl relative overflow-hidden border border-slate-800 shadow-2xl">
+              <div ref={mapContainerRef} className="absolute inset-0 w-full h-full bg-slate-900" />
+              <div className="absolute top-4 right-4 z-10 flex flex-col gap-1">
+                <div className="bg-slate-900/90 backdrop-blur border border-slate-700 p-1.5 rounded-2xl shadow-xl flex flex-col gap-1">
+                  <button onClick={() => mapInstanceRef.current?.zoomIn()} className="w-10 h-10 rounded-xl hover:bg-slate-800 flex items-center justify-center text-white cursor-pointer"><ZoomIn className="w-5 h-5" /></button>
+                  <div className="h-px bg-slate-800 mx-1" />
+                  <button onClick={() => mapInstanceRef.current?.zoomOut()} className="w-10 h-10 rounded-xl hover:bg-slate-800 flex items-center justify-center text-white cursor-pointer"><ZoomOut className="w-5 h-5" /></button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      )}
+    </BodyPortal>
+
     </>
   );
 }

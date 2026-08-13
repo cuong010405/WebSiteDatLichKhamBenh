@@ -1,16 +1,153 @@
 "use client"
 
 import * as React from "react"
-import { Plus, Play, Sparkles } from "lucide-react"
+import { Plus, Play, Sparkles, Map, Users, Clock, CheckCircle2, AlertCircle, Navigation, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Stats } from "@/components/dashboard/stats"
 import { StaffDirectory } from "@/components/dashboard/staff-directory"
 import { TodayVisits } from "@/components/dashboard/today-visits"
-import { DispatchMap } from "@/components/dashboard/dispatch-map"
 import { ActivityLog } from "@/components/dashboard/activity-log"
 import { motion } from "framer-motion"
 import { useAuth } from "@/lib/auth-context"
 import { API_URL, authFetch } from "@/lib/api"
+
+function DispatchSummaryCard() {
+  const [staffList, setStaffList] = React.useState<any[]>([]);
+  const [pendingVisits, setPendingVisits] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    fetch(`${API_URL}/staff`).then(r => r.json()).then(d => { if (Array.isArray(d)) setStaffList(d.filter((s: any) => s.id !== "PENDING")); }).catch(() => {});
+    authFetch(`${API_URL}/visits?dispatch=true`).then(r => r.json()).then(d => { if (Array.isArray(d)) setPendingVisits(d); }).catch(() => {});
+    const iv = setInterval(() => {
+      fetch(`${API_URL}/staff`).then(r => r.json()).then(d => { if (Array.isArray(d)) setStaffList(d.filter((s: any) => s.id !== "PENDING")); }).catch(() => {});
+      authFetch(`${API_URL}/visits?dispatch=true`).then(r => r.json()).then(d => { if (Array.isArray(d)) setPendingVisits(d); }).catch(() => {});
+    }, 15000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const readyCount = staffList.filter(s => s.available !== false && !s.status?.toLowerCase().includes("bận")).length;
+  const busyCount = staffList.filter(s => s.available === false || s.status?.toLowerCase().includes("bận")).length;
+
+  const features = [
+    { icon: Navigation, label: "Định vị GPS thời gian thực", desc: "Xem vị trí chính xác từng nhân viên theo địa chỉ thực tế", color: "text-emerald-500", bg: "bg-emerald-50" },
+    { icon: Map, label: "Bản đồ CartoDB Voyager", desc: "Phong cách Apple/Grab Maps hiện đại, chuyển đổi Chế độ Tối", color: "text-blue-500", bg: "bg-blue-50" },
+    { icon: Zap, label: "FlyTo nhân viên tức thì", desc: "Nhấp chọn nhân viên → bản đồ bay tới vị trí trong 1.5 giây", color: "text-amber-500", bg: "bg-amber-50" },
+    { icon: CheckCircle2, label: "Chỉ đường Google Maps", desc: "Mỗi ghim có nút mở Google Maps chỉ đường trực tiếp", color: "text-violet-500", bg: "bg-violet-50" },
+  ];
+
+  return (
+    <section className="lg:col-span-2">
+      <div className="bg-white border border-hairline rounded-[32px] p-6 md:p-8 overflow-hidden relative h-full flex flex-col shadow-xs">
+        
+        {/* Nền gradient trang trí */}
+        <div className="absolute inset-0 -z-0 pointer-events-none overflow-hidden rounded-[32px]">
+          <div className="absolute -top-20 -right-20 w-64 h-64 bg-emerald-100/60 rounded-full blur-3xl" />
+          <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-blue-100/50 rounded-full blur-2xl" />
+          <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(#18BE66 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+        </div>
+
+        <div className="relative z-10 flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-4 mb-6">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Trung tâm điều phối GPS</span>
+              </div>
+              <h2 className="text-xl font-black text-slate-900 tracking-tight leading-tight">Bản đồ Định vị<br />Lưu động MintCare</h2>
+              <p className="text-xs text-slate-500 font-medium mt-1.5 max-w-[260px]">Hệ thống bản đồ GPS thời gian thực — truy cập nhanh từ nút trên Thanh điều hướng</p>
+            </div>
+
+            {/* Nút gợi ý mở bản đồ */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3 }}
+              className="flex flex-col items-center gap-2 shrink-0"
+            >
+              <div className="relative">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-xl shadow-emerald-500/30">
+                  <Map className="w-7 h-7 text-white" />
+                </div>
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-white animate-pulse" />
+              </div>
+              <div className="text-center">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Nhấn nút</p>
+                <p className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">🗺 Bản đồ GPS</p>
+                <p className="text-[9px] font-bold text-slate-400 mt-0.5">trên Header ↑</p>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Thống kê nhanh */}
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 text-center">
+              <div className="text-2xl font-black text-emerald-700">{readyCount}</div>
+              <div className="flex items-center justify-center gap-1 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-wide">Sẵn sàng</p>
+              </div>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="bg-amber-50 border border-amber-100 rounded-2xl p-3 text-center">
+              <div className="text-2xl font-black text-amber-700">{busyCount}</div>
+              <div className="flex items-center justify-center gap-1 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                <p className="text-[9px] font-bold text-amber-600 uppercase tracking-wide">Đang bận</p>
+              </div>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-blue-50 border border-blue-100 rounded-2xl p-3 text-center">
+              <div className="text-2xl font-black text-blue-700">
+                {pendingVisits.filter((v: any) => {
+                  const s = (v.status || "").toLowerCase().trim();
+                  return !s.includes("hủy") && !s.includes("hoàn tất") && !s.includes("cancel") && !s.includes("complete");
+                }).length}
+              </div>
+              <div className="flex items-center justify-center gap-1 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                <p className="text-[9px] font-bold text-blue-600 uppercase tracking-wide">Lịch hẹn</p>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Danh sách tính năng GPS */}
+          <div className="flex-1 space-y-3">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Tính năng hệ thống GPS</p>
+            {features.map((f, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 * i + 0.2 }}
+                className="flex items-start gap-3 p-3 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-100 transition-colors"
+              >
+                <div className={`w-8 h-8 ${f.bg} rounded-xl flex items-center justify-center shrink-0`}>
+                  <f.icon className={`w-4 h-4 ${f.color}`} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-800 leading-tight">{f.label}</p>
+                  <p className="text-[10px] text-slate-400 font-medium mt-0.5 leading-snug">{f.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Footer gợi ý */}
+          <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center shrink-0">
+              <Map className="w-4 h-4 text-emerald-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-black text-slate-700">Nhấn <span className="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">🗺 Bản đồ GPS</span> trên thanh Header ở trên</p>
+              <p className="text-[9px] text-slate-400 font-medium mt-0.5">Truy cập từ bất kỳ trang nào trong hệ thống</p>
+            </div>
+            <span className="shrink-0 text-[10px] font-black text-emerald-500 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 animate-pulse">LIVE</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 
 export default function Home() {
   const { user } = useAuth()
@@ -129,7 +266,7 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
            <StaffDirectory />
            <TodayVisits />
-           <DispatchMap />
+           <DispatchSummaryCard />
            <ActivityLog />
         </div>
 
