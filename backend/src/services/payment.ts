@@ -207,15 +207,16 @@ export async function deletePayment(id: string) {
     await db.payment.deleteMany({ where: { VisitId: visitId } }).catch(() => {});
   }
 
-  // 2. Set Visit payment status to "Đã hủy" (so it doesn't pop back into pending payments)
+  // 2. Set Visit status and payment status to "Đã hủy" (so it doesn't pop back into pending payments and shows as cancelled for customer)
   if (visitId) {
     await db.visit.update({
       where: { Id: visitId },
       data: {
+        Status: "Đã hủy",
         PaymentStatus: "Đã hủy",
         PaymentAmount: null,
         PaymentMethod: null,
-        PaymentNote: null,
+        PaymentNote: "Hóa đơn đã bị xóa/hủy bởi quản trị viên",
       },
     }).catch(() => {});
   }

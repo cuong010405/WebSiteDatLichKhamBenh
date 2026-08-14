@@ -441,38 +441,41 @@ export default function LichHenPage() {
       const res = await authFetch(`${API_URL}/visits?userId=${user.id}`);
       const data = await res.json();
       const list = Array.isArray(data) ? data : [];
-      const formatted: StoredVisit[] = list.map((v: any) => ({
-        id: v.id,
-        staffId: v.staffId,
-        staffName: v.staffName || "Chuyên gia y tế",
-        type: v.type,
-        date: v.date || "",
-        time: v.time,
-        status: v.status === "Đã xác nhận" ? "Đang thực hiện" : v.status,
-        price: formatPrice(v.price || v.paymentAmount),
-        paymentMethod: v.paymentMethod || "Tiền mặt",
-        paymentStatus: v.paymentStatus,
-        address: v.address,
-        notes: v.notes,
-        paymentNote: v.paymentNote,
-        userPhone: v.userPhone,
-        careMode: v.careMode ?? null,
-        packagePlan: v.packagePlan ?? null,
-        packageShift: v.packageShift ?? null,
-        duration: v.duration ?? null,
-        requiredSpecialty: v.requiredSpecialty ?? null,
-        bookedAt: (() => {
-          const raw = v.bookedAt || v.assignedAt;
-          if (!raw) return null;
-          try {
-            const d = new Date(raw);
-            if (isNaN(d.getTime())) return null;
-            const time = d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-            const date = d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
-            return `${time} - ${date}`;
-          } catch { return null; }
-        })(),
-      }));
+      const formatted: StoredVisit[] = list.map((v: any) => {
+        const isCancelled = v.status === "Đã hủy" || v.paymentStatus === "Đã hủy";
+        return {
+          id: v.id,
+          staffId: v.staffId,
+          staffName: v.staffName || "Chuyên gia y tế",
+          type: v.type,
+          date: v.date || "",
+          time: v.time,
+          status: isCancelled ? "Đã hủy" : v.status === "Đã xác nhận" ? "Đang thực hiện" : v.status,
+          price: formatPrice(v.price || v.paymentAmount),
+          paymentMethod: v.paymentMethod || "Tiền mặt",
+          paymentStatus: isCancelled ? "Đã hủy" : v.paymentStatus,
+          address: v.address,
+          notes: v.notes,
+          paymentNote: v.paymentNote,
+          userPhone: v.userPhone,
+          careMode: v.careMode ?? null,
+          packagePlan: v.packagePlan ?? null,
+          packageShift: v.packageShift ?? null,
+          duration: v.duration ?? null,
+          requiredSpecialty: v.requiredSpecialty ?? null,
+          bookedAt: (() => {
+            const raw = v.bookedAt || v.assignedAt;
+            if (!raw) return null;
+            try {
+              const d = new Date(raw);
+              if (isNaN(d.getTime())) return null;
+              const time = d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+              const date = d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+              return `${time} - ${date}`;
+            } catch { return null; }
+          })(),
+        };
+      });
       setBookings(formatted);
     } catch {
       const stored = localStorage.getItem(`mintcare_visits_${user?.id}`);
@@ -501,7 +504,8 @@ export default function LichHenPage() {
 
   const totalSpent = React.useMemo(() => {
     return bookings.reduce((sum, b) => {
-      // Chỉ tính các ca Đã thanh toán hoặc Đã hoàn tất
+      // Bỏ qua các ca Đã hủy
+      if (b.status === "Đã hủy" || b.paymentStatus === "Đã hủy") return sum;
       const isPaid = b.paymentStatus === "Đã thanh toán" || b.status === "Đã hoàn tất";
       if (!isPaid) return sum;
       const digitsOnly = String(b.price || "").replace(/[^0-9]/g, "");
@@ -801,9 +805,9 @@ Trạng thái: ${booking.status}
                                   statusCfg.bg, statusCfg.text, statusCfg.border
                                 )}>
                                   <span className={cn("w-1 h-1 rounded-full", statusCfg.dot)} />
-                                  {booking.status}
+                                  {isCancelled ? "Đã hủy" : booking.status}
                                 </span>
-                                {booking.paymentStatus === "Đã thanh toán" && (
+                                {booking.paymentStatus === "Đã thanh toán" && !isCancelled && (
                                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border bg-green-50 text-green-600 border-green-200">
                                     ✓ Đã thanh toán
                                   </span>
@@ -824,7 +828,7 @@ Trạng thái: ${booking.status}
                                   <span>Địa chỉ: {booking.address}</span>
                                 </p>
                               )}
-                              {(booking.notes || (booking.paymentNote && !booking.paymentNote.startsWith("Lý do hủy:"))) && (
+                              {(booking.notes || (booking.paymentNote && !isCancelled)) && (
                                 <p className="flex items-start gap-1 mt-1 text-[10px] font-semibold text-slate-600 bg-blue-50/50 p-2 rounded-xl border border-blue-100/60">
                                   <FileText className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
                                   <span>Ghi chú/Triệu chứng: {booking.notes || booking.paymentNote}</span>
@@ -836,9 +840,7 @@ Trạng thái: ${booking.status}
                                   <div>
                                     <p className="font-black text-rose-800 uppercase tracking-widest text-[9px]">Lịch hẹn bị từ chối / hủy bỏ</p>
                                     <p className="mt-0.5 text-[11px] font-medium leading-snug">
-                                      {booking.paymentNote && booking.paymentNote.startsWith("Lý do hủy:")
-                                        ? booking.paymentNote
-                                        : "Yêu cầu đặt lịch này không thể thực hiện do chuyên viên bận hoặc không trùng khung giờ phục vụ. Quý khách vui lòng chọn lại khung giờ khác."}
+                                      {booking.paymentNote || "Lịch hẹn này đã bị hủy hoặc từ chối thực hiện."}
                                     </p>
                                   </div>
                                 </div>
@@ -997,9 +999,9 @@ Trạng thái: ${booking.status}
       <AnimatePresence>
         {selectedVisit && (() => {
           const sv = selectedVisit;
-          const scfg = STATUS_CONFIG[sv.status] ?? STATUS_CONFIG["Đã hủy"];
-          const isPaid = sv.paymentStatus === "Đã thanh toán";
-          const isCancelledSv = sv.status === "Đã hủy";
+          const isCancelledSv = sv.status === "Đã hủy" || sv.paymentStatus === "Đã hủy";
+          const scfg = STATUS_CONFIG[isCancelledSv ? "Đã hủy" : sv.status] ?? STATUS_CONFIG["Đã hủy"];
+          const isPaid = sv.paymentStatus === "Đã thanh toán" && !isCancelledSv;
           return (
             <motion.div
               initial={{ opacity: 0 }}
@@ -1032,7 +1034,7 @@ Trạng thái: ${booking.status}
                         <span className="font-mono text-[9px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">#LH-{sv.id}</span>
                         <span className={cn("inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border", scfg.bg, scfg.text, scfg.border)}>
                           <span className={cn("w-1 h-1 rounded-full", scfg.dot)} />
-                          {sv.status}
+                          {isCancelledSv ? "Đã hủy" : sv.status}
                         </span>
                         {isPaid && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border bg-green-50 text-green-600 border-green-200">
