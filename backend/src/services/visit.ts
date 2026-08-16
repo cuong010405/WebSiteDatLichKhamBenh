@@ -885,35 +885,106 @@ export async function getReportData() {
   const totalStaff = await db.staff.count({ where: { NOT: { Id: "PENDING" } } });
   const availableStaff = await db.staff.count({ where: { NOT: { Id: "PENDING" }, Available: true } });
 
-  // Get real department breakdown from SQL Server
-  const allStaff = await db.staff.findMany({
-    where: { NOT: { Id: "PENDING" } },
-    select: { Department: true },
+  // 1. Lấy toàn bộ danh sách ca khám thực tế để phân tích
+  const allVisitsList = await db.visit.findMany({
+    select: {
+      Date: true,
+      Type: true,
+      CareMode: true,
+      PackagePlan: true,
+      Status: true,
+      RequiredSpecialty: true,
+      Staff: { select: { Department: true, Specialty: true } },
+    },
   });
-  const deptCounts: Record<string, number> = {};
-  allStaff.forEach((s) => {
-    const dept = s.Department || "Khác";
-    deptCounts[dept] = (deptCounts[dept] || 0) + 1;
+
+  // 2. Tính lưu lượng thăm khám thực tế theo từng thứ trong tuần (T2 -> CN)
+  const dayCounts: Record<string, number> = {
+    T2: 0,
+    T3: 0,
+    T4: 0,
+    T5: 0,
+    T6: 0,
+    T7: 0,
+    CN: 0,
+  };
+  const dayKeys = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+
+  allVisitsList.forEach((v) => {
+    if (v.Date) {
+      try {
+        const d = new Date(v.Date);
+        if (!isNaN(d.getTime())) {
+          const dayIndex = d.getDay();
+          const key = dayKeys[dayIndex];
+          if (key && dayCounts[key] !== undefined) {
+            dayCounts[key] += 1;
+          }
+        }
+      } catch {}
+    }
   });
-  const totalStaffCount = allStaff.length;
-  const defaultDepts = [
-    "Nội khoa",
-    "Ngoại khoa",
-    "Phục hồi chức năng",
-    "Cấp cứu tại gia",
+
+  const patientInflow = [
+    { label: "T2", value: dayCounts["T2"] },
+    { label: "T3", value: dayCounts["T3"] },
+    { label: "T4", value: dayCounts["T4"] },
+    { label: "T5", value: dayCounts["T5"] },
+    { label: "T6", value: dayCounts["T6"] },
+    { label: "T7", value: dayCounts["T7"] },
+    { label: "CN", value: dayCounts["CN"] },
   ];
-  const deptBreakdown = defaultDepts.map((name) => {
-    const count = deptCounts[name] || 0;
-    const percentage =
-      totalStaffCount > 0 ? Math.round((count / totalStaffCount) * 100) : 0;
-    return { name, value: percentage };
+
+  // 3. Tính cơ cấu chuyên khoa thực tế từ các ca khám trong hệ thống
+  const deptMap: Record<string, number> = {
+    "Nội khoa": 0,
+    "Ngoại khoa": 0,
+    "Phục hồi chức năng": 0,
+    "Cấp cứu tại gia": 0,
+  };
+
+  allVisitsList.forEach((v) => {
+    const text = `${v.Type || ""} ${v.RequiredSpecialty || ""} ${v.Staff?.Department || ""} ${v.Staff?.Specialty || ""}`.toLowerCase();
+    if (text.includes("vật lý") || text.includes("phục hồi")) {
+      deptMap["Phục hồi chức năng"] += 1;
+    } else if (text.includes("truyền") || text.includes("cấp cứu") || text.includes("chăm sóc")) {
+      deptMap["Cấp cứu tại gia"] += 1;
+    } else if (text.includes("ngoại") || text.includes("răng")) {
+      deptMap["Ngoại khoa"] += 1;
+    } else {
+      deptMap["Nội khoa"] += 1;
+    }
   });
-  const sumPercentage = deptBreakdown.reduce(
-    (sum, item) => sum + item.value,
-    0,
-  );
-  if (sumPercentage > 0 && sumPercentage !== 100) {
-    deptBreakdown[0].value += 100 - sumPercentage;
+
+  const totalCategorized = Object.values(deptMap).reduce((a, b) => a + b, 0);
+
+  const deptBreakdown = [
+    {
+      name: "Nội khoa",
+      value: totalCategorized > 0 ? Math.round((deptMap["Nội khoa"] / totalCategorized) * 100) : 0,
+      count: deptMap["Nội khoa"],
+    },
+    {
+      name: "Ngoại khoa",
+      value: totalCategorized > 0 ? Math.round((deptMap["Ngoại khoa"] / totalCategorized) * 100) : 0,
+      count: deptMap["Ngoại khoa"],
+    },
+    {
+      name: "Phục hồi chức năng",
+      value: totalCategorized > 0 ? Math.round((deptMap["Phục hồi chức năng"] / totalCategorized) * 100) : 0,
+      count: deptMap["Phục hồi chức năng"],
+    },
+    {
+      name: "Cấp cứu tại gia",
+      value: totalCategorized > 0 ? Math.round((deptMap["Cấp cứu tại gia"] / totalCategorized) * 100) : 0,
+      count: deptMap["Cấp cứu tại gia"],
+    },
+  ];
+
+  const sumPct = deptBreakdown.reduce((sum, item) => sum + item.value, 0);
+  if (sumPct > 0 && sumPct !== 100) {
+    const maxIdx = deptBreakdown.reduce((maxI, curr, idx, arr) => curr.value > arr[maxI].value ? idx : maxI, 0);
+    deptBreakdown[maxIdx].value += (100 - sumPct);
   }
 
   const paidVisits = await db.visit.findMany({
@@ -945,22 +1016,14 @@ export async function getReportData() {
     totalRevenue,
     pendingPayments,
     completionRate,
-    patientInflow: [
-      { label: "T2", value: Math.max(40, totalPatients * 12 + 20) },
-      { label: "T3", value: Math.max(50, totalPatients * 15 + 25) },
-      { label: "T4", value: Math.max(45, totalPatients * 13 + 22) },
-      { label: "T5", value: Math.max(65, totalPatients * 18 + 30) },
-      { label: "T6", value: Math.max(55, totalPatients * 16 + 28) },
-      { label: "T7", value: Math.max(70, totalVisits * 12 + 35) },
-      { label: "CN", value: Math.max(75, totalVisits * 14 + 40) },
-    ],
+    patientInflow,
     bedOccupancy: completionRate,
     staffHours: [
-      { label: "Thứ 2", value: Math.max(300, totalStaff * 80 + 100) },
-      { label: "Thứ 3", value: Math.max(280, totalStaff * 75 + 80) },
-      { label: "Thứ 4", value: Math.max(320, totalStaff * 85 + 110) },
-      { label: "Thứ 5", value: Math.max(310, totalStaff * 80 + 90) },
-      { label: "Thứ 6", value: Math.max(290, totalStaff * 78 + 88) },
+      { label: "Thứ 2", value: Math.max(0, dayCounts["T2"] * 2) },
+      { label: "Thứ 3", value: Math.max(0, dayCounts["T3"] * 2) },
+      { label: "Thứ 4", value: Math.max(0, dayCounts["T4"] * 2) },
+      { label: "Thứ 5", value: Math.max(0, dayCounts["T5"] * 2) },
+      { label: "Thứ 6", value: Math.max(0, dayCounts["T6"] * 2) },
     ],
     deptBreakdown,
   };
