@@ -28,6 +28,8 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
+  Trash2,
+  ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -163,6 +165,14 @@ interface StaffEntry {
   avatar?: string;
 }
 
+interface DeletedPaymentLog {
+  id: string;
+  title: string;
+  desc: string;
+  time: string;
+  createdAt?: string;
+}
+
 const recentReports = [
   {
     id: "RP-092",
@@ -219,6 +229,17 @@ export default function ReportsPage() {
   const [staffList, setStaffList] = React.useState<StaffEntry[]>([]);
   const [pendingVisits, setPendingVisits] = React.useState<PaymentVisit[]>([]);
   const [allVisits, setAllVisits] = React.useState<PaymentVisit[]>([]);
+  const [deletedLogs, setDeletedLogs] = React.useState<DeletedPaymentLog[]>([]);
+  const [loadingDeletedLogs, setLoadingDeletedLogs] = React.useState(true);
+  const [deletedLogsPage, setDeletedLogsPage] = React.useState(1);
+  const DELETED_LOGS_PER_PAGE = 4;
+
+  const totalDeletedLogsPages = Math.max(1, Math.ceil(deletedLogs.length / DELETED_LOGS_PER_PAGE));
+  const paginatedDeletedLogs = React.useMemo(() => {
+    const start = (deletedLogsPage - 1) * DELETED_LOGS_PER_PAGE;
+    return deletedLogs.slice(start, start + DELETED_LOGS_PER_PAGE);
+  }, [deletedLogs, deletedLogsPage]);
+
   const [paymentTab, setPaymentTab] = React.useState<"all" | "pending" | "paid" | "cancelled">("all");
   const [reportsDateMode, setReportsDateMode] = React.useState<"all" | "today" | "month" | "year" | "custom">("all");
   const [reportsCustomDate, setReportsCustomDate] = React.useState<string>("");
@@ -275,6 +296,31 @@ export default function ReportsPage() {
     return result;
   };
 
+  // Load deleted invoice logs
+  const fetchDeletedLogs = React.useCallback(async () => {
+    setLoadingDeletedLogs(true);
+    try {
+      const res = await authFetch(`${API_URL}/logs`);
+      const data = await res.json();
+      const logs = Array.isArray(data)
+        ? data.filter((l: any) => l.status === "deleted")
+        : [];
+      setDeletedLogs(
+        logs.map((l: any) => ({
+          id: l.id,
+          title: l.title ?? "",
+          desc: l.desc ?? "",
+          time: l.time ?? "",
+          createdAt: l.createdAt,
+        }))
+      );
+    } catch {
+      setDeletedLogs([]);
+    } finally {
+      setLoadingDeletedLogs(false);
+    }
+  }, []);
+
   const refreshReportData = React.useCallback(() => {
     setLoading(true);
     return Promise.all([
@@ -299,7 +345,17 @@ export default function ReportsPage() {
         }));
 
         const computedPending = enrichedAll.filter(
-          (v: any) => v.status !== "Đã hủy" && v.paymentStatus !== "Đã thanh toán"
+          (v: any) => {
+            // Bỏ qua ca đã hủy
+            if (v.status === "Đã hủy" || v.paymentStatus === "Đã hủy") return false;
+            // Bỏ qua ca đã hoàn tất
+            if (v.status === "Đã hoàn tất") return false;
+            // Bỏ qua ca đã thanh toán
+            if (v.paymentStatus === "Đã thanh toán") return false;
+            // Bỏ qua ca bị admin xóa hóa đơn
+            if (v.paymentNote && v.paymentNote.includes("bị xóa/hủy bởi quản trị viên")) return false;
+            return true;
+          }
         );
         setStats({
           ...reportData,
@@ -321,7 +377,8 @@ export default function ReportsPage() {
 
   React.useEffect(() => {
     refreshReportData();
-  }, [refreshReportData]);
+    fetchDeletedLogs();
+  }, [refreshReportData, fetchDeletedLogs]);
 
   const handleExportVisits = () => {
     try {
@@ -1068,6 +1125,84 @@ export default function ReportsPage() {
         </Card>
       </div>
 
+      {/* Lịch sử xóa hóa đơn */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+      >
+        <Card className="bg-white border-hairline rounded-[40px] p-10 shadow-xs">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center text-red-500">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold tight-tracking">Lịch sử xóa hóa đơn</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Ghi nhận các trường hợp hóa đơn bị xóa bởi quản trị viên</p>
+              </div>
+            </div>
+            <button
+              onClick={fetchDeletedLogs}
+              className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-700 flex items-center gap-1.5 transition-colors px-3 py-1.5 rounded-full border border-slate-200 hover:border-slate-300"
+            >
+              Làm mới
+            </button>
+          </div>
+
+          {loadingDeletedLogs ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-16 bg-slate-50 animate-pulse rounded-2xl" />
+              ))}
+            </div>
+          ) : deletedLogs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-3">
+                <ShieldAlert className="w-6 h-6 text-slate-300" />
+              </div>
+              <p className="text-sm font-bold text-slate-400">Chưa có hóa đơn nào bị xóa</p>
+              <p className="text-[10px] text-slate-300 mt-1">Mọi thao tác xóa hóa đơn sẽ được ghi lại tại đây</p>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3">
+                {paginatedDeletedLogs.map((log, i) => (
+                  <motion.div
+                    key={log.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="flex items-start gap-4 p-4 rounded-2xl border border-red-100 bg-red-50/40 hover:bg-red-50/70 transition-all"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-black text-slate-800 leading-snug">{log.title}</p>
+                        <span className="text-[9px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded-full shrink-0 uppercase tracking-wider">Đã xóa</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-medium mt-1 leading-relaxed break-all">{log.desc}</p>
+                      <p className="text-[9px] text-slate-400 mt-1.5 font-semibold">🕐 {log.time}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {deletedLogs.length > DELETED_LOGS_PER_PAGE && (
+                <div className="mt-6 flex justify-center">
+                  <Pagination
+                    currentPage={deletedLogsPage}
+                    totalPages={totalDeletedLogsPages}
+                    onPageChange={(page) => setDeletedLogsPage(page)}
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </Card>
+      </motion.div>
 
       {/* Bottom Section: Staff Rank & Recent Reports */}
       <div className="grid grid-cols-1 lg:grid-cols-10 gap-8">

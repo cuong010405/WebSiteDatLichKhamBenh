@@ -247,6 +247,7 @@ export default function AdminPayPage() {
   }, [selectedVisit]);
   const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null);
   const [activePrintPayment, setActivePrintPayment] = React.useState<PaymentRecord | null>(null);
+  const [confirmPrintPayment, setConfirmPrintPayment] = React.useState<PaymentRecord | null>(null);
   const [printedPaymentIds, setPrintedPaymentIds] = React.useState<Set<string>>(() => {
     if (typeof window !== "undefined") {
       try {
@@ -309,7 +310,7 @@ export default function AdminPayPage() {
         id.includes(query)
       );
     });
-  }, [payments, searchQuery, invoiceStatusFilter, dateFilterMode, customDateFilter, matchesDate]);
+  }, [payments, searchQuery, invoiceStatusFilter, dateFilterMode, customDateFilter, matchesDate, printedPaymentIds]);
 
   React.useEffect(() => {
     setPaymentPage(1);
@@ -327,7 +328,9 @@ export default function AdminPayPage() {
 
   const triggerBrowserPrint = () => {
     if (!activePrintPayment) return;
-    markInvoiceAsPrinted(activePrintPayment.id);
+    const targetPayment = activePrintPayment;
+    setActivePrintPayment(null);
+    setConfirmPrintPayment(targetPayment);
     const pkg = getPackageDetails(activePrintPayment);
     const rawAmount = (activePrintPayment.amount || "0").toString().replace(/[^0-9]/g, "");
     const amountNum = parseInt(rawAmount, 10) || 0;
@@ -547,8 +550,9 @@ export default function AdminPayPage() {
                 background-color: #fafafa;
               }
 
-              .text-center { text-align: center; }
-              .text-right { text-align: right; }
+              .nowrap {
+                white-space: nowrap;
+              }
 
               /* Financial Summary */
               .summary-section {
@@ -749,20 +753,20 @@ export default function AdminPayPage() {
               <table class="invoice-table">
                 <thead>
                   <tr>
-                    <th class="text-center" style="width: 40px;">STT</th>
-                    <th>Tên dịch vụ / Gói chăm sóc</th>
-                    <th>Hình thức & Ca trực</th>
-                    <th>Thời gian thực hiện</th>
-                    <th class="text-right">Thành tiền</th>
+                    <th class="nowrap" style="text-align: center; width: 45px;">STT</th>
+                    <th class="nowrap" style="width: 26%;">Tên dịch vụ / Gói</th>
+                    <th class="nowrap" style="width: 24%;">Hình thức & Ca trực</th>
+                    <th class="nowrap" style="width: 28%;">Thời gian thực hiện</th>
+                    <th class="nowrap" style="text-align: right; width: 22%;">Thành tiền</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td class="text-center font-bold">1</td>
-                    <td>
+                    <td class="font-bold" style="text-align: center;">1</td>
+                    <td class="nowrap">
                       <strong>${activePrintPayment.visitType || "Dịch vụ y tế tại nhà"}</strong>
                     </td>
-                    <td>
+                    <td class="nowrap font-medium">
                       ${
                         pkg.isPackage
                           ? `Gói ${pkg.days} ngày (Ca ${pkg.shift})`
@@ -771,8 +775,8 @@ export default function AdminPayPage() {
                           : "Ca trực lẻ"
                       }
                     </td>
-                    <td>${activePrintPayment.visitDate || ""} ${activePrintPayment.visitTime || ""}</td>
-                    <td class="text-right font-bold">
+                    <td class="nowrap font-medium">${activePrintPayment.visitDate || ""} ${activePrintPayment.visitTime || ""}</td>
+                    <td class="font-bold nowrap" style="text-align: right;">
                       ${
                         pkg.isPackage && pkg.discountPercent > 0
                           ? pkg.originalTotal.toLocaleString("vi-VN") + "đ"
@@ -853,7 +857,9 @@ export default function AdminPayPage() {
   };
 
   const handleDownloadTxtInvoice = (p: PaymentRecord) => {
-    markInvoiceAsPrinted(p.id);
+    const currentPayment = p;
+    setActivePrintPayment(null);
+    setConfirmPrintPayment(currentPayment);
     const content = `
 =============================================
          HÓA ĐƠN THANH TOÁN DỊCH VỤ
@@ -882,7 +888,6 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
     a.download = `hoa-don-${p.id}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-    setActivePrintPayment(null);
   };
 
   // Load visits chờ thanh toán (hiển thị tất cả ca chưa có hóa đơn, hỗ trợ thanh toán sớm & bình thường)
@@ -1960,6 +1965,60 @@ Cảm ơn quý khách đã tin dùng dịch vụ của MintCare!
                 className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-50"
               >
                 Hủy bỏ
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Print Confirmation Dialog */}
+      <Dialog open={!!confirmPrintPayment} onOpenChange={(v) => { if (!v) setConfirmPrintPayment(null); }}>
+        <DialogContent className="sm:max-w-[420px] rounded-[24px] border border-blue-100 shadow-2xl p-0 overflow-hidden bg-white">
+          <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 to-indigo-600" />
+          <div className="p-7">
+            <DialogHeader className="flex flex-row items-center gap-4 space-y-0 pb-4 mb-4 text-left">
+              <div className="w-11 h-11 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                <Printer className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight leading-none">
+                  Xác nhận kết quả in
+                </DialogTitle>
+                <DialogDescription className="text-slate-500 mt-1.5 text-[11px] font-semibold">
+                  Bạn đã in hoặc lưu hóa đơn thành công chưa?
+                </DialogDescription>
+              </div>
+            </DialogHeader>
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-1.5 mb-6 text-left">
+              <p className="text-xs font-black text-slate-800 uppercase tracking-tight">
+                Hóa đơn #{confirmPrintPayment?.id.slice(0, 10).toUpperCase()}
+              </p>
+              <p className="text-[11px] font-bold text-slate-600">
+                Khách hàng: {confirmPrintPayment?.patientName || confirmPrintPayment?.userName || "—"}
+              </p>
+              <p className="text-[10px] text-slate-400 font-semibold">
+                Nếu chọn &quot;Đã in thành công&quot;, hóa đơn sẽ được đánh dấu đã in. Nếu chọn &quot;Chưa in / Đã hủy&quot;, hóa đơn vẫn giữ nguyên trong danh sách.
+              </p>
+            </div>
+            <DialogFooter className="flex-col sm:flex-col gap-2">
+              <Button
+                onClick={() => {
+                  if (confirmPrintPayment) {
+                    markInvoiceAsPrinted(confirmPrintPayment.id);
+                  }
+                  setConfirmPrintPayment(null);
+                }}
+                className="w-full rounded-xl h-11 text-xs font-black uppercase tracking-[0.15em] bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:opacity-95 shadow-md shadow-emerald-200"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 mr-2" />
+                Đã in thành công (Ẩn khỏi đây)
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setConfirmPrintPayment(null)}
+                className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-widest border-slate-200 text-slate-600 hover:bg-slate-50"
+              >
+                Chưa in / Đã hủy (Giữ lại)
               </Button>
             </DialogFooter>
           </div>

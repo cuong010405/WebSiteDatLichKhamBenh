@@ -4,6 +4,22 @@ import { visitSchema } from "../validations/schemas";
 import { z } from "zod";
 import { autoAssignStaff } from "./dispatch";
 
+function getEstimatedPrice(type?: string | null, careMode?: string | null, packagePlan?: string | null): string {
+  if (careMode === "package" || packagePlan) {
+    if (packagePlan === "7days") return "2500000";
+    if (packagePlan === "14days") return "4800000";
+    if (packagePlan === "30days") return "9500000";
+    return "2500000";
+  }
+  if (!type) return "200000";
+  const t = type.toLowerCase();
+  if (t.includes("vật lý") || t.includes("phục hồi")) return "500000";
+  if (t.includes("truyền") || t.includes("dịch")) return "400000";
+  if (t.includes("chăm sóc") || t.includes("điều dưỡng")) return "300000";
+  if (t.includes("nội khoa") || t.includes("khám")) return "1200000";
+  return "200000";
+}
+
 function mapVisitToUI(v: any) {
   const notesContent = v.Notes || (v.PaymentNote?.startsWith("Lý do hủy:") ? "" : v.PaymentNote) || "";
   const addressContent = v.Address || v.CustomerArea || v.User?.Address || "Hẻm 42 Cống Quỳnh, Quận 1, TP. HCM";
@@ -29,8 +45,8 @@ function mapVisitToUI(v: any) {
     status: v.Status ?? "Chờ duyệt",
     patientName: v.Patient?.Name || v.User?.FullName || "",
     staffName: v.StaffId === "PENDING" ? "⏳ Chờ phân công" : (v.Staff?.Name ?? ""),
-    paymentMethod: v.PaymentMethod ?? "",
-    paymentAmount: v.PaymentAmount ?? "",
+    paymentMethod: v.PaymentMethod ?? "Tiền mặt",
+    paymentAmount: v.PaymentAmount || getEstimatedPrice(v.Type, v.CareMode, v.PackagePlan),
     paymentNote: v.PaymentNote ?? "",
     paymentStatus: v.PaymentStatus ?? "Chưa thanh toán",
     // Dispatch fields

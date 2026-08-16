@@ -17,7 +17,7 @@ function mapLogToUI(l: any) {
 export async function getActivityLogs() {
   const logs = await db.activityLog.findMany({
     orderBy: { CreatedAt: "desc" },
-    take: 20,
+    take: 100,
   });
   return logs.map(mapLogToUI);
 }

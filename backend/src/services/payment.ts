@@ -78,7 +78,14 @@ export async function getPaymentList() {
   const mappedPayments = payments.map(mapPayment);
 
   const mappedCancelledVisits = cancelledVisits
-    .filter((v) => !existingVisitIdsWithPayment.has(v.Id))
+    // Bỏ qua các visit đã có payment record (đã xử lý ở mappedPayments)
+    // và bỏ qua các visit bị admin xóa hóa đơn (đã ghi vào ActivityLog)
+    .filter((v) => {
+      if (existingVisitIdsWithPayment.has(v.Id)) return false;
+      // Visit bị admin xóa hóa đơn → ẩn khỏi trang thanh toán
+      if (v.PaymentNote && v.PaymentNote.includes("bị xóa/hủy bởi quản trị viên")) return false;
+      return true;
+    })
     .map((v) => ({
       id: `cancel-${v.Id}`,
       visitId: v.Id,
@@ -187,15 +194,61 @@ export async function deletePayment(id: string) {
   let visitId: string | null = null;
   let targetPaymentId: string | null = null;
 
+  // ── Snapshot thông tin trước khi xóa để ghi log ──
+  let snapshotAmount = "";
+  let snapshotMethod = "";
+  let snapshotNote = "";
+  let snapshotVisitType = "";
+  let snapshotPatientName = "";
+  let snapshotStatus = "";
+
   if (id.startsWith("cancel-")) {
     visitId = id.replace("cancel-", "");
   } else {
-    const payment = await db.payment.findUnique({ where: { Id: id } });
+    const payment = await db.payment.findUnique({
+      where: { Id: id },
+      include: {
+        Visit: {
+          include: {
+            Patient: true,
+            User: true,
+          },
+        },
+      },
+    });
     if (payment) {
       targetPaymentId = payment.Id;
       visitId = payment.VisitId;
+      snapshotAmount = payment.Amount ?? "";
+      snapshotMethod = payment.Method ?? "";
+      snapshotNote = payment.Note ?? "";
+      snapshotStatus = payment.Status ?? "";
+      snapshotVisitType = (payment as any).Visit?.Type ?? "";
+      snapshotPatientName =
+        (payment as any).Visit?.Patient?.Name ||
+        (payment as any).Visit?.User?.FullName ||
+        "";
     } else {
       visitId = id;
+    }
+  }
+
+  // Nếu là cancel-visit, lấy thông tin visit để ghi log
+  if (id.startsWith("cancel-") && visitId) {
+    const visit = await db.visit.findUnique({
+      where: { Id: visitId },
+      include: { Patient: true, User: true },
+    });
+    if (visit) {
+      snapshotAmount = visit.PaymentAmount ?? "";
+      snapshotMethod = visit.PaymentMethod ?? "";
+      snapshotNote = visit.PaymentNote ?? "";
+      snapshotVisitType = visit.Type ?? "";
+      snapshotStatus = "Đã hủy";
+      snapshotPatientName =
+        (visit as any).Patient?.Name ||
+        (visit as any).User?.FullName ||
+        "";
     }
   }
 
@@ -207,18 +260,55 @@ export async function deletePayment(id: string) {
     await db.payment.deleteMany({ where: { VisitId: visitId } }).catch(() => {});
   }
 
-  // 2. Set Visit status and payment status to "Đã hủy" (so it doesn't pop back into pending payments and shows as cancelled for customer)
+  // 2. Set Visit status and payment status to "Đã hủy", GIỮ NGUYÊN số tiền dịch vụ để phiếu đặt lịch hiển thị đúng
   if (visitId) {
+    const finalAmount = snapshotAmount || getPriceByVisitType(snapshotVisitType);
     await db.visit.update({
       where: { Id: visitId },
       data: {
         Status: "Đã hủy",
         PaymentStatus: "Đã hủy",
-        PaymentAmount: null,
-        PaymentMethod: null,
+        PaymentAmount: finalAmount || undefined,
+        PaymentMethod: snapshotMethod || "Chưa thanh toán",
         PaymentNote: "Hóa đơn đã bị xóa/hủy bởi quản trị viên",
       },
     }).catch(() => {});
+  }
+
+  // 3. Ghi nhận vào ActivityLog
+  try {
+    const amountNum = parseFloat(snapshotAmount) || 0;
+    const amountFmt = amountNum > 0
+      ? amountNum.toLocaleString("vi-VN") + "đ"
+      : "Không rõ";
+    const now = new Date();
+    const timeStr = now.toLocaleString("vi-VN", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+
+    const descParts = [
+      `Mã hóa đơn: ${targetPaymentId || id}`,
+      snapshotPatientName ? `Bệnh nhân: ${snapshotPatientName}` : "",
+      snapshotVisitType ? `Dịch vụ: ${snapshotVisitType}` : "",
+      `Số tiền: ${amountFmt}`,
+      snapshotMethod ? `Phương thức: ${snapshotMethod}` : "",
+      snapshotNote ? `Ghi chú gốc: ${snapshotNote}` : "",
+      `Trạng thái lúc xóa: ${snapshotStatus || "Không rõ"}`,
+    ].filter(Boolean).join(" · ");
+
+    await db.activityLog.create({
+      data: {
+        Id: crypto.randomUUID(),
+        Status: "deleted",
+        Title: `Xóa hóa đơn${snapshotPatientName ? " – " + snapshotPatientName : ""}`,
+        Desc: descParts,
+        Time: timeStr,
+        Color: "red",
+      },
+    });
+  } catch (logErr) {
+    console.warn("Lỗi ghi ActivityLog khi xóa hóa đơn:", logErr);
   }
 
   return { success: true };

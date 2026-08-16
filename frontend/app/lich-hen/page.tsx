@@ -95,13 +95,32 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string; border: string; 
   },
 };
 
-function formatPrice(val: any): string {
-  if (val === undefined || val === null || val === "") return "0 VNĐ";
-  const str = String(val);
+function getEstimatedPrice(type?: string | null, careMode?: string | null, packagePlan?: string | null): string {
+  if (careMode === "package" || packagePlan) {
+    if (packagePlan === "7days") return "2500000";
+    if (packagePlan === "14days") return "4800000";
+    if (packagePlan === "30days") return "9500000";
+    return "2500000";
+  }
+  if (!type) return "200000";
+  const t = type.toLowerCase();
+  if (t.includes("vật lý") || t.includes("phục hồi")) return "500000";
+  if (t.includes("truyền") || t.includes("dịch")) return "400000";
+  if (t.includes("chăm sóc") || t.includes("điều dưỡng")) return "300000";
+  if (t.includes("nội khoa") || t.includes("khám")) return "1200000";
+  return "200000";
+}
+
+function formatPrice(val: any, fallbackType?: string, careMode?: string | null, packagePlan?: string | null): string {
+  const str = val !== undefined && val !== null && String(val).trim() !== "" ? String(val) : "";
   const digitsOnly = str.replace(/[^0-9]/g, "");
   const num = parseInt(digitsOnly, 10);
-  if (isNaN(num)) return "0 VNĐ";
-  return num.toLocaleString("vi-VN") + " VNĐ";
+  if (!isNaN(num) && num > 0) {
+    return num.toLocaleString("vi-VN") + " VNĐ";
+  }
+  const est = getEstimatedPrice(fallbackType, careMode, packagePlan);
+  const estNum = parseInt(est, 10) || 200000;
+  return estNum.toLocaleString("vi-VN") + " VNĐ";
 }
 
 function NavUserMenu({ user, logout, onOpenSettings }: { user: any; logout: () => void; onOpenSettings?: () => void }) {
@@ -451,7 +470,7 @@ export default function LichHenPage() {
           date: v.date || "",
           time: v.time,
           status: isCancelled ? "Đã hủy" : v.status === "Đã xác nhận" ? "Đang thực hiện" : v.status,
-          price: formatPrice(v.price || v.paymentAmount),
+          price: formatPrice(v.price || v.paymentAmount, v.type, v.careMode, v.packagePlan),
           paymentMethod: v.paymentMethod || "Tiền mặt",
           paymentStatus: isCancelled ? "Đã hủy" : v.paymentStatus,
           address: v.address,
